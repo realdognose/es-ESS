@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # set permissions for script files
-chmod a+x /data/dbus-es-ess/restart.sh
-chmod 744 /data/dbus-es-ess/restart.sh
+chmod a+x /data/es-ESS/restart.sh
+chmod 744 /data/es-ESS/restart.sh
 
-chmod a+x /data/dbus-es-ess/uninstall.sh
-chmod 744 /data/dbus-es-ess/uninstall.sh
+chmod a+x /data/es-ESS/uninstall.sh
+chmod 744 /data/es-ESS/uninstall.sh
 
-chmod a+x /data/dbus-es-ess/service/run
-chmod 755 /data/dbus-es-ess/service/run
+chmod a+x /data/es-ESS/service/run
+chmod 755 /data/es-ESS/service/run
 
 # create sym-link to run script in deamon
-ln -s /data/dbus-es-ess/service /service/dbus-es-ess
+ln -s /data/es-ESS/service /service/es-ESS
 
 # add install-script to rc.local to be ready for firmware update
 filename=/data/rc.local
@@ -23,4 +23,4 @@ then
     echo >> $filename
 fi
 
-grep -qxF '/data/dbus-es-ess/install.sh' $filename || echo '/data/dbus-es-ess/install.sh' >> $filename
+grep -qxF '/data/es-ESS/install.sh' $filename || echo '/data/es-ESS/install.sh' >> $filename

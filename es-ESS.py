@@ -39,7 +39,7 @@ DBusGMainLoop(set_as_default=True)
 def configureLogging(config):
   logLevelString = config['Default']['LogLevel']
   logLevel = logging.getLevelName(logLevelString)
-  logDir = "/data/log/dbus-es-ess"
+  logDir = "/data/log/es-ESS"
   
   if not os.path.exists(logDir):
     os.mkdir(logDir)

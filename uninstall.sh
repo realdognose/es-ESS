@@ -1,6 +1,6 @@
 #!/bin/bash
 
-kill $(pgrep -f 'supervise dbus-es-ess')
-chmod a-x /data/dbus-es-ess/service/run
-svc -d /service/dbus-es-ess
+kill $(pgrep -f 'supervise es-ESS')
+chmod a-x /data/es-ESS/service/run
+svc -d /service/es-ESS
 ./restart.sh
