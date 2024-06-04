@@ -42,7 +42,7 @@ TODO
 Some BMS - say the majority of them - don't provide values for the `Time to go`-Value visible in VRM. This is an important figure when looking at a dashboard. This helper script 
 fills that gap and calculates the time, when BMS don't. Calculation is done in both directions: 
 
-- **When discharging**: Time based on current discharge until the active SoC Limit is reached.
+- **When discharging**: Time based on current discharge rate until the active SoC Limit is reached.
 - **When charging**: Time based on current charge rate until 100% SoC is reached. 
 
 
