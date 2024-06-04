@@ -58,7 +58,7 @@ TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.in
 | [Default]    | VRMPortalID |  Your portal id to access values on mqtt / dbus |String | VRM0815 |
 | [Default]  | BatteryCapacityInWh  | Your batteries capacity in Wh.  | Integer| 28000 |
 | [Modules]    | TimeToGoCalculator | Flag, if the module should be enabled or not | Boolean | true |
-| [TimeToGoCalculator]  | UpdateInterval |  Time in seconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
+| [TimeToGoCalculator]  | UpdateInterval |  Time in milli seconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
 
 
 
