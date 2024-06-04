@@ -35,9 +35,11 @@ TODO
 TODO
 
 # TimeToGoCalculator
-#### Overview
 
 <img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/TimeToGo.png"> 
+#### Overview
+
+
 
 Some BMS - say the majority of them - don't provide values for the `Time to go`-Value visible in VRM. This is an important figure when looking at a dashboard. This helper script 
 fills that gap and calculates the time, when BMS don't. Calculation is done in both directions: 
