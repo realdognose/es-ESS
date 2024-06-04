@@ -142,27 +142,7 @@ class FroniusWattpilotService:
         self.minimumOnOffSeconds = int(self.config["FroniusWattpilot"]["MinOnOffSeconds"])
         self.minimumPhaseSwitchSeconds = int(self.config["FroniusWattpilot"]["MinPhaseSwitchSeconds"])
         self.lastVarDump = 0
-
-        #create default values.
-        #on startup we have to assume car is not connected. 
-        #switch to auto mode
-        self.p1 = 0
-        self.p2 = 0
-        self.p3 = 0
-        self.i1 = 0
-        self.i2 = 0
-        self.i3 = 0
-        self.pf1 = 0
-        self.pf2 = 0
-        self.pf3 = 0
-        self.u1 = 0
-        self.u2 = 0
-        self.u3 = 0
-        self.amp = 0
-        self.carState = 0
-        self.victronCarState = 0
-        self.startStop = 0
-        self.maxCurrent = 6
+        self.maxCurrent = 16
         self.mode = 0 #Start in manual mode, switch when initialized.
         self.autostart = 0 
 
@@ -197,13 +177,13 @@ class FroniusWattpilotService:
         self.dbusService.add_path('/Ac/Power', 0)
         self.dbusService.add_path('/Current', 0)
         self.dbusService.add_path('/AutoStart', self.autostart, writeable=False)
-        self.dbusService.add_path('/SetCurrent', self.amp, writeable=True, onchangecallback=self._froniusHandleChangedValue)
+        self.dbusService.add_path('/SetCurrent', 0, writeable=True, onchangecallback=self._froniusHandleChangedValue)
         self.dbusService.add_path('/Status', 0)
         self.dbusService.add_path('/MaxCurrent', self.maxCurrent)
         self.dbusService.add_path('/Mode', self.mode, writeable=True, onchangecallback=self._froniusHandleChangedValue)
         self.dbusService.add_path('/Position', int(self.config['FroniusWattpilot']['Position'])) #
         self.dbusService.add_path('/Model', "Fronius Wattpilot")
-        self.dbusService.add_path('/StartStop', self.startStop, writeable=True, onchangecallback=self._froniusHandleChangedValue)
+        self.dbusService.add_path('/StartStop', 0, writeable=True, onchangecallback=self._froniusHandleChangedValue)
         self.dbusService.add_path('/ChargingTime', 0)
 
         self.switchMode(0,1)
@@ -257,7 +237,6 @@ class FroniusWattpilotService:
         else:
             self.dbusService["/Ac/Energy/Forward"] = 0.0
         
-
         self.dbusService["/MaxCurrent"] = self.maxCurrent
         self.dbusService["/AutoStart"] = self.autostart
-        self.dbusService["/SetCurrent"] = self.amp
+        self.dbusService["/SetCurrent"] = self.wattpilot.amp

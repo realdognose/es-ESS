@@ -5,7 +5,7 @@ import paho.mqtt.client as mqtt # type: ignore
 from Helper import i, c, d, w, e
 
 #superglobals
-currentVersionString="es-ESS 0.33b"
+currentVersionString="es-ESS 24.6.4.25 b"
 esEssTag = "es-ESS"
 
 #Services

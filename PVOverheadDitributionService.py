@@ -32,7 +32,7 @@ class PVOverheadDistributionService:
     self.vrmInstanceID = int(self.config['PVOverheadDistributor']['VRMInstanceID'])
     self.vrmInstanceIDBMS = int(self.config['PVOverheadDistributor']['VRMInstanceID_ReservationMonitor'])
     self.serviceType = "com.victronenergy.settings"
-    self.serviceName = self.serviceType + ".es-ess.pvOverheadDistributor_" + str(self.vrmInstanceID)
+    self.serviceName = self.serviceType + ".es-ESS.pvOverheadDistributor_" + str(self.vrmInstanceID)
     i("PVOverheadDistributor","Registering service as: " + self.serviceName)
     self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
 
@@ -44,8 +44,8 @@ class PVOverheadDistributionService:
     # Create the mandatory objects
     self.dbusService.add_path('/DeviceInstance', self.vrmInstanceID)
     self.dbusService.add_path('/ProductId', 65535)
-    self.dbusService.add_path('/ProductName', "ES-ESS PVOverheadService") 
-    self.dbusService.add_path('/CustomName', "ES-ESS PVOverheadService") 
+    self.dbusService.add_path('/ProductName', "es-ESS PVOverheadService") 
+    self.dbusService.add_path('/CustomName', "es-ESS PVOverheadService") 
     self.dbusService.add_path('/Latency', None)    
     self.dbusService.add_path('/FirmwareVersion', Globals.currentVersionString)
     self.dbusService.add_path('/HardwareVersion', Globals.currentVersionString)
@@ -68,7 +68,7 @@ class PVOverheadDistributionService:
 
     #Create a Fake-BMS to outline batteryChargeLimit, if active.
     self.bmsServiceType = "com.victronenergy.battery"
-    self.bmsServiceName = self.bmsServiceType + ".es-ess.pvOverheadConsumer_" + str(self.vrmInstanceIDBMS)
+    self.bmsServiceName = self.bmsServiceType + ".es-ESS.pvOverheadConsumer_" + str(self.vrmInstanceIDBMS)
     self.dbusBmsService = VeDbusService(self.bmsServiceName, bus=dbusConnection())
     
     #Mgmt-Infos
@@ -79,7 +79,7 @@ class PVOverheadDistributionService:
 
     # Create the mandatory objects
     self.dbusBmsService.add_path('/ProductId', 65535)
-    self.dbusBmsService.add_path('/ProductName', "ES-ESS PVOverheadConsumer") 
+    self.dbusBmsService.add_path('/ProductName', "es-ESS PVOverheadConsumer") 
     self.dbusBmsService.add_path('/CustomName', "Battery Charge Reservation") 
     self.dbusBmsService.add_path('/Latency', None)    
     self.dbusBmsService.add_path('/FirmwareVersion', Globals.currentVersionString)
