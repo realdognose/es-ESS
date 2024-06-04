@@ -2,6 +2,7 @@
  
 # imports
 import configparser # for config/ini file
+from logging.handlers import TimedRotatingFileHandler
 import sys
 import os
 import re
@@ -48,7 +49,7 @@ def configureLogging(config):
                           datefmt='%Y-%m-%d %H:%M:%S',
                           level=logLevel,
                           handlers=[
-                              logging.FileHandler(logDir + "/es-ess.log"),
+                              TimedRotatingFileHandler(logDir + "/current.log", when="midnight", interval=1, backupCount=14),
                               logging.StreamHandler()
                           ])
   
