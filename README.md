@@ -11,7 +11,9 @@ features can be enabled, based on your needs.
 - [FroniusWattPilot](#froniuswattpilot) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
 - [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt server and insert a Fake-BMS on cerbo / VRM.
 - [NoBatToEV](#nobattoev) - Avoid usage of your home-battery when charging your ev with an `ac-out` connected wallbox.
-- [PVOverheadDistributor](#pvoverheaddistributor) - Utility to manage and distribute available Solar Overhead between various consumers. (For Power-Users)
+- [PVOverheadDistributor](#pvoverheaddistributor) - Utility to manage and distribute available Solar Overhead between various consumers.
+  - [NPC-PVOverheadConsumer](#npc-pvoverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead.
+  - [Scripted-PVOverheadConsumer](#scripted-pvoverheadconsumer) - Consumers managed by external scripts can to be more complex and join the Solar Overhead Pool.
 - [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.
 - [F.A.Q](#faq) - Frequently Asked Questions
 
@@ -33,6 +35,12 @@ TODO
 TODO
 
 # PVOverheadDistributor
+TODO
+
+### NPC-PVOverheadConsumer
+TODO
+
+### Scripted-PVOverheadConsumer
 TODO
 
 # TimeToGoCalculator
