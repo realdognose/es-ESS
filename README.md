@@ -11,8 +11,11 @@ features can be enabled, based on your needs.
 - [FroniusWattPilot](#froniuswattpilot) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
 - [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt server and insert a Fake-BMS on cerbo / VRM.
 - [NoBatToEV](#nobattoev) - Avoid usage of your home-battery when charging your ev with an `ac-out` connected wallbox.
-- [PVOverheadDistributor](#pvoverheaddistributor) - Utility to manage and distribute available Solar Overhead between various consumers. (For Power-Users)
-- [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.  
+- [PVOverheadDistributor](#pvoverheaddistributor) - Utility to manage and distribute available Solar Overhead between various consumers.
+  - [NPC-PVOverheadConsumer](#npc-pvoverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead.
+  - [Scripted-PVOverheadConsumer](#scripted-pvoverheadconsumer) - Consumers managed by external scripts can to be more complex and join the Solar Overhead Pool.
+- [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.
+- [F.A.Q](#faq) - Frequently Asked Questions
 
 # Setup
 Your system needs to match the following requirements in order to use es-ESS
@@ -34,10 +37,19 @@ TODO
 # PVOverheadDistributor
 TODO
 
+### NPC-PVOverheadConsumer
+TODO
+
+### Scripted-PVOverheadConsumer
+TODO
+
 # TimeToGoCalculator
-#### Overview
 
 <img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/TimeToGo.png"> 
+
+#### Overview
+
+
 
 Some BMS - say the majority of them - don't provide values for the `Time to go`-Value visible in VRM. This is an important figure when looking at a dashboard. This helper script 
 fills that gap and calculates the time, when BMS don't. Calculation is done in both directions: 
@@ -61,4 +73,7 @@ TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.in
 | [TimeToGoCalculator]  | UpdateInterval |  Time in milli seconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
 
 
+# F.A.Q.
+
+TODO
 
