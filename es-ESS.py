@@ -37,6 +37,41 @@ from FroniusWattpilotService import FroniusWattpilotService
 # Have a mainloop, so we can send/receive asynchronous calls to and from dbus
 DBusGMainLoop(set_as_default=True)
 
+class esESS:
+  def __init__(self):
+    self.config = configparser.ConfigParser()
+    self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))   
+    self.keepAliveTopic = "R/" + self.config["Default"]["VRMPortalID"] + "/keepalive"
+
+    i(Globals.esEssTag, "Initializing " + Globals.esEssTag + " (" + Globals.currentVersionString + ")")
+    self.enableModules()
+    gobject.timeout_add(int(15000), self.keepAliveLoop)
+
+  def enableModules(self):
+   #check, which Modules are enabled and create the respective services. 
+      #Some services will be created dynamically during runtime as features/devices join. 
+      if((self.config['Modules']['PVOverheadDistributor']).lower() == 'true'):
+         i(Globals.esEssTag, 'PVOverheadDistributor-Module is enabled.')
+         Globals.pvOverheadDistributionService = PVOverheadDistributionService()
+      else:
+         i(Globals.esEssTag, "PVOverheadDistributor-Module is disabled.")
+
+      if((self.config['Modules']['TimeToGoCalculator']).lower() == 'true'):
+        i(Globals.esEssTag, 'TimeToGoCalculator-Module is enabled.')
+        Globals.timeToGoCalculator = TimeToGoCalculator()
+      else:
+        i(Globals.esEssTag, 'TimeToGoCalculator-Module is disabled.')
+
+      if((self.config['Modules']['FroniusWattpilot']).lower() == 'true'):
+        i(Globals.esEssTag, 'FroniusWattpilot-Module is enabled.')
+        Globals.froniusWattpilotService = FroniusWattpilotService()
+      else:
+         i(Globals.esEssTag, 'FroniusWattpilot-Module is disabled.')
+
+  def keepAliveLoop(self):
+      Globals.mqttClient.publish(self.keepAliveTopic, "")
+      return True
+  
 def configureLogging(config):
   logLevelString = config['Default']['LogLevel']
   logLevel = logging.getLevelName(logLevelString)
@@ -45,38 +80,16 @@ def configureLogging(config):
   if not os.path.exists(logDir):
     os.mkdir(logDir)
 
-  logging.basicConfig(    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                          datefmt='%Y-%m-%d %H:%M:%S',
-                          level=logLevel,
-                          handlers=[
-                              TimedRotatingFileHandler(logDir + "/current.log", when="midnight", interval=1, backupCount=14),
-                              logging.StreamHandler()
-                          ])
+  logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                      datefmt='%Y-%m-%d %H:%M:%S',
+                      level=logLevel,
+                      handlers=[
+                        TimedRotatingFileHandler(logDir + "/current.log", when="midnight", interval=1, backupCount=14),
+                        logging.StreamHandler()
+                      ])
   
   #persist some log flags.
   Globals.logIncomingMqttMessages = config["LogDetails"]["LogIncomingMqttMessages"].lower() == "true"
-
-def enableModules(config):
-   #check, which Modules are enabled and create the respective services. 
-      #Some services will be created dynamically during runtime as features/devices join. 
-      if((config['Modules']['PVOverheadDistributor']).lower() == 'true'):
-         pvOverheadServiceVRMId = config['PVOverheadDistributor']['VRMInstanceID']
-         i(Globals.esEssTag, 'PVOverheadDistributor-Module is enabled. Initializing service on VRM-ID: ' + pvOverheadServiceVRMId)
-         Globals.pvOverheadDistributionService = PVOverheadDistributionService()
-      else:
-         i(Globals.esEssTag, "PVOverheadDistributor-Module is disabled.")
-
-      if((config['Modules']['TimeToGoCalculator']).lower() == 'true'):
-        i(Globals.esEssTag, 'TimeToGoCalculator-Module is enabled.')
-        Globals.timeToGoCalculator = TimeToGoCalculator()
-      else:
-        i(Globals.esEssTag, 'TimeToGoCalculator-Module is disabled.')
-
-      if((config['Modules']['FroniusWattpilot']).lower() == 'true'):
-        i(Globals.esEssTag, 'FroniusWattpilot-Module is enabled.')
-        Globals.froniusWattpilotService = FroniusWattpilotService()
-      else:
-         i(Globals.esEssTag, 'FroniusWattpilot-Module is disabled.')
 
 def main():
   # read configuration. TODO: Migrate to UI-Based configuration later.
@@ -84,8 +97,7 @@ def main():
   config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
   
   configureLogging(config)
-  i(Globals.esEssTag, "Startup of " + Globals.esEssTag + " (" + Globals.currentVersionString + ")")
-
+  
   try:
       # Have a mainloop, so we can send/receive asynchronous calls to and from dbus
       from dbus.mainloop.glib import DBusGMainLoop # type: ignore
@@ -93,8 +105,8 @@ def main():
            
       # MQTT setup
       Globals.configureMqtt(config)
-      enableModules(config)
-
+      Globals.esESS = esESS()
+      
       mainloop = gobject.MainLoop()
       mainloop.run()            
   except Exception as e:

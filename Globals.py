@@ -9,6 +9,7 @@ currentVersionString="es-ESS 24.6.4.25 b"
 esEssTag = "es-ESS"
 
 #Services
+esESS = None
 pvOverheadDistributionService = None
 timeToGoCalculator = None
 froniusWattpilotService = None
