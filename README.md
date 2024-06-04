@@ -1,64 +1,33 @@
-# dbus-fronius-hybrid-battery-visualisation
+# es-ESS
+es-ESS (equinox solutions Energy Storage Systems) is an extension for Victrons VenusOS running on GX-Devices.
+es-ESS brings various functions starting with tiny helpers, but also including major functionalities.
 
-The original Implementation of Victrons Fronius Readout shows all Fronius inverters as PV-Inverters. Unfortunately the attached Battery is not visible.
+es-ESS is structered in individual modules and every module can be enabled or disabled independent. So, only certain
+features can be enabled, based on your needs.
 
-So, I wrote my own script, that addresses this issue and creates a dbus-based Battery-Management System based on the JSON-API of the fronius inverter. 
+### Table of Contents  
+- [ChargeCurrentReducer](#chargecurrentreducer) - Reduce the battery charge current to your *feel-well-value* without the need to disable DC-Feedin.
+- [FroniusWattPilot](#froniuswattpilot) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
+- [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt server and insert a Fake-BMS on cerbo / VRM.
+- [NoBatToEV](#nobattoev) - Avoid usage of your home-battery when charging your ev with an `ac-out` connected wallbox.
+- [PVOverheadDistributor](#pvoverheaddistributor) - Utility to manage and distribute available Solar Overhead between various consumers. (For Power-Users)
+- [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.  
 
-- Disable the internal scanning for PV-Inverters and remove the original entry created by victron, else they appear twice.
-- Under Settings / System Setup / Battery Measurements make sure to enable the virtual BMS to be displayed in VRM as well. 
+# ChargeCurrentReducer
+TODO
 
-(There is currently PV Output of the second inverter as well, so the battery discharge & the PV Output don't match, but they do)
-![image](https://github.com/realdognose/dbus-fronius-hybrid-battery-visualisation/blob/main/img/BatteryAdd.png)
+# FroniusWattPilot
+TODO
 
-![image](https://github.com/realdognose/dbus-fronius-hybrid-battery-visualisation/blob/main/img/BatterySys.png)
+# MqttToEVSoc
+TODO
 
-# Script Installation.
+# NoBatToEV
+TODO
 
-```
-wget https://github.com/realdognose/dbus-fronius-hybrid-battery-visualisation/archive/refs/heads/main.zip
-unzip main.zip "dbus-fronius-hybrid-battery-visualisation-main/*" -d /data
-mv /data/dbus-fronius-hybrid-battery-visualisation-main /data/dbus-fronius-hybrid-battery-visualisation
-chmod a+x /data/dbus-fronius-hybrid-battery-visualisation/install.sh
-/data/dbus-fronius-hybrid-battery-visualisation/install.sh
-rm main.zip
-```
+# PVOverheadDistributor
+TODO
 
-⚠️ Check configuration after that - because service is already installed an running and with wrong connection data you will spam the log-file
-### Stop service
-```
-svc -d /service/dbus-fronius-hybrid-battery-visualisation
-```
-### Start service
-```
-svc -u /service/dbus-fronius-hybrid-battery-visualisation
-```
-### Reload data
-```
-/data/dbus-fronius-hybrid-battery-visualisation/restart.sh
-```
-### View log file
-```
-cat /data/dbus-fronius-hybrid-battery-visualisation/current.log
-```
-### Change config.ini
-Within the project there is a file `/data/dbus-fronius-hybrid-battery-visualisation/config.ini` - just change the values - most important is the host and HybridID in section "ONPREMISE". More details bellow
-and comments in the config file:
+# TimeToGoCalculator
+TODO
 
-Afther change the config file execute restart.sh to reload new settings 
-
-| Section    | Config vlaue | Explanation |
-| ---------- | ------------- | ------------- |
-| DEFAULT    | AccessType | Fixed value 'OnPremise' |
-| DEFAULT    | SignOfLifeLog  | Time in minutes how often a status is added to the log-file `current.log` with log-level INFO |
-| ONPREMISE  | Host | IP or hostname of on-premise Fronis Meter web-interface |
-| ONPREMISE  | HybridID  | Your HybridDevice ID
-| ONPREMISE  | intervalMs  | Interval time in ms to get data from Fronius
----
-
-# original description
-
-forked from: smart meter readout repository at: 
-https://github.com/ayasystems/dbus-fronius-smart-meter
-
-For another hacky solution around running ESS as subgrid, see 
-https://github.com/realdognose/dbus-fronius-smart-meter-with-phase1-injection
