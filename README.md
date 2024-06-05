@@ -2,38 +2,40 @@
 es-ESS (equinox solutions Energy Storage Systems) is an extension for Victrons VenusOS running on GX-Devices.
 es-ESS brings various functions starting with tiny helpers, but also including major functionalities.
 
-es-ESS is structered in individual modules and every module can be enabled or disabled independent. So, only certain
+es-ESS is structered into individual modules and every module can be enabled or disabled seperate. So, only certain
 features can be enabled, based on your needs.
 
 ### Table of Contents
-- [Setup](#setup) - General setup process and requirements for es-ESS
+- [Setup](#setup) - General setup process and requirements for es-ESS.
 - [ChargeCurrentReducer](#chargecurrentreducer) - Reduce the battery charge current to your *feel-well-value* without the need to disable DC-Feedin.
 - [FroniusWattPilotService](#froniuswattpilotservice) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
-- [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt server and insert a Fake-BMS on cerbo / VRM.
-- [NoBatToEV](#nobattoev) - Avoid usage of your home-battery when charging your ev with an `ac-out` connected wallbox.
-- [PVOverheadDistributor](#pvoverheaddistributor) - Utility to manage and distribute available Solar Overhead between various consumers.
-  - [Scripted-PVOverheadConsumer](#scripted-pvoverheadconsumer) - Consumers managed by external scripts can to be more complex and join the Solar Overhead Pool.
-  - [NPC-PVOverheadConsumer](#npc-pvoverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead.
+- [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt source and insert a FAKE-BMS on cerbo / VRM for display purpose.
+- [NoBatToEV](#nobattoev) - Avoid discharge of your home-battery when charging your ev with an `ac-out` connected wallbox.
+- [PVOverheadDistributor](#pvoverheaddistributor) - Utility to manage and distribute available solar overhead between various consumers.
+  - [Scripted-PVOverheadConsumer](#scripted-pvoverheadconsumer) - Consumers managed by external scripts can to be more complex and join the solar overhead pool.
+  - [NPC-PVOverheadConsumer](#npc-pvoverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead. No programming required.
 - [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.
-- [This and that](#this-and-that) - Various information that doesn't fit elsewhere
+- [This and that](#this-and-that) - Various information that doesn't fit elsewhere.
 - [F.A.Q](#faq) - Frequently Asked Questions
 
 # Setup
-Your system needs to match the following requirements in order to use es-ESS
+Your system needs to match the following requirements in order to use es-ESS:
 - Be an ESS
 - Have the local Mqtt enabled (plain or tls)
+- Have shell access enabled and know how to use it. (See: https://www.victronenergy.com/live/ccgx:root_access)
 
 # ChargeCurrentReducer
 TODO
 
 # FroniusWattPilotService
-When using a system combined with a Fronius Wattpilot, there are issues with PVOverhead charging. Using the native functionality of Wattpilot can't take 
-the battery discharge of the victron universe into account, which may lead to a constant "solar charge" which in fact is draining your battery. 
+When using a Fronius Wattpilot, there are issues with the default ECO-Mode-Charging. Using the native functionality of Wattpilot can't take 
+the battery discharge of the victron universe into account, which may lead to Wattpilot not reducing its charge current, and your home battery
+is kicking in to supply missing power.
 
 Therefore, a complete integration of Wattpilot has been implemented: 
-- Wattpilot is fully controllable through VRM Switches.
-- es-ESS will take over correct overhead distribution, relying on the build-in PVOverhead Distributor and orchestrate Wattpilot accordingly.
-- All (important) Status of Wattpilot will be exposed on dbus / VRM:
+- Wattpilot is fully controllable through the VRM evcharger functionality.
+- es-ESS will take over correct overhead distribution, relying on the built-in [PVOverheadDistributor](#pvoverheaddistributor) and orchestrate Wattpilot accordingly.
+- All (important) status of Wattpilot will be exposed on dbus / VRM:
 
 | Charging | Phase Switch | Waiting for Sun | Cooldown |
 |:-------:|:-------:|:-------:|:-------:|
@@ -42,14 +44,14 @@ Therefore, a complete integration of Wattpilot has been implemented:
 | Full integration |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/PVOverheadConsumers%202.png" />|
-| Communication is bidirectional between VRM <-> Wattpilot App for both, Auto- and manual mode. |
+| Communication is bidirectional between VRM <-> Wattpilot app for both, auto and manual mode. |
 
 # Installation
-Despite the installation of es-ESS, an additional python module *websocket-client* is required to communicate with the wattpilot. 
+Despite the installation of es-ESS, an additional python module *websocket-client* is required to communicate with Wattpilot. 
+The installation is a *one-liner* through *pythons pip* - which in turn might need to be installed first. 
+If you have already installed *python pip* on your system, can skip this.
 
-if you have already installed `python pip` on your system, can skip the installation ofc. 
-
-Install pip: 
+Install *pythong pip*: 
 ```
 opkg update
 opkg list | grep pip
@@ -63,11 +65,9 @@ python -m pip install websocket-client
 
 # Configuration
 
-> :information_source: Configure the wattpilot itself in ECO-Mode and a PV-Overhead-Minimum-Startpower of 99kW. es-ESS will handle that, but this avoids the car starting to charge everytime when plugged in.
+> :information_source: Configure Wattpilot in ECO-Mode and a PV-Overhead-Minimum-Startpower of 99kW or something. es-ESS will handle that and start/stop Wattpilot according to available solar overhead. Setting this high start value ensures Wattpilot is not messing with control as well.
 
-> :information_source: Setup Maximum-Charge-Currents in wattpilot as used to.
-
-> :warning: **Fake-BMS injection**:<br /> This feature is creating Fake-BMS information on dbus. Make sure to manually select your *actual* BMS unter *Settings > System setup > Battery Monitor* else your ESS may not behave correctly anymore. Don't leave this setting to *Automatic*
+> :warning: **FAKE-BMS injection**:<br /> This feature is creating FAKE-BMS information on dbus. Make sure to manually select your *actual* BMS unter *Settings > System setup > Battery Monitor* else your ESS may not behave correctly anymore. Don't leave this setting to *Automatic*
 
 FroniusWattpilotService requires a few variables to be set in `/data/es-ESS/config.ini`: 
 
@@ -75,14 +75,18 @@ FroniusWattpilotService requires a few variables to be set in `/data/es-ESS/conf
 | ---------- | ---------|---- | ------------- |--|
 | [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [FroniusWattpilot]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1001 |
-| [FroniusWattpilot]  | VRMInstanceID_OverheadRequest |  VRMInstanceId to be used on dbus for the FAKE-bms. | Integer  | 1002 |
+| [FroniusWattpilot]  | VRMInstanceID_OverheadRequest |  VRMInstanceId to be used on dbus for the FAKE-BMS | Integer  | 1002 |
 | [FroniusWattpilot]  | MinPhaseSwitchSeconds  | Seconds between Phase-Switching  | Integer| 300 |
 | [FroniusWattpilot]  | MinOnOffSeconds | Seconds between starting/stopping charging | Integer | 600 |
 | [FroniusWattpilot]  | ResetChargedEnergyCounter |  Define when the counters *Charge Time* and *Charged Energy* in VRM should reset. Options: OnDisconnect, OnConnect| String  | OnDisconnect |
-| [FroniusWattpilot]  | Position | Position, where the wattpilot is connected to. Options: 0:=ac-out, 1:=ac-in | Integer  | 0 |
-| [FroniusWattpilot]  | Host | hostname / ip of wattpilot | String  | wallbox.ad.equinox-solutions.de |
-| [FroniusWattpilot]  | Username | Username of wattpilot | String  | User |
-| [FroniusWattpilot]  | Password | Password of wattpilot | String  | Secret123! |
+| [FroniusWattpilot]  | Position | Position, where the Wattpilot is connected to. Options: 0:=ac-out, 1:=ac-in | Integer  | 0 |
+| [FroniusWattpilot]  | Host | hostname / ip of Wattpilot | String  | wallbox.ad.equinox-solutions.de |
+| [FroniusWattpilot]  | Username | Username of Wattpilot | String  | User |
+| [FroniusWattpilot]  | Password | Password of Wattpilot | String  | Secret123! |
+
+# Credits
+Wattpilot control functionality has been taken from https://github.com/joscha82/wattpilot and modified to extract all variables required for full integration.
+All buggy overhead (Home-Assistant / Mqtt) has been removed and some bug fixes have been applied to achieve a stable running Wattpilot-Core.
 
 # MqttToEVSoc
 TODO
@@ -92,13 +96,15 @@ TODO
 
 # PVOverheadDistributor
 #### Overview
-In a larger system, sometimes you need to manage multiple consumers based on solar overhead available. If every consumer is deciding on it's own, it can 
-lead to a continious up and down on available energy, causing consumers to turn on/off in a uncontrolled , frequent fashion. 
+Sometimes you need to manage multiple consumers based on solar overhead available. If every consumer is deciding on it's own, it can 
+lead to a continious up and down on available energy, causing consumers to turn on/off in a uncontrolled, frequent fashion. 
 
 To overcome this problem, the PVOverheadDistributor has been created. Each consumer can register itself, send a request containing certain parameters - and
-PVOverheadDistributor will determine the total available overhead and calculate allowances for each individual consumer. 
+PVOverheadDistributor will determine the total available overhead of the system and calculate allowances for each individual consumer. 
 
-Each consumer is represented as a Fake-BMS in VRM, so you can see immediately where your energy is currently going. 
+A minimum battery reservation can be defined through a SOC-based equation to make sure your home-battery receives the power it needs to fully charge during the day.
+
+Each consumer is represented as a FAKE-BMS in VRM, so you can see where your energy is currently going. 
 
 > :warning: **Fake-BMS injection**:<br /> This feature is creating Fake-BMS information on dbus. Make sure to manually select your *actual* BMS unter *Settings > System setup > Battery Monitor* else your ESS may not behave correctly anymore. Don't leave this setting to *Automatic*
 
