@@ -6,7 +6,7 @@ es-ESS is structered in individual modules and every module can be enabled or di
 features can be enabled, based on your needs.
 
 ### Table of Contents
-- [Setup](#setup) - General setup progress and requirements for es-ESS
+- [Setup](#setup) - General setup process and requirements for es-ESS
 - [ChargeCurrentReducer](#chargecurrentreducer) - Reduce the battery charge current to your *feel-well-value* without the need to disable DC-Feedin.
 - [FroniusWattPilot](#froniuswattpilot) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
 - [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt server and insert a Fake-BMS on cerbo / VRM.
@@ -67,7 +67,7 @@ TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.in
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [Default]    | VRMPortalID |  Your portal id to access values on mqtt / dbus |String | VRM0815 |
+| [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [Default]  | BatteryCapacityInWh  | Your batteries capacity in Wh.  | Integer| 28000 |
 | [Modules]    | TimeToGoCalculator | Flag, if the module should be enabled or not | Boolean | true |
 | [TimeToGoCalculator]  | UpdateInterval |  Time in milli seconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
