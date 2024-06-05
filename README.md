@@ -39,7 +39,7 @@ to start feed-in to the grid in order to reduce the available power on the dc-si
 
 When the charge current drops bellow the desired value, grid-feedin will be reduced again to leave more power to the batteries. 
 
-> :warning: We are using the wording "Reducer" on purpose. This is __NO__ Limiter. Your batteries, fusing and/or wiring should always be able to withstand
+> :warning: I am using the wording "Reducer" on purpose. This is __NO__ Limiter. Your batteries, fusing and/or wiring should always be able to withstand
 any incoming current from the MPPTs upto their technical limit!
 
 #### Configuration
