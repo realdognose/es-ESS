@@ -144,7 +144,7 @@ PVOVerheadDistributer requires a few variables to be set in `/data/es-ESS/config
 | [Modules]    | PVOVerheadDistributor | Flag, if the module should be enabled or not | Boolean | true |
 | [PVOverheadDistributor]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
 | [PVOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
-| [PVOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />The example will maximum reserve 5000W, for every percent of SoC reached 40 watts are released. Mimimum of 1040 Watts will be reached at 99% Soc, until SoC is 100%<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like. | String  | 5000 - 40 * SOC |
+| [PVOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />The example will maximum reserve 5000W, for every percent of SoC reached 40 watts are released. Mimimum of 1040 Watts will be reached at 99% Soc, until SoC is 100%<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | 5000 - 40 * SOC |
 
 
 # TimeToGoCalculator
