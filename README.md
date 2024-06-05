@@ -180,8 +180,8 @@ the example consumerKey is *waterplay* here.
 | [NPC:waterplay]    | customName |  DisplayName on VRM   |String | Waterplay |
 | [NPC:waterplay]    | ignoreBatReservation             | Consumer shall be enabled despite active Battery Reservation            | Boolean       | true         |
 | [NPC:waterplay]    | vrmInstanceID                    | The ID the battery monitor should use in VRM                            | Integer       | 1008          | 
-| [NPC:waterplay]    | minimum                       | A miminum power that needs to be assigned as step1.     | Double        | 0|
-| [NPC:waterplay]    | stepSize                         | StepSize in which the allowance should be generated, until the total requests value is reached. | Double       | 120.0|
+| [NPC:waterplay]    | ~~minimum~~                       | obsolete for on/off NPC-consumers     | ~~Double~~        | ~~0~~|
+| [NPC:waterplay]    | ~~stepSize~~                         | obsolete for on/off NPC-consumers | ~~Double~~       | ~~120.0~~|
 | [NPC:waterplay]    | request                              | Total power this consumer would ever need.                              | Double        | 120.0       | 
 | [NPC:waterplay]    | onUrl                              | http(s) url to active the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=on'       | 
 | [NPC:waterplay]    | offUrl                              | http(s) url to deactive the consumer                               | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=off'      | 
