@@ -115,17 +115,18 @@ Each consumer is represented as a FAKE-BMS in VRM, so you can see where your ene
 | <div align="left">The example shows the view in VRM and presents the following information: <br /><br />- There is a mimimum battery charge reservation of 750W active and that reservation is currently beeing fullfilled with 248.5% <br />- The PVOverheadConsumer *PV-Heater* is requesting a total of 3501.0W, and due to the current allowance, 3318W currently beeing consumed, equaling 94.8% of it's request. <br />- The PVOverheadConsumer  *Waterplay* is requesting a total of 110W, and due to the current allowance, 110W currently beeing consumed, equaling 100% of it's request. <br />- The PVOverheadConsumer [WattPilot](#froniuswattpilotservice) is requesting a total of 11308W, and due to the current allowance, 2254W currently beeing consumed, equaling 19.9% of it's request. </div>|
 
 #### General functionality
-The PVOverheadDistributer re-distributes values every minute. We have been running tests with more frequent updates, but it turned out, that the delay in processing a request/allownance by some consumers is cousing issues. 
-Also, when consumption changes, the whole ESS itself needs to adapt, adjust battery-usage, grid-meter has to catch up, values have to be re-read and published in dbus and so on. 
+The PVOverheadDistributer (re-)distributes power every minute. We have been running tests with more frequent updates, but it turned out that the delay in processing a request/allowance by some consumers is causing issues. 
+Also, when consumption changes, the whole ESS itself needs to adapt, adjust battery-usage, grid-meter has to catch up, values have to be re-read and published in dbus and so on. Finally also the sun may have some ups and downs
+during ongoing calculations. So we decided to go with a fixed value of 1 minute, which is fast enough to adapt quickly but not causing any issues with consumers going on/off due to delays in processing.
 
 ### Usage
-Each consumer is creating a PVOverhead-Request, which then will be accepted or not by the PVOverheadDistributor based on various parameters. The overall request is send to the venus mqtt inside the `W` Topic, 
-where es-ESS will read the request and publish the processing result (including request data) in it's own topic. 
+Each consumer is creating a PVOverhead-Request, which then will be accepted or not by the PVOverheadDistributor based on various parameters. The overall request has to be send to the venus mqtt inside the `W` Topic, 
+where es-ESS will read the request and publish the processing result in it's own topic. 
 
-The request in total is made out of the following values, where some are mandatory, some optional, some to be not filled out by the consumer: 
+A request is made out of the following values, where some are mandatory, some optional, some to be not filled out by the consumer: 
 
 *In this table, a consumerKey of `consumer1` has been used. Replace that with an unique identifier for your consumer*
-each key has to be published in the topic `W/{VRMPortalID/esEss/PVOverheadDistributor/requests/consumer1`
+each key has to be published in the topic `W/{VRMPortalID}/esEss/PVOverheadDistributor/requests/consumer1`
 | Mqtt-Key             | To be set by Consumer |  Descripion                                                             | Type          | Example Value| Required |
 | -------------------- | ----------------------|------------------------------------------------------------------------ | ------------- |--------------| ---------|
 |automatic             | yes                   | Flag, indicating if the consumer is currently in automatic mode         | Boolean       | true         | yes      |
@@ -140,16 +141,17 @@ each key has to be published in the topic `W/{VRMPortalID/esEss/PVOverheadDistri
 
 PVOverheadDistributer will process these requests and finally publish the result within it's own topic, under: `N/{VRMPortalID/settings/{vRMInstanceIdOfPVOverheadDistributor}/requests`
 
-It is important to report back consumption by the consumer. Only then the calculated values are correct. 
+- It is important to report back consumption by the consumer. Only then the calculated values are correct.
+- Only consumers reporting as automatic will be considered. (So maintain this, when implementing manual overrides)
 
 ### Scripted-PVOverheadConsumer
-A Scripted PVOverheadConsumer is an external script (Powershell, bash, arduino, php, ...) you are using to control a consumer. This allows the requests to be more precice and granular
+A Scripted-PVOverheadConsumer is an external script (Powershell, bash, arduino, php, ...) you are using to control a consumer. This allows the requests to be more precice and granular
 than using a NPC-PVOverheadConsumer (explained later). 
 
-The basic workflow of an external script can be described like this: 
+The basic workflow of an external script can be described as follows: 
 
 ```
-   every x seconds:
+   every x seconds or event based:
       check own environment variables.
       determine suitable request values.
       send request to mqtt server
@@ -157,20 +159,20 @@ The basic workflow of an external script can be described like this:
       report actual consumer consumption to mqtt.
 ```
 
-For example, I have an electric water heater (called *PV-Heater*) that can deliver roughly 3500 Watts of total power, about 1150 Watts per Phase. The Script controlling this consumer
+For example, I have an electric water heater (called *PV-Heater*) that can deliver roughly 3500 Watts of total power, about 1150 Watts per phase. The script controlling this consumer
 takes various environment conditions into account before creating a request: 
 
  - If the temperature of my water reservoir is bellow 60°C, a full request of 3500 Watts is created.
- - If the temperature of my water reservoir is between 60°C and 70°C, the maximum request is 2 phases, so roughly 2300 Watts
- - If the temperature of my water reservoir is between 70°C and 80°C, the maximum request is 1 phase, so roughly 1150 Watts
- - If the temperature of my water reservoir is above 80°C, no heating is required, so the request will be 0 watts.
- - If the EV is connected and waiting for charging, the maximum request shall be 2 phases, so roughly 2300 Watts
- - If the co-existing thermic solar system is producing more than 3000W Power, no additional electric heating is required, so request 0 Watts.
+ - If the temperature of my water reservoir is between 60°C and 70°C, the maximum request is 2 phases, so roughly 2300 Watts.
+ - If the temperature of my water reservoir is between 70°C and 80°C, the maximum request is 1 phase, so roughly 1150 Watts.
+ - If the temperature of my water reservoir is above 80°C, no heating is required, so the request will be 0 Watts.
+ - If the EV is connected and waiting for charging, the maximum request will be 2 phases, so roughly 2300 Watts.
+ - If the co-existing thermic solar system is producing more than 3000W power, no additional electric heating is required, so request is 0 Watts.
 
 After evaluating and creating the proper request, the current allowance is processed, consumer is adjusted based on allowance, and actual consumption is reported back.
 
 ### NPC-PVOverheadConsumer
-Some consumers are not controllable in steps, they are simple on/off consumers. Also measuring the actual consumption is not always possible, so a fixed known consumption can 
+Some consumers are not controllable in steps, they are simple on/off consumers. Also measuring the actual consumption is not always possible or required, so a fixed known consumption can 
 work out as well. To eliminate the need to create multiple on/off-scripts for these consumers, the NPC-PVOverheadConsumer has been introduced. 
 
 It can be fully configured in `/data/es-ESS/config.ini` and will be orchestrated by the PVOVerhead-Distributer itself - as long as it is able to process http-remote-control requests.
