@@ -202,11 +202,18 @@ PVOVerheadDistributer requires a few variables to be set in `/data/es-ESS/config
 | [PVOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
 | [PVOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />The example will maximum reserve 5000W, for every percent of SoC reached 40 watts are released. Mimimum of 1040 Watts will be reached at 99% Soc, until SoC is 100%<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | 5000 - 40 * SOC |
 
-<img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/TimeToGo.png"> 
+In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> System Setup -> Battery Measurement* and set the ones you'd like to see to *Visible*:
+
+| Cerbo Configuration for FAKE-BMS |
+|:-----------:|
+| <img width="441" height="1" src="" /><br /><img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/cerboSettings.png" /> |
+
+
+# TimeToGoCalculator
+
+<img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/TimeToGo.png" /> 
 
 #### Overview
-
-
 
 Some BMS - say the majority of them - don't provide values for the `Time to go`-Value visible in VRM. This is an important figure when looking at a dashboard. This helper script 
 fills that gap and calculates the time, when BMS don't. Calculation is done in both directions: 
