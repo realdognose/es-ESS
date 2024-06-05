@@ -34,9 +34,9 @@ Therefore, a complete integration of Wattpilot has been implemented:
 - es-ESS will take over correct overhead distribution, relying on the build-in PVOverhead Distributor and orchestrate Wattpilot accordingly.
 - All (important) Status of Wattpilot will be exposed on dbus / VRM:
 
-|Disconnected | Charging | Phase Switch | Waiting for Sun|
+| Charging | Phase Switch | Waiting for Sun | Cooldown |
 |:-------:|:-------:|:-------:|:-------:|
-| | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_3phases.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_switching_to_3.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_waitingSun.png" />| 
+| <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_3phases.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_switching_to_3.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_waitingSun.png" />| <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_stop.png" /> | 
 
 | Full integration |
 |:-------:|
