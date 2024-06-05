@@ -25,7 +25,32 @@ Your system needs to match the following requirements in order to use es-ESS:
 - Have shell access enabled and know how to use it. (See: https://www.victronenergy.com/live/ccgx:root_access)
 
 # ChargeCurrentReducer
-TODO
+
+#### Overview
+When you are using DC-Coupled Solar-Chargers, DVCC can be used to limit the charge-current of the batteries. If you however
+decide to enable Feed-In from DC-Chargers, that limit has no effect. Reason is, that the MPPTs ofc. won't obey the limit anymore, 
+because you opted to feed-in excess power, which in turn means the MPPTs have to produce at 100% whenever possible. 
+
+Before any feed-in is happening, the attached batteries will crank up their charge current to consume what's possible. 
+
+Therefore, we designed the ChargeCurrentReducer, which helps to reduce the battery charge current to your *feel-well-value*.
+This is achieved by observing the charge current and as soon as the *feel-well-value* is exceeded, the multiplus will be instructed
+to start feed-in to the grid in order to reduce the available power on the dc-side. 
+
+When the charge current drops bellow the desired value, grid-feedin will be reduced again to leave more power to the batteries. 
+
+> :warning: We are using the wording "Reducer" on purpose. This is __NO__ Limiter. Your batteries, fusing and/or wiring should always be able to withstand
+any incoming current from the MPPTs upto their technical limit!
+
+#### Configuration
+
+ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.ini`: 
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [Modules]    | ChargeCurrentReducer | Flag, if the module should be enabled or not | Boolean | true |
+| [ChargeCurrentReducer]  | DesiredChargeAmps |  Desired Charge Current in Amps. Your *feel-well-value*. | Integer  | 150 |
 
 # FroniusWattPilotService
 When using a Fronius Wattpilot, there are issues with the default ECO-Mode-Charging. Using the native functionality of Wattpilot can't take 
