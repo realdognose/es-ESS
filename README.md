@@ -36,7 +36,7 @@ Therefore, a complete integration of Wattpilot has been implemented:
 
 |Disconnected | Charging | Phase Switch | Waiting for Sun|
 |:-------:|:-------:|:-------:|:-------:|
-| | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_3phases.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_switching_to_3.png" /> | | 
+| | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_3phases.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_switching_to_3.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_waitingSun.png" />| 
 
 | Full integration |
 |:-------:|
