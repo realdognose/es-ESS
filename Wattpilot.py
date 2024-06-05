@@ -302,6 +302,10 @@ class Wattpilot(object):
     @property
     def mode(self):
         return self._mode
+    
+    @property
+    def modelStatus(self):
+        return self._modelStatus
 
     @property
     def carConnected(self):
@@ -469,6 +473,8 @@ class Wattpilot(object):
             self._cae = value
         elif name=="cak":
             self._cak = value
+        elif name=="modelStatus":
+            self._modelStatus = value
         elif name=="lmo":
             self._mode = Wattpilot.lmoValues[value]
         elif name=="car":
@@ -655,6 +661,7 @@ class Wattpilot(object):
         self._connected = False
         self._allProps={}
         self._allPropsInitialized=False
+        self._modelStatus = None
         self._voltage1=None
         self._voltage2=None
         self._voltage3=None
