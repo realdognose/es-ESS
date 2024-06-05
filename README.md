@@ -8,7 +8,7 @@ features can be enabled, based on your needs.
 ### Table of Contents
 - [Setup](#setup) - General setup process and requirements for es-ESS
 - [ChargeCurrentReducer](#chargecurrentreducer) - Reduce the battery charge current to your *feel-well-value* without the need to disable DC-Feedin.
-- [FroniusWattPilot](#froniuswattpilot) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
+- [FroniusWattPilotService](#froniuswattpilotservice) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
 - [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt server and insert a Fake-BMS on cerbo / VRM.
 - [NoBatToEV](#nobattoev) - Avoid usage of your home-battery when charging your ev with an `ac-out` connected wallbox.
 - [PVOverheadDistributor](#pvoverheaddistributor) - Utility to manage and distribute available Solar Overhead between various consumers.
@@ -25,8 +25,63 @@ Your system needs to match the following requirements in order to use es-ESS
 # ChargeCurrentReducer
 TODO
 
-# FroniusWattPilot
-TODO
+# FroniusWattPilotService
+When using a system combined with a Fronius Wattpilot, there are issues with PVOverhead charging. Using the native functionality of Wattpilot can't take 
+the battery discharge of the victron universe into account, which may lead to a constant "solar charge" which in fact is draining your battery. 
+
+Therefore, a complete integration of Wattpilot has been implemented: 
+- Wattpilot is fully controllable through VRM Switches.
+- es-ESS will take over correct overhead distribution, relying on the build-in PVOverhead Distributor and orchestrate Wattpilot accordingly.
+- All (important) Status of Wattpilot will be exposed on dbus / VRM:
+
+|Disconnected | Charging | Phase Switch | Waiting for Sun|
+|:-------:|:-------:|:-------:|:-------:|
+| | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_3phases.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_switching_to_3.png" /> | | 
+
+| Full integration |
+|:-------:|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/PVOverheadConsumers%202.png" />|
+| Communication is bidirectional between VRM <-> Wattpilot App for both, Auto- and manual mode. |
+
+# Installation
+Despite the installation of es-ESS, an additional python module *websocket-client* is required to communicate with the wattpilot. 
+
+if you have already installed `python pip` on your system, can skip the installation ofc. 
+
+Install pip: 
+```
+opkg update
+opkg list | grep pip
+opkg install python3-pip
+```
+
+Install *websocket-client*:
+```
+python -m pip install websocket-client
+```
+
+# Configuration
+
+> :information_source: Configure the wattpilot itself in ECO-Mode and a PV-Overhead-Minimum-Startpower of 99kW. es-ESS will handle that, but this avoids the car starting to charge everytime when plugged in.
+
+> :information_source: Setup Maximum-Charge-Currents in wattpilot as used to.
+
+> :warning: **Fake-BMS injection**:<br /> This feature is creating Fake-BMS information on dbus. Make sure to manually select your *actual* BMS unter *Settings > System setup > Battery Monitor* else your ESS may not behave correctly anymore. Don't leave this setting to *Automatic*
+
+FroniusWattpilotService requires a few variables to be set in `/data/es-ESS/config.ini`: 
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [FroniusWattpilot]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1001 |
+| [FroniusWattpilot]  | VRMInstanceID_OverheadRequest |  VRMInstanceId to be used on dbus for the FAKE-bms. | Integer  | 1002 |
+| [FroniusWattpilot]  | MinPhaseSwitchSeconds  | Seconds between Phase-Switching  | Integer| 300 |
+| [FroniusWattpilot]  | MinOnOffSeconds | Seconds between starting/stopping charging | Integer | 600 |
+| [FroniusWattpilot]  | ResetChargedEnergyCounter |  Define when the counters *Charge Time* and *Charged Energy* in VRM should reset. Options: OnDisconnect, OnConnect| String  | OnDisconnect |
+| [FroniusWattpilot]  | Position | Position, where the wattpilot is connected to. Options: 0:=ac-out, 1:=ac-in | Integer  | 0 |
+| [FroniusWattpilot]  | Host | hostname / ip of wattpilot | String  | wallbox.ad.equinox-solutions.de |
+| [FroniusWattpilot]  | Username | Username of wattpilot | String  | User |
+| [FroniusWattpilot]  | Password | Password of wattpilot | String  | Secret123! |
 
 # MqttToEVSoc
 TODO
@@ -145,9 +200,6 @@ PVOVerheadDistributer requires a few variables to be set in `/data/es-ESS/config
 | [PVOverheadDistributor]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
 | [PVOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
 | [PVOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />The example will maximum reserve 5000W, for every percent of SoC reached 40 watts are released. Mimimum of 1040 Watts will be reached at 99% Soc, until SoC is 100%<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | 5000 - 40 * SOC |
-
-
-# TimeToGoCalculator
 
 <img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/TimeToGo.png"> 
 
