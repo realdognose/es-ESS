@@ -103,7 +103,7 @@ class FroniusWattpilotService:
 
                 if (self.mode == 0):
                     Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/automatic", "false")
-                elif (self.mode == 1):
+                elif (self.mode == 1 and self.wattpilot.carConnected):
                     Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/request", int(floor(3 * self.wattpilot.ampLimit * self.wattpilot.voltage1)))
                     #Check, if we have an allowance in auto mode? .
                     allowance = getFromGlobalStoreValue(self.allowanceTopic, 0)
@@ -263,6 +263,10 @@ class FroniusWattpilotService:
         self.dbusService.add_path('/Model', "Fronius Wattpilot")
         self.dbusService.add_path('/StartStop', 0, writeable=True, onchangecallback=self._froniusHandleChangedValue)
 
+        #Additional Stuff, not required by definition
+        self.dbusService.add_path('/CarState', None)
+        self.dbusService.add_path('/PhaseMode', None)
+
         self.switchMode(0,1)
 
         #Create the Wattpilot object and connect. 
@@ -298,7 +302,6 @@ class FroniusWattpilotService:
         self.dbusService["/Current"] = self.wattpilot.amp if (self.wattpilot.amp is not None and self.wattpilot.power>0) else 0
 
         #Also write total power back to pvOverheadDistributor, in case we are in automatic mode. 
-        d(self, "Car connected? " + str(self.wattpilot.carConnected))
         if (self.mode == 1):
             Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/consumption", self.wattpilot.power * 1000)
 
@@ -347,5 +350,7 @@ class FroniusWattpilotService:
         self.dbusService["/AutoStart"] = self.autostart
         self.dbusService["/SetCurrent"] = self.wattpilot.amp
         self.dbusService["/ChargingTime"] = self.chargingTime
+        self.dbusService["/CarState"] = self.wattpilot.carConnected
+        self.dbusService["/PhaseMode"] = self.currentPhaseMode
 
         d(self, "Model Status is: " + str(self.wattpilot.modelStatus))

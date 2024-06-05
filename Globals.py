@@ -9,6 +9,7 @@ from Helper import i, c, d, w, e
 #superglobals
 currentVersionString="es-ESS 24.6.4.25 b"
 esEssTag = "es-ESS"
+config = None
 
 #Services
 esESS = None
@@ -33,9 +34,11 @@ def getFromGlobalStoreValue(key, default):
   return default
 
 def getConfig():
-   config = configparser.ConfigParser()
-   config.optionxform = str
-   config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
+   if (config is None):
+      config = configparser.ConfigParser()
+      config.optionxform = str
+      config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
+
    return config
 
 def configureMqtt(config):
