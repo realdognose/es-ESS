@@ -70,8 +70,11 @@ class FroniusWattpilotService:
         #just dump values every 5 minutes then. If car is connected, we need
         #to perform updates every tick.
         self.tempStatusOverride = None
-        if (self.wattpilot.carConnected or self.lastVarDump < (time.time() - 300)):
+        if (not self.isIdleMode or self.lastVarDump < (time.time() - 300)):
             self.lastVarDump = time.time()
+
+            #switch idle mode to reduce load, when not required.
+            self.isIdleMode = not self.wattpilot.carConnected
 
             try:
                 Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/vrmInstanceID", self.config["FroniusWattpilot"]["VRMInstanceID_OverheadRequest"])
@@ -208,6 +211,7 @@ class FroniusWattpilotService:
         self.currentPhaseMode = 1
         self.mode = 0 #Start in manual mode, switch when initialized.
         self.autostart = 0 
+        self.isIdleMode = False
         self.tempStatusOverride = None
 
         #register on dbus as EV-Charger.
