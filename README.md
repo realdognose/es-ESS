@@ -44,6 +44,7 @@ PVOverheadDistributor will determine the total available overhead and calculate 
 
 Each consumer is represented as a Fake-BMS in VRM, so you can see immediately where your energy is currently going. 
 
+> :warning: **Fake-BMS injection**:<br /> This feature is creating Fake-BMS information on dbus. Make sure to manually select your *actual* BMS unter *Settings > System setup > Battery Monitor* else your ESS may not behave correctly anymore. Don't leave this setting to *Automatic*
 
 | Example View |
 |:-------------------------:|
