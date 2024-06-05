@@ -2,38 +2,40 @@
 es-ESS (equinox solutions Energy Storage Systems) is an extension for Victrons VenusOS running on GX-Devices.
 es-ESS brings various functions starting with tiny helpers, but also including major functionalities.
 
-es-ESS is structered in individual modules and every module can be enabled or disabled independent. So, only certain
+es-ESS is structered into individual modules and every module can be enabled or disabled seperate. So, only certain
 features can be enabled, based on your needs.
 
 ### Table of Contents
-- [Setup](#setup) - General setup process and requirements for es-ESS
+- [Setup](#setup) - General setup process and requirements for es-ESS.
 - [ChargeCurrentReducer](#chargecurrentreducer) - Reduce the battery charge current to your *feel-well-value* without the need to disable DC-Feedin.
 - [FroniusWattPilotService](#froniuswattpilotservice) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
-- [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt server and insert a Fake-BMS on cerbo / VRM.
-- [NoBatToEV](#nobattoev) - Avoid usage of your home-battery when charging your ev with an `ac-out` connected wallbox.
-- [PVOverheadDistributor](#pvoverheaddistributor) - Utility to manage and distribute available Solar Overhead between various consumers.
-  - [Scripted-PVOverheadConsumer](#scripted-pvoverheadconsumer) - Consumers managed by external scripts can to be more complex and join the Solar Overhead Pool.
-  - [NPC-PVOverheadConsumer](#npc-pvoverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead.
+- [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt source and insert a FAKE-BMS on cerbo / VRM for display purpose.
+- [NoBatToEV](#nobattoev) - Avoid discharge of your home-battery when charging your ev with an `ac-out` connected wallbox.
+- [PVOverheadDistributor](#pvoverheaddistributor) - Utility to manage and distribute available solar overhead between various consumers.
+  - [Scripted-PVOverheadConsumer](#scripted-pvoverheadconsumer) - Consumers managed by external scripts can to be more complex and join the solar overhead pool.
+  - [NPC-PVOverheadConsumer](#npc-pvoverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead. No programming required.
 - [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.
-- [This and that](#this-and-that) - Various information that doesn't fit elsewhere
+- [This and that](#this-and-that) - Various information that doesn't fit elsewhere.
 - [F.A.Q](#faq) - Frequently Asked Questions
 
 # Setup
-Your system needs to match the following requirements in order to use es-ESS
+Your system needs to match the following requirements in order to use es-ESS:
 - Be an ESS
 - Have the local Mqtt enabled (plain or tls)
+- Have shell access enabled and know how to use it. (See: https://www.victronenergy.com/live/ccgx:root_access)
 
 # ChargeCurrentReducer
 TODO
 
 # FroniusWattPilotService
-When using a system combined with a Fronius Wattpilot, there are issues with PVOverhead charging. Using the native functionality of Wattpilot can't take 
-the battery discharge of the victron universe into account, which may lead to a constant "solar charge" which in fact is draining your battery. 
+When using a Fronius Wattpilot, there are issues with the default ECO-Mode-Charging. Using the native functionality of Wattpilot can't take 
+the battery discharge of the victron universe into account, which may lead to Wattpilot not reducing its charge current, and your home battery
+is kicking in to supply missing power.
 
 Therefore, a complete integration of Wattpilot has been implemented: 
-- Wattpilot is fully controllable through VRM Switches.
-- es-ESS will take over correct overhead distribution, relying on the build-in PVOverhead Distributor and orchestrate Wattpilot accordingly.
-- All (important) Status of Wattpilot will be exposed on dbus / VRM:
+- Wattpilot is fully controllable through the VRM evcharger functionality.
+- es-ESS will take over correct overhead distribution, relying on the built-in [PVOverheadDistributor](#pvoverheaddistributor) and orchestrate Wattpilot accordingly.
+- All (important) status of Wattpilot will be exposed on dbus / VRM:
 
 | Charging | Phase Switch | Waiting for Sun | Cooldown |
 |:-------:|:-------:|:-------:|:-------:|
@@ -42,14 +44,14 @@ Therefore, a complete integration of Wattpilot has been implemented:
 | Full integration |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/PVOverheadConsumers%202.png" />|
-| Communication is bidirectional between VRM <-> Wattpilot App for both, Auto- and manual mode. |
+| Communication is bidirectional between VRM <-> Wattpilot app for both, auto and manual mode. |
 
 # Installation
-Despite the installation of es-ESS, an additional python module *websocket-client* is required to communicate with the wattpilot. 
+Despite the installation of es-ESS, an additional python module *websocket-client* is required to communicate with Wattpilot. 
+The installation is a *one-liner* through *pythons pip* - which in turn might need to be installed first. 
+If you have already installed *python pip* on your system, can skip this.
 
-if you have already installed `python pip` on your system, can skip the installation ofc. 
-
-Install pip: 
+Install *pythong pip*: 
 ```
 opkg update
 opkg list | grep pip
@@ -63,11 +65,9 @@ python -m pip install websocket-client
 
 # Configuration
 
-> :information_source: Configure the wattpilot itself in ECO-Mode and a PV-Overhead-Minimum-Startpower of 99kW. es-ESS will handle that, but this avoids the car starting to charge everytime when plugged in.
+> :information_source: Configure Wattpilot in ECO-Mode and a PV-Overhead-Minimum-Startpower of 99kW or something. es-ESS will handle that and start/stop Wattpilot according to available solar overhead. Setting this high start value ensures Wattpilot is not messing with control as well.
 
-> :information_source: Setup Maximum-Charge-Currents in wattpilot as used to.
-
-> :warning: **Fake-BMS injection**:<br /> This feature is creating Fake-BMS information on dbus. Make sure to manually select your *actual* BMS unter *Settings > System setup > Battery Monitor* else your ESS may not behave correctly anymore. Don't leave this setting to *Automatic*
+> :warning: **FAKE-BMS injection**:<br /> This feature is creating FAKE-BMS information on dbus. Make sure to manually select your *actual* BMS unter *Settings > System setup > Battery Monitor* else your ESS may not behave correctly anymore. Don't leave this setting to *Automatic*
 
 FroniusWattpilotService requires a few variables to be set in `/data/es-ESS/config.ini`: 
 
@@ -75,14 +75,19 @@ FroniusWattpilotService requires a few variables to be set in `/data/es-ESS/conf
 | ---------- | ---------|---- | ------------- |--|
 | [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [FroniusWattpilot]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1001 |
-| [FroniusWattpilot]  | VRMInstanceID_OverheadRequest |  VRMInstanceId to be used on dbus for the FAKE-bms. | Integer  | 1002 |
+| [FroniusWattpilot]  | VRMInstanceID_OverheadRequest |  VRMInstanceId to be used on dbus for the FAKE-BMS | Integer  | 1002 |
 | [FroniusWattpilot]  | MinPhaseSwitchSeconds  | Seconds between Phase-Switching  | Integer| 300 |
 | [FroniusWattpilot]  | MinOnOffSeconds | Seconds between starting/stopping charging | Integer | 600 |
 | [FroniusWattpilot]  | ResetChargedEnergyCounter |  Define when the counters *Charge Time* and *Charged Energy* in VRM should reset. Options: OnDisconnect, OnConnect| String  | OnDisconnect |
-| [FroniusWattpilot]  | Position | Position, where the wattpilot is connected to. Options: 0:=ac-out, 1:=ac-in | Integer  | 0 |
-| [FroniusWattpilot]  | Host | hostname / ip of wattpilot | String  | wallbox.ad.equinox-solutions.de |
-| [FroniusWattpilot]  | Username | Username of wattpilot | String  | User |
-| [FroniusWattpilot]  | Password | Password of wattpilot | String  | Secret123! |
+| [FroniusWattpilot]  | Position | Position, where the Wattpilot is connected to. Options: 0:=ac-out, 1:=ac-in | Integer  | 0 |
+| [FroniusWattpilot]  | Host | hostname / ip of Wattpilot | String  | wallbox.ad.equinox-solutions.de |
+| [FroniusWattpilot]  | Username | Username of Wattpilot | String  | User |
+| [FroniusWattpilot]  | Password | Password of Wattpilot | String  | Secret123! |
+
+# Credits
+Wattpilot control functionality has been taken from https://github.com/joscha82/wattpilot and modified to extract all variables required for full integration.
+All buggy overhead (Home-Assistant / Mqtt) has been removed and some bug fixes have been applied to achieve a stable running Wattpilot-Core. (It seems to be unmaintained
+since 2 years)
 
 # MqttToEVSoc
 TODO
@@ -92,33 +97,36 @@ TODO
 
 # PVOverheadDistributor
 #### Overview
-In a larger system, sometimes you need to manage multiple consumers based on solar overhead available. If every consumer is deciding on it's own, it can 
-lead to a continious up and down on available energy, causing consumers to turn on/off in a uncontrolled , frequent fashion. 
+Sometimes you need to manage multiple consumers based on solar overhead available. If every consumer is deciding on it's own, it can 
+lead to a continious up and down on available energy, causing consumers to turn on/off in a uncontrolled, frequent fashion. 
 
 To overcome this problem, the PVOverheadDistributor has been created. Each consumer can register itself, send a request containing certain parameters - and
-PVOverheadDistributor will determine the total available overhead and calculate allowances for each individual consumer. 
+PVOverheadDistributor will determine the total available overhead of the system and calculate allowances for each individual consumer. 
 
-Each consumer is represented as a Fake-BMS in VRM, so you can see immediately where your energy is currently going. 
+A minimum battery reservation can be defined through a SOC-based equation to make sure your home-battery receives the power it needs to fully charge during the day.
+
+Each consumer is represented as a FAKE-BMS in VRM, so you can see where your energy is currently going. 
 
 > :warning: **Fake-BMS injection**:<br /> This feature is creating Fake-BMS information on dbus. Make sure to manually select your *actual* BMS unter *Settings > System setup > Battery Monitor* else your ESS may not behave correctly anymore. Don't leave this setting to *Automatic*
 
 | Example View |
 |:-------------------------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/PVOverheadConsumers%203.png"> |
-| <div align="left">The example shows the view in VRM and presents the following information: <br /><br />- There is a mimimum battery charge reservation of 750W active and that reservation is currently beeing fullfilled with 248.5% <br />- The PVOverheadConsumer *PV-Heater* is requesting a total of 3501.0W, and due to the current allowance, 3318W currently beeing consumed, equaling 94.8% of it's request. <br />- The PVOverheadConsumer  *Waterplay* is requesting a total of 110W, and due to the current allowance, 110W currently beeing consumed, equaling 100% of it's request. <br />- The PVOverheadConsumer *Wattpilot* is requesting a total of 11308W, and due to the current allowance, 2254W currently beeing consumed, equaling 19.9% of it's request. </div>|
+| <div align="left">The example shows the view in VRM and presents the following information: <br /><br />- There is a mimimum battery charge reservation of 750W active and that reservation is currently beeing fullfilled with 248.5% <br />- The PVOverheadConsumer *PV-Heater* is requesting a total of 3501.0W, and due to the current allowance, 3318W currently beeing consumed, equaling 94.8% of it's request. <br />- The PVOverheadConsumer  *Waterplay* is requesting a total of 110W, and due to the current allowance, 110W currently beeing consumed, equaling 100% of it's request. <br />- The PVOverheadConsumer [WattPilot](#froniuswattpilotservice) is requesting a total of 11308W, and due to the current allowance, 2254W currently beeing consumed, equaling 19.9% of it's request. </div>|
 
 #### General functionality
-The PVOverheadDistributer re-distributes values every minute. We have been running tests with more frequent updates, but it turned out, that the delay in processing a request/allownance by some consumers is cousing issues. 
-Also, when consumption changes, the whole ESS itself needs to adapt, adjust battery-usage, grid-meter has to catch up, values have to be re-read and published in dbus and so on. 
+The PVOverheadDistributer (re-)distributes power every minute. We have been running tests with more frequent updates, but it turned out that the delay in processing a request/allowance by some consumers is causing issues. 
+Also, when consumption changes, the whole ESS itself needs to adapt, adjust battery-usage, grid-meter has to catch up, values have to be re-read and published in dbus and so on. Finally also the sun may have some ups and downs
+during ongoing calculations. So we decided to go with a fixed value of 1 minute, which is fast enough to adapt quickly but not causing any issues with consumers going on/off due to delays in processing.
 
 ### Usage
-Each consumer is creating a PVOverhead-Request, which then will be accepted or not by the PVOverheadDistributor based on various parameters. The overall request is send to the venus mqtt inside the `W` Topic, 
-where es-ESS will read the request and publish the processing result (including request data) in it's own topic. 
+Each consumer is creating a PVOverhead-Request, which then will be accepted or not by the PVOverheadDistributor based on various parameters. The overall request has to be send to the venus mqtt inside the `W` Topic, 
+where es-ESS will read the request and publish the processing result in it's own topic. 
 
-The request in total is made out of the following values, where some are mandatory, some optional, some to be not filled out by the consumer: 
+A request is made out of the following values, where some are mandatory, some optional, some to be not filled out by the consumer: 
 
 *In this table, a consumerKey of `consumer1` has been used. Replace that with an unique identifier for your consumer*
-each key has to be published in the topic `W/{VRMPortalID/esEss/PVOverheadDistributor/requests/consumer1`
+each key has to be published in the topic `W/{VRMPortalID}/esEss/PVOverheadDistributor/requests/consumer1`
 | Mqtt-Key             | To be set by Consumer |  Descripion                                                             | Type          | Example Value| Required |
 | -------------------- | ----------------------|------------------------------------------------------------------------ | ------------- |--------------| ---------|
 |automatic             | yes                   | Flag, indicating if the consumer is currently in automatic mode         | Boolean       | true         | yes      |
@@ -133,16 +141,17 @@ each key has to be published in the topic `W/{VRMPortalID/esEss/PVOverheadDistri
 
 PVOverheadDistributer will process these requests and finally publish the result within it's own topic, under: `N/{VRMPortalID/settings/{vRMInstanceIdOfPVOverheadDistributor}/requests`
 
-It is important to report back consumption by the consumer. Only then the calculated values are correct. 
+- It is important to report back consumption by the consumer. Only then the calculated values are correct.
+- Only consumers reporting as automatic will be considered. (So maintain this, when implementing manual overrides)
 
 ### Scripted-PVOverheadConsumer
-A Scripted PVOverheadConsumer is an external script (Powershell, bash, arduino, php, ...) you are using to control a consumer. This allows the requests to be more precice and granular
+A Scripted-PVOverheadConsumer is an external script (Powershell, bash, arduino, php, ...) you are using to control a consumer. This allows the requests to be more precice and granular
 than using a NPC-PVOverheadConsumer (explained later). 
 
-The basic workflow of an external script can be described like this: 
+The basic workflow of an external script can be described as follows: 
 
 ```
-   every x seconds:
+   every x seconds or event based:
       check own environment variables.
       determine suitable request values.
       send request to mqtt server
@@ -150,20 +159,20 @@ The basic workflow of an external script can be described like this:
       report actual consumer consumption to mqtt.
 ```
 
-For example, I have an electric water heater (called *PV-Heater*) that can deliver roughly 3500 Watts of total power, about 1150 Watts per Phase. The Script controlling this consumer
+For example, I have an electric water heater (called *PV-Heater*) that can deliver roughly 3500 Watts of total power, about 1150 Watts per phase. The script controlling this consumer
 takes various environment conditions into account before creating a request: 
 
  - If the temperature of my water reservoir is bellow 60°C, a full request of 3500 Watts is created.
- - If the temperature of my water reservoir is between 60°C and 70°C, the maximum request is 2 phases, so roughly 2300 Watts
- - If the temperature of my water reservoir is between 70°C and 80°C, the maximum request is 1 phase, so roughly 1150 Watts
- - If the temperature of my water reservoir is above 80°C, no heating is required, so the request will be 0 watts.
- - If the EV is connected and waiting for charging, the maximum request shall be 2 phases, so roughly 2300 Watts
- - If the co-existing thermic solar system is producing more than 3000W Power, no additional electric heating is required, so request 0 Watts.
+ - If the temperature of my water reservoir is between 60°C and 70°C, the maximum request is 2 phases, so roughly 2300 Watts.
+ - If the temperature of my water reservoir is between 70°C and 80°C, the maximum request is 1 phase, so roughly 1150 Watts.
+ - If the temperature of my water reservoir is above 80°C, no heating is required, so the request will be 0 Watts.
+ - If the EV is connected and waiting for charging, the maximum request will be 2 phases, so roughly 2300 Watts.
+ - If the co-existing thermic solar system is producing more than 3000W power, no additional electric heating is required, so request is 0 Watts.
 
 After evaluating and creating the proper request, the current allowance is processed, consumer is adjusted based on allowance, and actual consumption is reported back.
 
 ### NPC-PVOverheadConsumer
-Some consumers are not controllable in steps, they are simple on/off consumers. Also measuring the actual consumption is not always possible, so a fixed known consumption can 
+Some consumers are not controllable in steps, they are simple on/off consumers. Also measuring the actual consumption is not always possible or required, so a fixed known consumption can 
 work out as well. To eliminate the need to create multiple on/off-scripts for these consumers, the NPC-PVOverheadConsumer has been introduced. 
 
 It can be fully configured in `/data/es-ESS/config.ini` and will be orchestrated by the PVOVerhead-Distributer itself - as long as it is able to process http-remote-control requests.
@@ -189,6 +198,12 @@ the example consumerKey is *waterplay* here.
 | [NPC:waterplay]    | isOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | '"ison":\s*true'      | 
 
 
+| Example of config section for NPC-PVOverheadConsumer |
+|:-----------:|
+| <img src="https://github.com/realdognose/es-ESS/blob/main/img/visual_example_npc.png" /> | 
+
+
+
 ### Configuration
 PVOVerheadDistributer requires a few variables to be set in `/data/es-ESS/config.ini`: 
 
@@ -206,7 +221,7 @@ In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> Sys
 
 | Cerbo Configuration for FAKE-BMS |
 |:-----------:|
-| <img width="441" height="1" src="" /><br /><img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/cerboSettings.png" /> |
+| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/cerboSettings.png" /> |
 
 
 # TimeToGoCalculator
