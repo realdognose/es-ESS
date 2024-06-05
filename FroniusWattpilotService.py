@@ -71,6 +71,7 @@ class FroniusWattpilotService:
         #if the car is not connected, we can greatly reduce system load.
         #just dump values every 5 minutes then. If car is connected, we need
         #to perform updates every tick.
+        self.tempStatusOverride = None
         if (self.wattpilot.carConnected or self.lastVarDump < (time.time() - 300)):
             self.lastVarDump = time.time()
 
@@ -127,8 +128,10 @@ class FroniusWattpilotService:
                                 self.wattpilot.set_start_stop(2)
                                 self.lastOnOffTime = time.time()
                                 self.dbusService["/StartStop"] = 1
+                                self.tempStatusOverride = 21
                             else:
                                 w(self, "Start-Charge delayed due to on/off cooldown: " + str(onOffCooldownSeconds) + "s")
+                                self.tempStatusOverride = 21
                     else:
                         if (self.wattpilot.power):
                             i(self, "NO Allowance, stopping charging.")
@@ -139,8 +142,10 @@ class FroniusWattpilotService:
                                 self.wattpilot.set_start_stop(1)
                                 self.lastOnOffTime = time.time()
                                 self.dbusService["/StartStop"] = 0
+                                self.tempStatusOverride = 24
                             else:
                                 w(self, "Stop-Charge delayed due to on/off cooldown: " + str(onOffCooldownSeconds) + "s")
+                                self.tempStatusOverride = 24
 
                 #update UI anyway
                 self.dumpEvChargerInfo()            
@@ -200,6 +205,7 @@ class FroniusWattpilotService:
         self.currentPhaseMode = 1
         self.mode = 0 #Start in manual mode, switch when initialized.
         self.autostart = 0 
+        self.tempStatusOverride = None
 
         #register on dbus as EV-Charger.
         self.vrmInstanceID = self.config['FroniusWattpilot']['VRMInstanceID']
@@ -313,6 +319,10 @@ class FroniusWattpilotService:
                 updateStatus = 23
             elif (self.currentPhaseMode == 3):
                 updateStatus = 22
+
+        #Start/Stop Cooldown?
+        if (self.tempStatusOverride is not None):
+            updateStatus = self.tempStatusOverride
 
         self.dbusService["/Status"] = updateStatus
 
