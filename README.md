@@ -34,8 +34,8 @@ because you opted to feed-in excess power, which in turn means the MPPTs have to
 Before any feed-in is happening, the attached batteries will crank up their charge current to consume what's possible. 
 
 Therefore, we designed the ChargeCurrentReducer, which helps to reduce the battery charge current to your *feel-well-value*.
-This is achieved by observing the charge current and as soon as the *feel-well-value* is exceeded, the multiplus will be instructed
-to start feed-in to the grid in order to reduce the available power on the dc-side. 
+This is achieved by observing the charge current and as soon as the desired charge current is exceeded, the multiplus will be instructed
+to start feed-in to the grid in order to reduce the available power on the dc-side and take load away from the batteries.
 
 When the charge current drops bellow the desired value, grid-feedin will be reduced again to leave more power to the batteries. 
 
