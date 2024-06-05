@@ -246,6 +246,18 @@ class Wattpilot(object):
         return self._power3
 
     @property
+    def powerFactor1(self):
+        return self._powerFactor1
+
+    @property
+    def powerFactor2(self):
+        return self._powerFactor2
+
+    @property
+    def powerFactor3(self):
+        return self._powerFactor3
+
+    @property
     def powerN(self):
         return self._powerN
 
@@ -260,6 +272,14 @@ class Wattpilot(object):
     @property
     def amp(self):
         return self._amp
+    
+    @property
+    def ampLimit(self):
+        return self._ampLimit
+    
+    @property
+    def startingPower(self):
+        return self._startingPower
 
     @property
     def AccessState(self):
@@ -421,38 +441,41 @@ class Wattpilot(object):
         if name=="acs":
             self._AccessState = Wattpilot.acsValues[value]
 
-        if name=="cbl":
+        elif name=="cbl":
             self._cableType = value
 
-        if name=="fhz":
+        elif name=="fhz":
             self._frequency = value
 
-        if name=="pha":
+        elif name=="pha":
             self._phases = value
         
-        if name=="wh":
+        elif name=="wh":
             self._energyCounterSinceStart = value
 
-        if name=="err":
+        elif name=="err":
             self._errorState = Wattpilot.errValues[value]
 
-        if name=="ust":
+        elif name=="ust":
             self._cableLock = Wattpilot.ustValues[value]
 
-        if name=="eto":
+        elif name=="eto":
             self._energyCounterTotal = value
-
-        if name=="cae":
+        elif name=="fte":
+            self._startingPower = value
+        elif name=="ama":
+            self._ampLimit = value
+        elif name=="cae":
             self._cae = value
-        if name=="cak":
+        elif name=="cak":
             self._cak = value
-        if name=="lmo":
+        elif name=="lmo":
             self._mode = Wattpilot.lmoValues[value]
-        if name=="car":
+        elif name=="car":
             self._carConnected = (Wattpilot.carValues[value] != "no car")
-        if name=="alw":
+        elif name=="alw":
             self._AllowCharging = Wattpilot.alwValues[value]
-        if name=="nrg":
+        elif name=="nrg":
             self._voltage1=value[0]
             self._voltage2=value[1]
             self._voltage3=value[2]
@@ -465,17 +488,20 @@ class Wattpilot(object):
             self._power3=value[9]*0.001
             self._powerN=value[10]*0.001
             self._power=value[11]*0.001
-        if name=="amp":
+            self._powerFactor1=value[12]
+            self._powerFactor2=value[13]
+            self._powerFactor3=value[14]
+        elif name=="amp":
             self._amp = value
-        if name=="version":
+        elif name=="version":
             self._version = value
-        if name=="ast":
+        elif name=="ast":
             self._AllowCharging = self._astValues[value]
-        if name=="fwv":
+        elif name=="fwv":
             self._firmware = value
-        if name=="wss":
+        elif name=="wss":
             self._WifiSSID=value
-        if name=="upd":
+        elif name=="upd":
             if value=="0":
                 self._updateAvailable = False
             else:
@@ -636,9 +662,14 @@ class Wattpilot(object):
         self._amps1=None
         self._amps2=None
         self._amps3=None
+        self._ampLimit=None
+        self._startingPower=None
         self._power1=None
         self._power2=None
         self._power3=None
+        self._powerFactor1=None
+        self._powerFactor2=None
+        self._powerFactor3=None
         self._powerN=None
         self._power=None
         self._version = None
