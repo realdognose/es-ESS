@@ -86,7 +86,8 @@ FroniusWattpilotService requires a few variables to be set in `/data/es-ESS/conf
 
 # Credits
 Wattpilot control functionality has been taken from https://github.com/joscha82/wattpilot and modified to extract all variables required for full integration.
-All buggy overhead (Home-Assistant / Mqtt) has been removed and some bug fixes have been applied to achieve a stable running Wattpilot-Core.
+All buggy overhead (Home-Assistant / Mqtt) has been removed and some bug fixes have been applied to achieve a stable running Wattpilot-Core. (It seems to be unmaintained
+since 2 years)
 
 # MqttToEVSoc
 TODO
