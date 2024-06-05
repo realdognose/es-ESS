@@ -102,13 +102,50 @@ takes various environment conditions into account before creating a request:
  - If the temperature of my water reservoir is between 70°C and 80°C, the maximum request is 1 phase, so roughly 1150 Watts
  - If the temperature of my water reservoir is above 80°C, no heating is required, so the request will be 0 watts.
  - If the EV is connected and waiting for charging, the maximum request shall be 2 phases, so roughly 2300 Watts
+ - If the co-existing thermic solar system is producing more than 3000W Power, no additional electric heating is required, so request 0 Watts.
 
 After evaluating and creating the proper request, the current allowance is processed, consumer is adjusted based on allowance, and actual consumption is reported back.
 
 ### NPC-PVOverheadConsumer
-TODO
+Some consumers are not controllable in steps, they are simple on/off consumers. Also measuring the actual consumption is not always possible, so a fixed known consumption can 
+work out as well. To eliminate the need to create multiple on/off-scripts for these consumers, the NPC-PVOverheadConsumer has been introduced. 
+
+It can be fully configured in `/data/es-ESS/config.ini` and will be orchestrated by the PVOVerhead-Distributer itself - as long as it is able to process http-remote-control requests.
+An example would be our *waterplay* in the front garden. It is connected through a shelly device, which is http-controllable - and I know it consumes roughly 120 Watts AND I want this
+to run as soon as PV-Overhead is available, despite any battery reservation. (Doesn't make sence to wait on this, until the battery reached 90% Soc or more)
+
+The following lines inside `/data/es-ESS/config.ini` can be used to create such an NPC-PVOverheadConsumer. A config section has to be created under `[PVOverheadDistributor]`, containing
+the required request values plus some additional parameters for remote-control: 
+
+the example consumerKey is *waterplay* here.
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ------------------ | ---------|---- | ------------- |--|
+| [waterplay]    | customName |  DisplayName on VRM   |String | Waterplay |
+| [waterplay]    | ignoreBatReservation             | Consumer shall be enabled despite active Battery Reservation            | Boolean       | true         |
+| [waterplay]    | vrmInstanceID                    | The ID the battery monitor should use in VRM                            | Integer       | 1008          | 
+| [waterplay]    | minimum                       | A miminum power that needs to be assigned as step1.     | Double        | 0|
+| [waterplay]    | stepSize                         | StepSize in which the allowance should be generated, until the total requests value is reached. | Double       | 120.0|
+| [waterplay]    | request                              | Total power this consumer would ever need.                              | Double        | 120.0       | 
+| [waterplay]    | onUrl                              | http(s) url to active the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=on'       | 
+| [waterplay]    | offUrl                              | http(s) url to deactive the consumer                               | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=off'      | 
+| [waterplay]    | statusUrl                              | http(s) url to determine the current operation state of the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/status'       | 
+| [waterplay]    | isOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | '"ison":\s*true'      | 
+
 
 ### Configuration
+PVOVerheadDistributer requires a few variables to be set in `/data/es-ESS/config.ini`: 
+
+> :warning: **Fake-BMS injection**:<br /> This feature is creating Fake-BMS information on dbus. Make sure to manually select your *actual* BMS unter *Settings > System setup > Battery Monitor* else your ESS may not behave correctly anymore. Don't leave this setting to *Automatic*
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [Modules]    | PVOVerheadDistributor | Flag, if the module should be enabled or not | Boolean | true |
+| [PVOverheadDistributor]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
+| [PVOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
+| [PVOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />The example will maximum reserve 5000W, for every percent of SoC reached 40 watts are released. Mimimum of 1040 Watts will be reached at 99% Soc, until SoC is 100%<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like. | String  | 5000 - 40 * SOC |
+
 
 # TimeToGoCalculator
 
