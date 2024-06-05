@@ -24,9 +24,8 @@ from PVOVerheadConsumer import PVOverheadConsumer
 
 class PVOverheadDistributionService:
   def __init__(self):
-    self.config = configparser.ConfigParser()
-    self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
-
+    self.config = Globals.getConfig()
+    
     #register the root service. device specific service will be registered as they are 
     #discovered during runtime.
     self.vrmInstanceID = int(self.config['PVOverheadDistributor']['VRMInstanceID'])
@@ -92,6 +91,27 @@ class PVOverheadDistributionService:
     self.dbusBmsService.add_path('/Dc/0/Current', 0)
     self.dbusBmsService.add_path('/Soc', 0)
 
+    #Check, if we need any NPC-Consumers to be created.
+    #they will be fully orchestrated by PVOverheadDistributionService without external MQTT Requests.
+    for s in self.config.sections():
+      if (s.startswith("NPC:")):
+         i(self, "Found NPC PVOverheadConsumer: " + s)
+         try:
+            #Consumer found. Create.
+            consumerKey = s.replace("NPC:", "")
+            newConsumer = PVOverheadConsumer(consumerKey)
+            newConsumer.setValue("isNpc", True)
+            newConsumer.setValue("automatic", "true") #NPCs are automatic, implicit.
+            for (k, v) in self.config.items(s):
+               newConsumer.setValue(k,v)
+               
+            with Globals.knownPVOverheadConsumersLock:
+               Globals.knownPVOverheadConsumers[consumerKey] = newConsumer
+
+         except Exception as ex:
+            c(self, "Error parsing NPC-Consumer: " + s + ". Please validate outline requirements.")
+        
+
     #register for overhead topic on mqtt.
     self.requestTopic = 'W/' + self.config["Default"]["VRMPortalID"] + '/esEss/PVOverheadDistributor/requests/#'
     i("PVOverheadDistributor","Subscribing to pvOverheadRequest-Topic: " + self.requestTopic)
@@ -124,6 +144,10 @@ class PVOverheadDistributionService:
      self.dbusService.add_path('/requests/' + pvOverheadConsumer.consumerKey + '/minimum', None)
      self.dbusService.add_path('/requests/' + pvOverheadConsumer.consumerKey + '/allowance', None)
      self.dbusService.add_path('/requests/' + pvOverheadConsumer.consumerKey + '/vrmInstanceID', None)
+     self.dbusService.add_path('/requests/' + pvOverheadConsumer.consumerKey + '/onUrl', None)
+     self.dbusService.add_path('/requests/' + pvOverheadConsumer.consumerKey + '/offUrl', None)
+     self.dbusService.add_path('/requests/' + pvOverheadConsumer.consumerKey + '/statusUrl', None)
+     self.dbusService.add_path('/requests/' + pvOverheadConsumer.consumerKey + '/isOnKeywordRegex', None)
 
      d("PVOverheadDistributor","Init of request topic done for: " + pvOverheadConsumer.consumerKey)
 

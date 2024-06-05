@@ -1,4 +1,6 @@
+import configparser
 import json
+import os
 import threading
 from time import sleep
 import paho.mqtt.client as mqtt # type: ignore
@@ -29,6 +31,12 @@ def getFromGlobalStoreValue(key, default):
         return jsonObject["value"]
   
   return default
+
+def getConfig():
+   config = configparser.ConfigParser()
+   config.optionxform = str
+   config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
+   return config
 
 def configureMqtt(config):
   i(esEssTag, "MQTT client: Connecting to broker localhost")

@@ -1,11 +1,12 @@
 import json
 import platform
+import re
 import sys
 import os
 from time import sleep
 import paho.mqtt.client as mqtt # type: ignore
 from Helper import i, c, d, w, e
-
+import requests  # type: ignore
 # victron
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
 from vedbus import VeDbusService # type: ignore
@@ -30,13 +31,21 @@ class PVOverheadConsumer:
      self.allowance = 0
      self.automatic = False
      self.consumerKey = consumerKey
+     self.isNpc = False
+     self.npcState = False
      self.ignoreBatReservation = False
+     self.onUrl = None
+     self.offUrl = None
+     self.statusUrl = None
+     self.isOnKeywordRegex = None
      
      i(self, "PVOverhead Consumer created: " + consumerKey + ". Waiting for required values to arrive...")
 
   def setValue(self, key, value):
      key = key.replace('/esEss/PVOverheadDistributor/requests/' + self.consumerKey +'/', "")
      
+     d(self, "Setting value '" + key +"' to '" + str(value) + "'")
+
      if (key == "minimum"):
         self.minimum = float(value)
      elif (key == "request"):
@@ -55,6 +64,16 @@ class PVOverheadConsumer:
         self.allowance = float(value)
      elif (key == "customName"):
         self.customName = value
+     elif (key == "isNpc"):
+        self.isNpc = value
+     elif (key == "onUrl"):
+        self.onUrl = value
+     elif (key == "offUrl"):
+        self.offUrl = value
+     elif (key == "statusUrl"):
+        self.statusUrl = value
+     elif (key == "isOnKeywordRegex"):
+        self.isOnKeywordRegex = value
     
   def checkFinalInit(self, pvOverheadDistributionService):
      #to create the final instance on DBUS, we need the VRMId at least.
@@ -96,7 +115,7 @@ class PVOverheadConsumer:
      self.dbusService["/Dc/0/Power"] = self.consumption
 
      if (self.customName is not None and self.request is not None):
-         self.dbusService["/CustomName"] = self.customName + " [Req.: " + str(self.request) + "W]"
+         self.dbusService["/CustomName"] = self.customName + " @ " + str(self.request) + "W"
 
      if (self.request > 0):
         self.dbusService["/Soc"] = self.consumption / self.request * 100.0
@@ -104,6 +123,13 @@ class PVOverheadConsumer:
         self.dbusService["/Soc"] = 0
 
   def dumpRequestValues(self, pods):
+    if (self.isNpc):
+       pods.dbusService["/requests/" + self.consumerKey + "/onUrl"] = self.onUrl
+       pods.dbusService["/requests/" + self.consumerKey + "/offUrl"] = self.offUrl
+       pods.dbusService["/requests/" + self.consumerKey + "/statusUrl"] = self.statusUrl
+       pods.dbusService["/requests/" + self.consumerKey + "/isOnKeywordRegex"] = self.isOnKeywordRegex
+       self.npcControl()
+
     pods.dbusService["/requests/" + self.consumerKey + "/consumption"] = self.consumption
     pods.dbusService["/requests/" + self.consumerKey + "/request"] = self.request
     pods.dbusService["/requests/" + self.consumerKey + "/automatic"] = self.automatic
@@ -113,3 +139,31 @@ class PVOverheadConsumer:
     pods.dbusService["/requests/" + self.consumerKey + "/allowance"] = self.allowance
     pods.dbusService["/requests/" + self.consumerKey + "/vrmInstanceID"] = self.vrmInstanceID
     pods.dbusService["/requests/" + self.consumerKey + "/ignoreBatReservation"] = self.ignoreBatReservation
+
+  def npcControl(self):
+      #invoke npc control! 
+      if (self.allowance >= self.request and not self.npcState):
+         #turn on!
+         d(self, "Turn on of NPC-consumer required, calling: " + self.onUrl)
+         requests.get(self.onUrl)
+         self.validateNpcStatus(True)
+      elif (self.allowance == 0 and self.npcState):
+         #turn off!
+         requests.get(self.offUrl)
+         d(self, "Turn off of NPC-consumer required, calling: " + self.offUrl)
+         self.validateNpcStatus(False)
+
+  def validateNpcStatus(self, should):
+     fullPattern = re.compile("(" + self.isOnKeywordRegex + ")")
+     d(self, "Validating NPC-Consumer state through: " + self.statusUrl + " against: " + str(fullPattern))
+     status = requests.get(self.statusUrl)
+     isMatch = len(re.findall(fullPattern, status.text)) > 0
+     d(self, "Status is: " + str(isMatch) + " and should be: " + str(should))
+     if (isMatch == should):
+        self.npcState = isMatch
+
+        if (isMatch):
+           self.consumption = self.request
+        else:
+           self.consumption = 0
+      

@@ -29,8 +29,6 @@ from Wattpilot import Wattpilot, Event
 
 class FroniusWattpilotService:
 
-    
-
     def _froniusHandleChangedValue(self, path, value):
         i(self, "User/cerbo/vrm updated " + str(path) + " to " + str(value))
 
@@ -77,7 +75,13 @@ class FroniusWattpilotService:
 
             try:
                 Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/vrmInstanceID", self.config["FroniusWattpilot"]["VRMInstanceID_OverheadRequest"])
-                Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/customName", "Wattpilot")
+                
+                if (self.wattpilot.power > 0 and self.currentPhaseMode == 1):
+                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/customName", "Wattpilot (1)")
+                elif (self.wattpilot.power > 0 and self.currentPhaseMode == 3):
+                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/customName", "Wattpilot (3)")
+                else:
+                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/customName", "Wattpilot")
                 Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/ignoreBatReservation", "false")
                 Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/minimum", int(floor(self.wattpilot.voltage1 * 6)))
                 Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/stepSize", int(floor(self.wattpilot.voltage1))) #assuming all phases are about equal and stepSize is 1 amp.
@@ -194,8 +198,7 @@ class FroniusWattpilotService:
 
 
     def __init__(self):
-        self.config = configparser.ConfigParser()
-        self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
+        self.config = Globals.getConfig()
         self.lastPhaseSwitchTime = 0
         self.lastOnOffTime = 0
         self.minimumOnOffSeconds = int(self.config["FroniusWattpilot"]["MinOnOffSeconds"])

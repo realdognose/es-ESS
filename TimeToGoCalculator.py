@@ -15,8 +15,7 @@ from Helper import i, c, d, w, e
 class TimeToGoCalculator:
    def __init__(self):
      try:
-      self.config = configparser.ConfigParser()
-      self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
+      self.config = Globals.getConfig()
 
       #subscribe to values we need
       Globals.mqttClient.subscribe("N/" + self.config["Default"]["VRMPortalID"] + "/system/0/Dc/Battery/Power")
