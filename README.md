@@ -79,14 +79,36 @@ PVOverheadDistributer will process these requests and finally publish the result
 
 It is important to report back consumption by the consumer. Only then the calculated values are correct. 
 
-### Configuration
-
 ### Scripted-PVOverheadConsumer
-TODO
+A Scripted PVOverheadConsumer is an external script (Powershell, bash, arduino, php, ...) you are using to control a consumer. This allows the requests to be more precice and granular
+than using a NPC-PVOverheadConsumer (explained later). 
+
+The basic workflow of an external script can be described like this: 
+
+```
+   every x seconds:
+      check own environment variables.
+      determine suitable request values.
+      send request to mqtt server
+      process current allowance
+      report actual consumer consumption to mqtt.
+```
+
+For example, I have an electric water heater (called *PV-Heater*) that can deliver roughly 3500 Watts of total power, about 1150 Watts per Phase. The Script controlling this consumer
+takes various environment conditions into account before creating a request: 
+
+ - If the temperature of my water reservoir is bellow 60°C, a full request of 3500 Watts is created.
+ - If the temperature of my water reservoir is between 60°C and 70°C, the maximum request is 2 phases, so roughly 2300 Watts
+ - If the temperature of my water reservoir is between 70°C and 80°C, the maximum request is 1 phase, so roughly 1150 Watts
+ - If the temperature of my water reservoir is above 80°C, no heating is required, so the request will be 0 watts.
+ - If the EV is connected and waiting for charging, the maximum request shall be 2 phases, so roughly 2300 Watts
+
+After evaluating and creating the proper request, the current allowance is processed, consumer is adjusted based on allowance, and actual consumption is reported back.
 
 ### NPC-PVOverheadConsumer
 TODO
 
+### Configuration
 
 # TimeToGoCalculator
 
