@@ -15,6 +15,7 @@ features can be enabled, based on your needs.
   - [Scripted-PVOverheadConsumer](#scripted-pvoverheadconsumer) - Consumers managed by external scripts can to be more complex and join the Solar Overhead Pool.
   - [NPC-PVOverheadConsumer](#npc-pvoverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead.
 - [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.
+- [This and that](#this-and-that) - Various information that doesn't fit elsewhere
 - [F.A.Q](#faq) - Frequently Asked Questions
 
 # Setup
@@ -228,6 +229,18 @@ TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.in
 | [Modules]    | TimeToGoCalculator | Flag, if the module should be enabled or not | Boolean | true |
 | [TimeToGoCalculator]  | UpdateInterval |  Time in milli seconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
 
+# This and that
+
+### Logging
+es-ESS can log a lot of information helpfull to debug things. For this, the loglevel in the configuration can be adjusted and several (recurring) Log Messages can be surpressed
+The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day at midnight. A total of 14 log files is kept, then recycled.
+
+> :warning: Having es-ESS running at log level `DEBUG` for a long time will produce huge log files and negatively impact system performance. Especially with MQTT-Logs enabled.
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [Default]    | LogLevel |  Options: DEBUG, INFO, WARNING, ERROR, CRITICAL | String | INFO |
+| [LogDetails]    | LogIncomingMqttMessages | Log messages received by mqtt | Boolean | true |
 
 # F.A.Q.
 
