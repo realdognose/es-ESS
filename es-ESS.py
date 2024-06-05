@@ -39,7 +39,8 @@ DBusGMainLoop(set_as_default=True)
 
 class esESS:
   def __init__(self):
-    self.config = Globals.getConfig() 
+    self.config = configparser.ConfigParser()
+    self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))   
     self.keepAliveTopic = "R/" + self.config["Default"]["VRMPortalID"] + "/keepalive"
 
     i(Globals.esEssTag, "Initializing " + Globals.esEssTag + " (" + Globals.currentVersionString + ")")
@@ -92,7 +93,8 @@ def configureLogging(config):
 
 def main():
   # read configuration. TODO: Migrate to UI-Based configuration later.
-  config = Globals.getConfig()
+  config = configparser.ConfigParser()
+  config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
   
   configureLogging(config)
   
