@@ -189,6 +189,12 @@ the example consumerKey is *waterplay* here.
 | [NPC:waterplay]    | isOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | '"ison":\s*true'      | 
 
 
+| Example of config section for NPC-PVOverheadConsumer |
+|:-----------:|
+| <img src="https://github.com/realdognose/es-ESS/blob/main/img/visual_example_npc.png" /> | 
+
+
+
 ### Configuration
 PVOVerheadDistributer requires a few variables to be set in `/data/es-ESS/config.ini`: 
 
@@ -206,7 +212,7 @@ In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> Sys
 
 | Cerbo Configuration for FAKE-BMS |
 |:-----------:|
-| <img width="441" height="1" src="" /><br /><img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/cerboSettings.png" /> |
+| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/cerboSettings.png" /> |
 
 
 # TimeToGoCalculator
