@@ -70,7 +70,7 @@ class FroniusWattpilotService:
         #just dump values every 5 minutes then. If car is connected, we need
         #to perform updates every tick.
         self.tempStatusOverride = None
-        if (not self.isIdleMode or self.lastVarDump < (time.time() - 300)):
+        if (self.wattpilot.carConnected or not self.isIdleMode or self.lastVarDump < (time.time() - 300)):
             self.lastVarDump = time.time()
 
             #switch idle mode to reduce load, when not required.
