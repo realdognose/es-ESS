@@ -171,22 +171,22 @@ An example would be our *waterplay* in the front garden. It is connected through
 to run as soon as PV-Overhead is available, despite any battery reservation. (Doesn't make sence to wait on this, until the battery reached 90% Soc or more)
 
 The following lines inside `/data/es-ESS/config.ini` can be used to create such an NPC-PVOverheadConsumer. A config section has to be created under `[PVOverheadDistributor]`, containing
-the required request values plus some additional parameters for remote-control: 
+the required request values plus some additional parameters for remote-control. Well, the secion has to be prefixed with `NPC:` to identify it correctly.
 
 the example consumerKey is *waterplay* here.
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ------------------ | ---------|---- | ------------- |--|
-| [waterplay]    | customName |  DisplayName on VRM   |String | Waterplay |
-| [waterplay]    | ignoreBatReservation             | Consumer shall be enabled despite active Battery Reservation            | Boolean       | true         |
-| [waterplay]    | vrmInstanceID                    | The ID the battery monitor should use in VRM                            | Integer       | 1008          | 
-| [waterplay]    | minimum                       | A miminum power that needs to be assigned as step1.     | Double        | 0|
-| [waterplay]    | stepSize                         | StepSize in which the allowance should be generated, until the total requests value is reached. | Double       | 120.0|
-| [waterplay]    | request                              | Total power this consumer would ever need.                              | Double        | 120.0       | 
-| [waterplay]    | onUrl                              | http(s) url to active the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=on'       | 
-| [waterplay]    | offUrl                              | http(s) url to deactive the consumer                               | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=off'      | 
-| [waterplay]    | statusUrl                              | http(s) url to determine the current operation state of the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/status'       | 
-| [waterplay]    | isOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | '"ison":\s*true'      | 
+| [NPC:waterplay]    | customName |  DisplayName on VRM   |String | Waterplay |
+| [NPC:waterplay]    | ignoreBatReservation             | Consumer shall be enabled despite active Battery Reservation            | Boolean       | true         |
+| [NPC:waterplay]    | vrmInstanceID                    | The ID the battery monitor should use in VRM                            | Integer       | 1008          | 
+| [NPC:waterplay]    | minimum                       | A miminum power that needs to be assigned as step1.     | Double        | 0|
+| [NPC:waterplay]    | stepSize                         | StepSize in which the allowance should be generated, until the total requests value is reached. | Double       | 120.0|
+| [NPC:waterplay]    | request                              | Total power this consumer would ever need.                              | Double        | 120.0       | 
+| [NPC:waterplay]    | onUrl                              | http(s) url to active the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=on'       | 
+| [NPC:waterplay]    | offUrl                              | http(s) url to deactive the consumer                               | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=off'      | 
+| [NPC:waterplay]    | statusUrl                              | http(s) url to determine the current operation state of the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/status'       | 
+| [NPC:waterplay]    | isOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | '"ison":\s*true'      | 
 
 
 ### Configuration
