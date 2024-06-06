@@ -1,23 +1,37 @@
 import configparser
+import datetime
 import json
 import os
+import sys
 import threading
 from time import sleep
 import paho.mqtt.client as mqtt # type: ignore
 from Helper import i, c, d, w, e
+# victron
+sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
+from vedbus import VeDbusService,VeDbusItemExport, VeDbusItemImport # type: ignore
+import dbus # type: ignore
+from dbus.mainloop.glib import DBusGMainLoop # type: ignore
+
+from DBus import DbusC
 
 #superglobals
 currentVersionString="es-ESS 24.6.4.25 b"
 esEssTag = "es-ESS"
+DbusWrapper = DbusC()
+
+#VEBus Value exports
+#VeDb_W_system_0_Dc_Battery_TimeToGo = VeDbusItemExport(dbusConn, 'com.victronenergy.system', "/system/0/Dc/Battery/TimeToGo")
 
 #Services
 esESS = None
 pvOverheadDistributionService = None
 timeToGoCalculator = None
-froniusWattpilotService = None
+FroniusWattpilot = None
+chargeCurrentReducer = None
 
 #Various
-mqttClient = mqtt.Client("es-ESS-Client")
+mqttClient = mqtt.Client("es-ESS-Mqtt-Client")
 knownPVOverheadConsumers = {}
 knownPVOverheadConsumersLock = threading.Lock()
 globalValueStore = {}
@@ -36,19 +50,30 @@ def getConfig():
    config = configparser.ConfigParser()
    config.optionxform = str
    config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
+
    return config
 
 def configureMqtt(config):
-  i(esEssTag, "MQTT client: Connecting to broker localhost")
+  i(esEssTag, "MQTT client: Connecting to broker: {0}".format(config["Mqtt"]["Host"]))
   mqttClient.on_disconnect = onGlobalMqttDisconnect
   mqttClient.on_connect = onGlobalMqttConnect
   mqttClient.on_message = onGlobalMqttMessage
   
+  if 'User' in config['Mqtt'] and 'Password' in config['Mqtt'] and config['Mqtt']['User'] != '' and config['Mqtt']['Password'] != '':
+        mqttClient.username_pw_set(username=config['Mqtt']['User'], password=config['Mqtt']['Password'])
+
+  mqttClient.will_set("es-ESS/$SYS/status", "Offline", 2, True)
+
   mqttClient.connect(
-      host="localhost",
-      port=1883
+      host=config["Mqtt"]["Host"],
+      port=int(config["Mqtt"]["Port"])
   )
+
   mqttClient.loop_start()
+  mqttClient.publish("es-ESS/$SYS/status", "Online", 2, True)
+  mqttClient.publish("es-ESS/$SYS/version", currentVersionString, 2, True)
+  mqttClient.publish("es-ESS/$SYS/connectionTime", str(datetime.datetime.now()), 2, True)
+  mqttClient.publish("es-ESS/$SYS/github", "https://github.com/realdognose/es-ESS", 2, True)
 
 def onGlobalMqttDisconnect(client, userdata, rc):
     global connected
@@ -78,8 +103,7 @@ def onGlobalMqttConnect(client, userdata, flags, rc):
 
 def onGlobalMqttMessage(client, userdata, msg):
     try:
-      if (logIncomingMqttMessages):
-        d(esEssTag,'Received MQTT-Message: ' + msg.topic + ' => ' + str(msg.payload)[2:-1])
+      d(esEssTag,'Received MQTT-Message: ' + msg.topic + ' => ' + str(msg.payload)[2:-1])
 
       #Just forward Messages to their respective service.
       if (msg.topic.find('esEss/PVOverheadDistributor') > -1):

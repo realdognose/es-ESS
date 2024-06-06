@@ -3,6 +3,7 @@ from builtins import round, str
 import sys
 import os
 import itertools
+import inspect
 from time import sleep
 
 # victron
@@ -11,17 +12,27 @@ from vedbus import VeDbusService # type: ignore
 import dbus # type: ignore
 
 # Helper defs for logging
+logBlackList = []
+
 def i(module, msg, **kwargs):
    if (not isinstance(module, str)):
        module = module.__class__.__name__
+   
+   func = inspect.currentframe().f_back.f_code
+   lineIdentifier = "{0}.{1}".format(module, func.co_name)
 
-   logging.info("[%s] " + msg, module, **kwargs)
+   if (lineIdentifier not in logBlackList):
+     logging.info("[" + lineIdentifier + "] " + msg, **kwargs)
 
 def d(module, msg, **kwargs):
    if (not isinstance(module, str)):
        module = module.__class__.__name__
 
-   logging.debug("[%s] " + msg, module, **kwargs)
+   func = inspect.currentframe().f_back.f_code
+   lineIdentifier = "{0}.{1}".format(module, func.co_name)
+
+   if (lineIdentifier not in logBlackList):
+     logging.debug("[" + lineIdentifier + "] " + msg, **kwargs)
 
 def w(module, msg, **kwargs):
    if (not isinstance(module, str)):

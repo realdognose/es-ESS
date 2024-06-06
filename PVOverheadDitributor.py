@@ -251,7 +251,7 @@ class PVOverheadDistributionService:
                equation = equation.replace("SOC", str(batSoc))
                minBatCharge = eval(equation)
          except Exception as ex:
-            e("PVOverheadDistributor","Error evaluation MinBatteryCharge-Equation. Using MinBatteryCharge=0.")
+            e(self, "Error evaluation MinBatteryCharge-Equation. Using MinBatteryCharge=0.")
 
          overhead = max(0, feedIn + assignedConsumption + batPower)
          self.dbusService["/calculations/overheadAvailable"] = overhead

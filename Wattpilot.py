@@ -440,8 +440,9 @@ class Wattpilot(object):
             self.__send(message)
 
     def __update_property(self,name,value):
-
+        d(self, "Updated prop {0} to {1}".format(name,value))
         self._allProps[name] = value
+
         if name=="acs":
             self._AccessState = Wattpilot.acsValues[value]
 

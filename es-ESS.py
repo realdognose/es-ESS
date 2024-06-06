@@ -29,10 +29,11 @@ from dbus.mainloop.glib import DBusGMainLoop # type: ignore
 #esEss imports
 import Globals
 from Globals import getFromGlobalStoreValue
-from Helper import i, c, d, w, e
-from PVOverheadDitributionService import PVOverheadDistributionService
+from Helper import i, c, d, w, e, logBlackList
+from PVOverheadDistributor import PVOverheadDistributionService
 from TimeToGoCalculator import TimeToGoCalculator
-from FroniusWattpilotService import FroniusWattpilotService
+from FroniusWattpilot import FroniusWattpilot
+from ChargeCurrentReducer import ChargeCurrentReducer
 
 # Have a mainloop, so we can send/receive asynchronous calls to and from dbus
 DBusGMainLoop(set_as_default=True)
@@ -64,9 +65,15 @@ class esESS:
 
       if((self.config['Modules']['FroniusWattpilot']).lower() == 'true'):
         i(Globals.esEssTag, 'FroniusWattpilot-Module is enabled.')
-        Globals.froniusWattpilotService = FroniusWattpilotService()
+        Globals.FroniusWattpilot = FroniusWattpilot()
       else:
          i(Globals.esEssTag, 'FroniusWattpilot-Module is disabled.')
+
+      if((self.config['Modules']['ChargeCurrentReducer']).lower() == 'true'):
+        i(Globals.esEssTag, 'ChargeCurrentReducer-Module is enabled.')
+        Globals.chargeCurrentReducer = ChargeCurrentReducer()
+      else:
+         i(Globals.esEssTag, 'ChargeCurrentReducer-Module is disabled.')
 
   def keepAliveLoop(self):
       Globals.mqttClient.publish(self.keepAliveTopic, "")
@@ -88,8 +95,11 @@ def configureLogging(config):
                         logging.StreamHandler()
                       ])
   
+  import Helper
   #persist some log flags.
-  Globals.logIncomingMqttMessages = config["LogDetails"]["LogIncomingMqttMessages"].lower() == "true"
+  blacklistString = config["LogDetails"]["DontLogDebug"]
+  Helper.logBlackList = [x.strip() for x in blacklistString.split(',')] # type: ignore
+  
 
 def main():
   # read configuration. TODO: Migrate to UI-Based configuration later.

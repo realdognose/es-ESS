@@ -27,13 +27,24 @@ import Helper
 from Helper import i, c, d, w, e, dbusConnection
 from Wattpilot import Wattpilot, Event
 
-class FroniusWattpilotService:
+class FroniusWattpilot:
 
     def _froniusHandleChangedValue(self, path, value):
         i(self, "User/cerbo/vrm updated " + str(path) + " to " + str(value))
 
         if (path == "/SetCurrent"):
-            self.wattpilot.set_power(value)
+            #Value coming in needs to be cut in third, due to missing 3 phases option on vrm!
+            #except value is smaller than single phase maximum! 
+            ampPerPhase = int(floor(value/3.0)) if value > self.wattpilot.ampLimit else value
+
+            if (value > self.wattpilot.ampLimit):
+                self.wattpilot.set_phases(2)
+                self.currentPhaseMode = 2
+            else:
+                self.wattpilot.set_phases(1)
+                self.currentPhaseMode = 1
+
+            self.wattpilot.set_power(ampPerPhase)
         elif (path == "/StartStop"):
             if (value == 0):
                 self.wattpilot.set_start_stop(1)
@@ -56,21 +67,24 @@ class FroniusWattpilotService:
    # 1 = Automatic => Overhead Mode, disable VRM Control, reject wattpilot changes, register pv overhead observer.
    # 2 = Scheduled => Nightly low-price mode, TODO
     def switchMode(self, fromMode, toMode):
-        d("FroniusWattpilotService", "Switching Mode from " + str(fromMode) + " to " + str(toMode))
+        d("FroniusWattpilot", "Switching Mode from " + str(fromMode) + " to " + str(toMode))
         self.mode = toMode
         self.dbusService["/Mode"] = toMode
         if (fromMode == 0 and toMode == 1):
             self.autostart = 1
+            self.wattpilot.set_mode(4) #eco
+
 
         elif (fromMode == 1 and toMode == 0):
             self.autostart = 0
+            self.wattpilot.set_mode(3) #normal
          
     def _automaticTick(self):
         #if the car is not connected, we can greatly reduce system load.
         #just dump values every 5 minutes then. If car is connected, we need
         #to perform updates every tick.
         self.tempStatusOverride = None
-        if (self.wattpilot.carConnected or not self.isIdleMode or self.lastVarDump < (time.time() - 300)):
+        if (self.wattpilot.carConnected or not self.isIdleMode or (self.lastVarDump < (time.time() - 300)) or self.mode==0):
             self.lastVarDump = time.time()
 
             #switch idle mode to reduce load, when not required.
@@ -85,6 +99,7 @@ class FroniusWattpilotService:
                     Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/customName", "Wattpilot (3)")
                 else:
                     Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/customName", "Wattpilot")
+                
                 Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/ignoreBatReservation", "false")
                 Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/minimum", int(floor(self.wattpilot.voltage1 * 6)))
                 Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/stepSize", int(floor(self.wattpilot.voltage1))) #assuming all phases are about equal and stepSize is 1 amp.
@@ -107,7 +122,7 @@ class FroniusWattpilotService:
                     Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/request", int(floor(3 * self.wattpilot.ampLimit * self.wattpilot.voltage1)))
                     #Check, if we have an allowance in auto mode? .
                     allowance = getFromGlobalStoreValue(self.allowanceTopic, 0)
-                    d(self, "Current Allowance is: " + str(allowance))
+                    d(self, "Current Allowance is: {0}".format(allowance))
                     
                     #increment charging time. Tick is 5 seconds, that is precise enough.
                     if (self.wattpilot.power > 0):
@@ -117,11 +132,10 @@ class FroniusWattpilotService:
                         targetAmps = int(floor(max(allowance / self.wattpilot.voltage1, 6)))
                         targetAmps = min(self.wattpilot.ampLimit * 3, targetAmps) #obey limits.
 
-                        d(self, "Target Amps that is: " + str(targetAmps))
+                        d(self, "Target Amps that is: {0}A".format(targetAmps))
 
                         if (self.wattpilot.power > 0):
                             #charging, adjust current
-                            d(self, "Currently charging, adjusting power.")
                             self.adjustChargeCurrent(targetAmps)
                         else:
                             i(self, "Enough Allowance, but NOT charging, starting.")
@@ -137,7 +151,7 @@ class FroniusWattpilotService:
                                 self.dbusService["/StartStop"] = 1
                                 self.tempStatusOverride = 21
                             else:
-                                w(self, "Start-Charge delayed due to on/off cooldown: " + str(onOffCooldownSeconds) + "s")
+                                w(self, "Start-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
                                 self.tempStatusOverride = 21
                     else:
                         if (self.wattpilot.power):
@@ -151,7 +165,7 @@ class FroniusWattpilotService:
                                 self.dbusService["/StartStop"] = 0
                                 self.tempStatusOverride = 24
                             else:
-                                w(self, "Stop-Charge delayed due to on/off cooldown: " + str(onOffCooldownSeconds) + "s")
+                                w(self, "Stop-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
                                 self.tempStatusOverride = 24
 
                 #update UI anyway
@@ -170,32 +184,32 @@ class FroniusWattpilotService:
 
     def adjustChargeCurrent(self, targetAmps):
         desiredPhaseMode = 3 if targetAmps > self.wattpilot.ampLimit else 1
-        d(self, "Desired PhaseMode: " + str(desiredPhaseMode))
+        d(self, "Desired PhaseMode: {0}".format(desiredPhaseMode))
         
         if (self.currentPhaseMode == desiredPhaseMode):
             targetAmps = int(floor(targetAmps / self.currentPhaseMode))
             #Just adjust, no phasemode change required. 
-            i(self, "Adjusting charge current to: " + str(targetAmps))
+            i(self, "Adjusting charge current to: {0}A".format(targetAmps))
             self.wattpilot.set_power(targetAmps)
 
         elif (self.currentPhaseMode != desiredPhaseMode):
-            i(self, "Total amps required is: " + str(targetAmps) + ". Hence switching from phasemode " + str(self.currentPhaseMode) + " to " + str(desiredPhaseMode))
+            i(self, "Total amps required is: {0}}. Hence switching from phasemode {1} to {2}".format(targetAmps, self.currentPhaseMode, desiredPhaseMode))
             targetAmps = int(floor(targetAmps / desiredPhaseMode))
-            i(self, "That'll be " + str(targetAmps) + " on " + str(desiredPhaseMode))
+            i(self, "That'll be {0}A on PhaseMode {1}".format(targetAmps, desiredPhaseMode))
 
             phaseSwitchCooldownSeconds = self.getPhaseSwitchCooldownSeconds()
             if (phaseSwitchCooldownSeconds <= 0):
-                i(self, "Switching to Phase-Mode: " + str(desiredPhaseMode) + ". Send.")
+                i(self, "Switching to Phase-Mode: {0}. Send.".format(desiredPhaseMode))
                 self.lastPhaseSwitchTime = time.time()
                 self.wattpilot.set_phases(desiredPhaseMode)
                 self.currentPhaseMode = desiredPhaseMode
                 self.wattpilot.set_power(targetAmps)
             else:
                 if (self.currentPhaseMode == 1):
-                    w(self, "Attempted to switch to Phase-Mode " + str(desiredPhaseMode) + ", but cooldown is active! Using " + str(self.wattpilot.ampLimit) + " Amps on Phase-Mode " + str(self.currentPhaseMode) + " until cooldown is over:" + str(phaseSwitchCooldownSeconds) + "s")
+                    w(self, "Attempted to switch to Phase-Mode {0}, but cooldown is active! Using {1}A on Phase-Mode {2} until cooldown is over in {3}s".format(desiredPhaseMode, self.wattpilot.ampLimit, self.currentPhaseMode, phaseSwitchCooldownSeconds))
                     self.wattpilot.set_power(self.wattpilot.ampLimit)
                 elif (self.currentPhaseMode == 3):
-                    w(self, "Attempted to switch to Phase-Mode " + str(desiredPhaseMode) + ", but cooldown is active! Using 6 Amps on Phase-Mode " + str(self.currentPhaseMode) + " until cooldown is over:" + str(phaseSwitchCooldownSeconds) + "s")
+                    w(self, "Attempted to switch to Phase-Mode {0}, but cooldown is active! Using 6A on Phase-Mode {1} until cooldown is over in {2}s".format(desiredPhaseMode, self.currentPhaseMode, phaseSwitchCooldownSeconds))
                     self.wattpilot.set_power(6)                
 
 
@@ -218,7 +232,7 @@ class FroniusWattpilotService:
         self.vrmInstanceID = self.config['FroniusWattpilot']['VRMInstanceID']
         self.serviceType = "com.victronenergy.evcharger"
         self.serviceName = self.serviceType + ".es-ess.FroniusWattpilot_" + self.vrmInstanceID
-        i(self, "Registering service as: " + self.serviceName)
+        i(self, "Registering service as: {0}".format(self.serviceName))
         self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
 
         #dump root information about our service and register paths.
@@ -267,7 +281,8 @@ class FroniusWattpilotService:
         self.dbusService.add_path('/CarState', None)
         self.dbusService.add_path('/PhaseMode', None)
 
-        self.switchMode(0,1)
+        #TODO: Detect, if the charger is setup for manual or automatic mode?
+        #self.switchMode(0,1)
 
         #Create the Wattpilot object and connect. 
         self.wattpilot = Wattpilot(self.config["FroniusWattpilot"]["Host"], self.config["FroniusWattpilot"]["Password"])
@@ -275,6 +290,25 @@ class FroniusWattpilotService:
         self.wattpilot._reconnect_interval = 30
         self.wattpilot.connect()
         Helper.waitTimeout(lambda: self.wattpilot.connected, 30) or e(self, "Unable to connect to wattpilot wthin 30 seconds... Wattpilot offline or credentials wrong?")
+
+        #Wait for some information to arrive. 
+        Helper.waitTimeout(lambda: self.wattpilot.power1 is not None, 30) or e(self, "Unable to connect to wattpilot wthin 30 seconds... Wattpilot offline or credentials wrong?")
+        Helper.waitTimeout(lambda: self.wattpilot.power2 is not None, 30) or e(self, "Unable to connect to wattpilot wthin 30 seconds... Wattpilot offline or credentials wrong?")
+        Helper.waitTimeout(lambda: self.wattpilot.power3 is not None, 30) or e(self, "Unable to connect to wattpilot wthin 30 seconds... Wattpilot offline or credentials wrong?")
+        Helper.waitTimeout(lambda: self.wattpilot.carConnected is not None, 30) or e(self, "Unable to connect to wattpilot wthin 30 seconds... Wattpilot offline or credentials wrong?")
+
+        #After init, we need to determine the current phase mode. 
+        #if the car is charging, we can do that by looking at the phase power. 
+        #if the car is not charging, we can simply force it to be 3 phases, until determined 
+        # otherwise. 
+        if (self.wattpilot.carConnected and self.wattpilot.power2 > 0):
+            self.currentPhaseMode = 2
+        elif (self.wattpilot.carConnected and self.wattpilot.power1 > 0):
+            self.currentPhaseMode = 1
+        else:
+            #TODO let user pick default phase mode. 
+            self.currentPhaseMode = 2
+            self.wattpilot.set_phases(2)
 
         #subscribe to PV Overhead Allowance topic.  
         self.allowanceTopic = "N/" + self.config["Default"]["VRMPortalID"] + "/settings/" + self.config["PVOverheadDistributor"]["VRMInstanceID"] + "/requests/wattpilot/allowance"
@@ -286,20 +320,20 @@ class FroniusWattpilotService:
     def dumpEvChargerInfo(self):
         #method is called, whenever new information arrive through mqtt. 
         #just dump the information we have.
-        self.dbusService["/Ac/L1/Power"] = self.wattpilot.power1 * 1000 if (self.wattpilot.power1 is not None) else 0
-        self.dbusService["/Ac/L2/Power"] = self.wattpilot.power2 * 1000 if (self.wattpilot.power2 is not None) else 0
-        self.dbusService["/Ac/L3/Power"] = self.wattpilot.power3 * 1000 if (self.wattpilot.power3 is not None) else 0
-        self.dbusService["/Ac/L1/Voltage"] = self.wattpilot.voltage1  if (self.wattpilot.voltage1 is not None) else 0
-        self.dbusService["/Ac/L2/Voltage"] = self.wattpilot.voltage2  if (self.wattpilot.voltage2 is not None) else 0
-        self.dbusService["/Ac/L3/Voltage"] = self.wattpilot.voltage3  if (self.wattpilot.voltage3 is not None) else 0
-        self.dbusService["/Ac/L1/Current"] = self.wattpilot.amps1  if (self.wattpilot.amps1 is not None and self.wattpilot.power>0) else 0
-        self.dbusService["/Ac/L2/Current"] = self.wattpilot.amps2  if (self.wattpilot.amps2 is not None and self.wattpilot.power>0) else 0
-        self.dbusService["/Ac/L3/Current"] = self.wattpilot.amps3  if (self.wattpilot.amps3 is not None and self.wattpilot.power>0) else 0
-        self.dbusService["/Ac/L1/PowerFactor"] = self.wattpilot.powerFactor1  if (self.wattpilot.powerFactor1 is not None and self.wattpilot.power>0) else 0
-        self.dbusService["/Ac/L2/PowerFactor"] = self.wattpilot.powerFactor2  if (self.wattpilot.powerFactor2 is not None and self.wattpilot.power>0) else 0
-        self.dbusService["/Ac/L3/PowerFactor"] = self.wattpilot.powerFactor3  if (self.wattpilot.powerFactor3 is not None and self.wattpilot.power>0) else 0
-        self.dbusService["/Ac/Power"] = self.wattpilot.power * 1000 if (self.wattpilot.power is not None) else 0
-        self.dbusService["/Current"] = self.wattpilot.amp if (self.wattpilot.amp is not None and self.wattpilot.power>0) else 0
+        self.Publish("/Ac/L1/Power", self.wattpilot.power1 * 1000 if (self.wattpilot.power1 is not None) else 0)
+        self.Publish("/Ac/L2/Power", self.wattpilot.power2 * 1000 if (self.wattpilot.power2 is not None) else 0)
+        self.Publish("/Ac/L3/Power", self.wattpilot.power3 * 1000 if (self.wattpilot.power3 is not None) else 0)
+        self.Publish("/Ac/L1/Voltage", self.wattpilot.voltage1  if (self.wattpilot.voltage1 is not None) else 0)
+        self.Publish("/Ac/L2/Voltage", self.wattpilot.voltage2  if (self.wattpilot.voltage2 is not None) else 0)
+        self.Publish("/Ac/L3/Voltage", self.wattpilot.voltage3  if (self.wattpilot.voltage3 is not None) else 0)
+        self.Publish("/Ac/L1/Current", self.wattpilot.amps1  if (self.wattpilot.amps1 is not None and self.wattpilot.power>0) else 0)
+        self.Publish("/Ac/L2/Current", self.wattpilot.amps2  if (self.wattpilot.amps2 is not None and self.wattpilot.power>0) else 0)
+        self.Publish("/Ac/L3/Current", self.wattpilot.amps3  if (self.wattpilot.amps3 is not None and self.wattpilot.power>0) else 0)
+        self.Publish("/Ac/L1/PowerFactor", self.wattpilot.powerFactor1  if (self.wattpilot.powerFactor1 is not None and self.wattpilot.power>0) else 0)
+        self.Publish("/Ac/L2/PowerFactor", self.wattpilot.powerFactor2  if (self.wattpilot.powerFactor2 is not None and self.wattpilot.power>0) else 0)
+        self.Publish("/Ac/L3/PowerFactor", self.wattpilot.powerFactor3  if (self.wattpilot.powerFactor3 is not None and self.wattpilot.power>0) else 0)
+        self.Publish("/Ac/Power", self.wattpilot.power * 1000 if (self.wattpilot.power is not None) else 0)
+        self.Publish("/Current", (self.wattpilot.amps1 + self.wattpilot.amps2 + self.wattpilot.amps3) if (self.wattpilot.amp is not None and self.wattpilot.power>0) else 0)
 
         #Also write total power back to pvOverheadDistributor, in case we are in automatic mode. 
         if (self.mode == 1):
@@ -313,7 +347,7 @@ class FroniusWattpilotService:
             updateStatus = 0 # Disconnected
 
             if (self.config["FroniusWattpilot"]["ResetChargedEnergyCounter"].lower() == "ondisconnect"):
-                self.dbusService["/Ac/Energy/Forward"]  = 0.0 #Reset Session Charge Counter.
+                self.Publish("/Ac/Energy/Forward", 0.0) #Reset Session Charge Counter.
                 self.chargingTime = 0 #Reset ChargingTimeCounter
         
         elif (self.wattpilot.carConnected and self.wattpilot.power == 0 and self.mode==1):
@@ -334,23 +368,33 @@ class FroniusWattpilotService:
         if (self.tempStatusOverride is not None):
             updateStatus = self.tempStatusOverride
 
-        self.dbusService["/Status"] = updateStatus
+        self.Publish("/Status", updateStatus)
 
         if (self.wattpilot.energyCounterSinceStart is not None and self.wattpilot.carConnected):
-            self.dbusService["/Ac/Energy/Forward"] = self.wattpilot.energyCounterSinceStart / 1000
+            self.Publish("/Ac/Energy/Forward", self.wattpilot.energyCounterSinceStart / 1000)
         
         elif (self.wattpilot.energyCounterSinceStart is not None and not self.wattpilot.carConnected and self.config["FroniusWattpilot"]["ResetChargedEnergyCounter"].lower() == "onconnect"):
-            self.dbusService["/Ac/Energy/Forward"] = self.wattpilot.energyCounterSinceStart / 1000
+            self.Publish("/Ac/Energy/Forward", self.wattpilot.energyCounterSinceStart / 1000)
 
         else:
-            self.dbusService["/Ac/Energy/Forward"] = 0.0
+            self.Publish("/Ac/Energy/Forward", 0.0)
             self.chargingTime = 0
         
-        self.dbusService["/MaxCurrent"] = self.wattpilot.ampLimit
-        self.dbusService["/AutoStart"] = self.autostart
-        self.dbusService["/SetCurrent"] = self.wattpilot.amp
-        self.dbusService["/ChargingTime"] = self.chargingTime
-        self.dbusService["/CarState"] = self.wattpilot.carConnected
-        self.dbusService["/PhaseMode"] = self.currentPhaseMode
+        self.Publish("/AutoStart", self.autostart)
 
-        d(self, "Model Status is: " + str(self.wattpilot.modelStatus))
+        if (self.currentPhaseMode == 2):
+            self.Publish("/SetCurrent", self.wattpilot.amp * 3)
+            self.Publish("/MaxCurrent", self.wattpilot.ampLimit * 3)
+        else:
+            self.Publish("/SetCurrent", self.wattpilot.amp)
+            self.Publish("/MaxCurrent", self.wattpilot.ampLimit )
+
+        self.Publish("/ChargingTime", self.chargingTime)
+        self.Publish("/CarState", self.wattpilot.carConnected)
+        self.Publish("/PhaseMode", self.currentPhaseMode)
+
+        d(self, "Model Status is: {0}".format(self.wattpilot.modelStatus))
+
+    def Publish(self, path, value):
+        self.dbusService[path] = value
+        Globals.mqttClient.publish("es-ESS/FroniusWattpilot{0}".format(path), value, 0)
