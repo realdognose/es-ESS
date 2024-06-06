@@ -42,6 +42,9 @@ When the charge current drops bellow the desired value, grid-feedin will be redu
 > :warning: I am using the wording "Reducer" on purpose. This is __NO__ Limiter. Your batteries, fusing and/or wiring should always be able to withstand
 any incoming current from the MPPTs upto their technical limit!
 
+The ChargeCurrentReducer __only__ works in positive directions. If your current solar production can't sustain a desired charge current of 50A, no additional
+power will be consumed from grid. The battery will then charge with what is available.
+
 #### Configuration
 
 ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.ini`: 
