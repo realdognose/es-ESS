@@ -50,7 +50,7 @@ ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.
 | ---------- | ---------|---- | ------------- |--|
 | [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [Modules]    | ChargeCurrentReducer | Flag, if the module should be enabled or not | Boolean | true |
-| [ChargeCurrentReducer]  | DesiredChargeAmps |  Desired Charge Current in Amps. Your *feel-well-value*.<br /><br />Beside a fixed value, you can use a equation based on SoC as well. The example will reduce the charge current desired by 1A per SoC-Percent<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | 100 - SOC |
+| [ChargeCurrentReducer]  | DesiredChargeAmps |  Desired Charge Current in Amps. Your *feel-well-value*.<br /><br />Beside a fixed value, you can use a equation based on SoC as well. The example will reduce the charge current desired by 1A per SoC-Percent, but minimum 30A<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | max(100 - SOC, 30) |
 
 # FroniusWattPilotService
 When using a Fronius Wattpilot, there are issues with the default ECO-Mode-Charging. Using the native functionality of Wattpilot can't take 
