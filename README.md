@@ -21,7 +21,7 @@ features can be enabled, based on your needs.
 # Setup
 Your system needs to match the following requirements in order to use es-ESS:
 - Be an ESS
-- Have the local Mqtt enabled (plain or tls)
+- Have a mqtt server (or the use builtin one, to minimize system load an external mqtt is recommended)
 - Have shell access enabled and know how to use it. (See: https://www.victronenergy.com/live/ccgx:root_access)
 
 # ChargeCurrentReducer
