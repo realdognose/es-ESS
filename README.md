@@ -12,8 +12,8 @@ features can be enabled, based on your needs.
 - [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt source and insert a FAKE-BMS on cerbo / VRM for display purpose.
 - [NoBatToEV](#nobattoev) - Avoid discharge of your home-battery when charging your ev with an `ac-out` connected wallbox.
 - [SolarOverheadDistributor](#solaroverheaddistributor) - Utility to manage and distribute available solar overhead between various consumers.
-  - [Scripted-SolarOverheadConsumer](#scripted-solaroverheadconsumer) - Consumers managed by external scripts can to be more complex and join the solar overhead pool.
-  - [NPC-SolarOverheadConsumer](#npc-solaroverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead. No programming required.
+  - [Scripted-SolarOverheadConsumer](#scripted-pvoverheadconsumer) - Consumers managed by external scripts can to be more complex and join the solar overhead pool.
+  - [NPC-SolarOverheadConsumer](#npc-pvoverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead. No programming required.
 - [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.
 - [This and that](#this-and-that) - Various information that doesn't fit elsewhere.
 - [F.A.Q](#faq) - Frequently Asked Questions
@@ -62,7 +62,7 @@ is kicking in to supply missing power.
 
 Therefore, a complete integration of Wattpilot has been implemented: 
 - Wattpilot is fully controllable through the VRM evcharger functionality.
-- es-ESS will take over correct overhead distribution, relying on the built-in [PVOverheadDistributor](#pvoverheaddistributor) and orchestrate Wattpilot accordingly.
+- es-ESS will take over correct overhead distribution, relying on the built-in [SolarOverheadDistributor](#solaroverheaddistributor) and orchestrate Wattpilot accordingly.
 - All (important) status of Wattpilot will be exposed on dbus / VRM:
 
 | Charging | Phase Switch | Waiting for Sun | Cooldown |
@@ -71,7 +71,7 @@ Therefore, a complete integration of Wattpilot has been implemented:
 
 | Full integration |
 |:-------:|
-|<img src="https://github.com/realdognose/es-ESS/blob/main/img/PVOverheadConsumers%202.png" />|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/SolarOverheadConsumers%202.png" />|
 | Communication is bidirectional between VRM <-> Wattpilot app for both, auto and manual mode. |
 
 # Installation
@@ -128,8 +128,8 @@ TODO
 Sometimes you need to manage multiple consumers based on solar overhead available. If every consumer is deciding on it's own, it can 
 lead to a continious up and down on available energy, causing consumers to turn on/off in a uncontrolled, frequent fashion. 
 
-To overcome this problem, the PVOverheadDistributor has been created. Each consumer can register itself, send a request containing certain parameters - and
-PVOverheadDistributor will determine the total available overhead of the system and calculate allowances for each individual consumer. 
+To overcome this problem, the SolarOverheadDistributor has been created. Each consumer can register itself, send a request containing certain parameters - and
+SolarOverheadDistributor will determine the total available overhead of the system and calculate allowances for each individual consumer. 
 
 A minimum battery reservation can be defined through a SOC-based equation to make sure your home-battery receives the power it needs to fully charge during the day.
 
@@ -139,42 +139,43 @@ Each consumer is represented as a FAKE-BMS in VRM, so you can see where your ene
 
 | Example View |
 |:-------------------------:|
-|<img src="https://github.com/realdognose/es-ESS/blob/main/img/PVOverheadConsumers%203.png"> |
-| <div align="left">The example shows the view in VRM and presents the following information: <br /><br />- There is a mimimum battery charge reservation of 750W active and that reservation is currently beeing fullfilled with 248.5% <br />- The PVOverheadConsumer *PV-Heater* is requesting a total of 3501.0W, and due to the current allowance, 3318W currently beeing consumed, equaling 94.8% of it's request. <br />- The PVOverheadConsumer  *Waterplay* is requesting a total of 110W, and due to the current allowance, 110W currently beeing consumed, equaling 100% of it's request. <br />- The PVOverheadConsumer [WattPilot](#FroniusWattpilot) is requesting a total of 11308W, and due to the current allowance, 2254W currently beeing consumed, equaling 19.9% of it's request. </div>|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/SolarOverheadConsumers%203.png"> |
+| <div align="left">The example shows the view in VRM and presents the following information: <br /><br />- There is a mimimum battery charge reservation of 750W active and that reservation is currently beeing fullfilled with 248.5% <br />- The SolarOverheadConsumer *PV-Heater* is requesting a total of 3501.0W, and due to the current allowance, 3318W currently beeing consumed, equaling 94.8% of it's request. <br />- The SolarOverheadConsumer  *Waterplay* is requesting a total of 110W, and due to the current allowance, 110W currently beeing consumed, equaling 100% of it's request. <br />- The SolarOverheadConsumer [WattPilot](#FroniusWattpilot) is requesting a total of 11308W, and due to the current allowance, 2254W currently beeing consumed, equaling 19.9% of it's request. </div>|
 
 #### General functionality
-The PVOverheadDistributer (re-)distributes power every minute. We have been running tests with more frequent updates, but it turned out that the delay in processing a request/allowance by some consumers is causing issues. 
+The SolarOverheadDistributor (re-)distributes power every minute. We have been running tests with more frequent updates, but it turned out that the delay in processing a request/allowance by some consumers is causing issues. 
 Also, when consumption changes, the whole ESS itself needs to adapt, adjust battery-usage, grid-meter has to catch up, values have to be re-read and published in dbus and so on. Finally also the sun may have some ups and downs
 during ongoing calculations. So we decided to go with a fixed value of 1 minute, which is fast enough to adapt quickly but not causing any issues with consumers going on/off due to delays in processing.
 
 ### Usage
-Each consumer is creating a PVOverhead-Request, which then will be accepted or not by the PVOverheadDistributor based on various parameters. The overall request has to be send to the venus mqtt inside the `W` Topic, 
+Each consumer is creating a SolarOverhead-Request, which then will be accepted or not by the SolarOverheadDistributor based on various parameters. The overall request has to be send to the venus mqtt inside the `W` Topic, 
 where es-ESS will read the request and publish the processing result in it's own topic. 
 
 A request is made out of the following values, where some are mandatory, some optional, some to be not filled out by the consumer: 
 
 *In this table, a consumerKey of `consumer1` has been used. Replace that with an unique identifier for your consumer*
-each key has to be published in the topic `W/{VRMPortalID}/esEss/PVOverheadDistributor/requests/consumer1`
+each key has to be published in the topic `W/{VRMPortalID}/esEss/SolarOverheadDistributor/requests/consumer1`
 | Mqtt-Key             | To be set by Consumer |  Descripion                                                             | Type          | Example Value| Required |
 | -------------------- | ----------------------|------------------------------------------------------------------------ | ------------- |--------------| ---------|
-|automatic             | yes                   | Flag, indicating if the consumer is currently in automatic mode         | Boolean       | true         | yes      |
-|consumption           | yes                   | Current consumption of the consumer                                     | Double        | 1234.0       | yes      |
-|customName            | yes                   | DisplayName on VRM                                                      | String        | My Consumer 1| yes      |
-|ignoreBatReservation  | yes                   | Consumer shall be enabled despite active Battery Reservation            | Boolean       | true         | no       |
-|request               | yes                   | Total power this consumer would ever need.                              | Double        | 8500.0       | yes      |
-|stepSize              | yes                   | StepSize in which the allowance should be generated, until the total requests value is reached. | Double       | 123.0         | yes      |
-|minimum               | yes                   | A miminum power that needs to be assigned as step1. Usefull for EVs.    | Double        | 512.0         | no      |
-|vrmInstanceID         | yes                   | The ID the battery monitor should use in VRM                            | Integer       | 1008          | yes     |
-|allowance             | no                    | Allowance in Watts, calculated by PVOverheadDistributor                 | Double        | 768.0         | n/a     |
+|IsAutomatic             | yes                   | Flag, indicating if the consumer is currently in automatic mode         | Boolean       | true         | yes      |
+|Consumption           | yes                   | Current consumption of the consumer                                     | Double        | 1234.0       | yes      |
+|CustomName            | yes                   | DisplayName on VRM                                                      | String        | My Consumer 1| yes      |
+|IgnoreBatReservation  | yes                   | Consumer shall be enabled despite active Battery Reservation            | Boolean       | true         | no       |
+|Request               | yes                   | Total power this consumer would ever need.                              | Double        | 8500.0       | yes      |
+|StepSize              | yes                   | StepSize in which the allowance should be generated, until the total requests value is reached. | Double       | 123.0         | yes      |
+|Minimum               | yes                   | A miminum power that needs to be assigned as step1. Usefull for EVs.    | Double        | 512.0         | no      |
+|Priority               | yes                   | Priority compared to other Consumers. defaults to 100    | Integer        | 56         | no      |
+|VRMInstanceID         | yes                   | The ID the battery monitor should use in VRM                            | Integer       | 1008          | yes     |
+|Allowance             | no                    | Allowance in Watts, calculated by SolarOverheadDistributor                 | Double        | 768.0         | n/a     |
 
-PVOverheadDistributer will process these requests and finally publish the result within it's own topic, under: `N/{VRMPortalID/settings/{vRMInstanceIdOfPVOverheadDistributor}/requests`
+SolarOverheadDistributor will process these requests and finally publish the result within it's own topic, under: `N/{VRMPortalID/settings/{vRMInstanceIdOfSolarOverheadDistributor}/requests`
 
 - It is important to report back consumption by the consumer. Only then the calculated values are correct.
 - Only consumers reporting as automatic will be considered. (So maintain this, when implementing manual overrides)
 
-### Scripted-PVOverheadConsumer
-A Scripted-PVOverheadConsumer is an external script (Powershell, bash, arduino, php, ...) you are using to control a consumer. This allows the requests to be more precice and granular
-than using a NPC-PVOverheadConsumer (explained later). 
+### Scripted-SolarOverheadConsumer
+A Scripted-SolarOverheadConsumer is an external script (Powershell, bash, arduino, php, ...) you are using to control a consumer. This allows the requests to be more precice and granular
+than using a NPC-SolarOverheadConsumer (explained later). 
 
 The basic workflow of an external script can be described as follows: 
 
@@ -199,15 +200,15 @@ takes various environment conditions into account before creating a request:
 
 After evaluating and creating the proper request, the current allowance is processed, consumer is adjusted based on allowance, and actual consumption is reported back.
 
-### NPC-PVOverheadConsumer
+### NPC-SolarOverheadConsumer
 Some consumers are not controllable in steps, they are simple on/off consumers. Also measuring the actual consumption is not always possible or required, so a fixed known consumption can 
-work out as well. To eliminate the need to create multiple on/off-scripts for these consumers, the NPC-PVOverheadConsumer has been introduced. 
+work out as well. To eliminate the need to create multiple on/off-scripts for these consumers, the NPC-SolarOverheadConsumer has been introduced. 
 
 It can be fully configured in `/data/es-ESS/config.ini` and will be orchestrated by the PVOVerhead-Distributer itself - as long as it is able to process http-remote-control requests.
 An example would be our *waterplay* in the front garden. It is connected through a shelly device, which is http-controllable - and I know it consumes roughly 120 Watts AND I want this
 to run as soon as PV-Overhead is available, despite any battery reservation. (Doesn't make sence to wait on this, until the battery reached 90% Soc or more)
 
-The following lines inside `/data/es-ESS/config.ini` can be used to create such an NPC-PVOverheadConsumer. A config section has to be created under `[PVOverheadDistributor]`, containing
+The following lines inside `/data/es-ESS/config.ini` can be used to create such an NPC-SolarOverheadConsumer. A config section has to be created under `[SolarOverheadDistributor]`, containing
 the required request values plus some additional parameters for remote-control. Well, the secion has to be prefixed with `NPC:` to identify it correctly.
 
 the example consumerKey is *waterplay* here.
@@ -226,7 +227,7 @@ the example consumerKey is *waterplay* here.
 | [NPC:waterplay]    | isOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | '"ison":\s*true'      | 
 
 
-| Example of config section for NPC-PVOverheadConsumer |
+| Example of config section for NPC-SolarOverheadConsumer |
 |:-----------:|
 | <img src="https://github.com/realdognose/es-ESS/blob/main/img/visual_example_npc.png" /> | 
 
@@ -241,9 +242,9 @@ PVOVerheadDistributer requires a few variables to be set in `/data/es-ESS/config
 | ---------- | ---------|---- | ------------- |--|
 | [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [Modules]    | PVOVerheadDistributor | Flag, if the module should be enabled or not | Boolean | true |
-| [PVOverheadDistributor]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
-| [PVOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
-| [PVOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />The example will maximum reserve 5000W, for every percent of SoC reached 40 watts are released. Mimimum of 1040 Watts will be reached at 99% Soc, until SoC is 100%<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | 5000 - 40 * SOC |
+| [SolarOverheadDistributor]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
+| [SolarOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
+| [SolarOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />The example will maximum reserve 5000W, for every percent of SoC reached 40 watts are released. Mimimum of 1040 Watts will be reached at 99% Soc, until SoC is 100%<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | 5000 - 40 * SOC |
 
 In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> System Setup -> Battery Measurement* and set the ones you'd like to see to *Visible*:
 
