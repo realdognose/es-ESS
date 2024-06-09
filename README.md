@@ -7,6 +7,7 @@ features can be enabled, based on your needs.
 
 ### Table of Contents
 - [Setup](#setup) - General setup process and requirements for es-ESS.
+- [MqttExporter](#mqttexporter) - Export selected values form dbus to your MQTT-Server.
 - [ChargeCurrentReducer](#chargecurrentreducer) - Reduce the battery charge current to your *feel-well-value* without the need to disable DC-Feedin.
 - [FroniusWattpilot](#FroniusWattpilot) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
 - [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt source and insert a FAKE-BMS on cerbo / VRM for display purpose.
@@ -23,6 +24,21 @@ Your system needs to match the following requirements in order to use es-ESS:
 - Be an ESS
 - Have a mqtt server (or the use builtin one, to minimize system load an external mqtt is recommended)
 - Have shell access enabled and know how to use it. (See: https://www.victronenergy.com/live/ccgx:root_access)
+
+# MqttExporter
+Victrons Venus OS / Cerbo Devices have a builtin Mqtt-Server. However, there are some flaws with that: You have to constantly post a Keep-Alive
+message, in order to keep values beeing published. VRM uses this in Order to receive data. On one hand, it is a unnecessary performance-penalty
+to keep thausands of values up-to-date, just because you want to use 10-12 of them for display purpose. 
+
+Second issue is - according to the forums - that while Keep-Alive is enabled, topics are continiously forwarded to the cloud, causing bandwith
+usage, which is bad on metered connections. 
+
+So, the MqttExporter has been created. With a quite easy notation you can define which values should be tracked on dbus, and then be forwarded
+to your desired mqtt.
+
+# Configuration
+
+TODO
 
 # ChargeCurrentReducer
 
