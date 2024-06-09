@@ -91,38 +91,37 @@ class FroniusWattpilot:
             self.isIdleMode = not self.wattpilot.carConnected
 
             try:
-                Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/vrmInstanceID", self.config["FroniusWattpilot"]["VRMInstanceID_OverheadRequest"])
+                Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/VRMInstanceID", self.config["FroniusWattpilot"]["VRMInstanceID_OverheadRequest"])
                 
                 if (self.wattpilot.power > 0 and self.currentPhaseMode == 1):
-                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/customName", "Wattpilot (1)")
+                    Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/CustomName", "Wattpilot (1)")
                 elif (self.wattpilot.power > 0 and self.currentPhaseMode == 3):
-                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/customName", "Wattpilot (3)")
+                    Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/CustomName", "Wattpilot (3)")
                 else:
-                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/customName", "Wattpilot")
+                    Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/CustomName", "Wattpilot")
                 
-                Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/ignoreBatReservation", "false")
-                Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/minimum", int(floor(self.wattpilot.voltage1 * 6)))
-                Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/stepSize", int(floor(self.wattpilot.voltage1))) #assuming all phases are about equal and stepSize is 1 amp.
+                Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IgnoreBatReservation", "false")
+                Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Minimum", int(floor(self.wattpilot.voltage1 * 6)))
+                Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/StepSize", int(floor(self.wattpilot.voltage1))) #assuming all phases are about equal and stepSize is 1 amp.
             
                 #Create a request for power consumption. 
                 if (self.wattpilot.carConnected and self.wattpilot.power == 0 and self.mode == 1):
                     #Car connected, not charging, automatic mode. Create  a request.
-                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/automatic", "true")
-                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/consumption", 0)
-                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/request", int(floor(3 * self.wattpilot.ampLimit * self.wattpilot.voltage1)))
+                    Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IsAutomatic", "true")
+                    Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Consumption", 0)
+                    Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Request", int(floor(3 * self.wattpilot.ampLimit * self.wattpilot.voltage1)))
                     
                 elif (not self.wattpilot.carConnected):
                     #Car not connected, no request
-                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/consumption", 0)
-                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/request", 0)
+                    Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Consumption", 0)
+                    Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Request", 0)
 
                 if (self.mode == 0):
-                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/automatic", "false")
+                    Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IsAutomatic", "false")
                 elif (self.mode == 1 and self.wattpilot.carConnected):
-                    Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/request", int(floor(3 * self.wattpilot.ampLimit * self.wattpilot.voltage1)))
+                    Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Request", int(floor(3 * self.wattpilot.ampLimit * self.wattpilot.voltage1)))
                     #Check, if we have an allowance in auto mode? .
                     allowance = getFromGlobalStoreValue(self.allowanceTopic, 0)
-                    d(self, "Current Allowance is: {0}".format(allowance))
                     
                     #increment charging time. Tick is 5 seconds, that is precise enough.
                     if (self.wattpilot.power > 0):
@@ -231,7 +230,7 @@ class FroniusWattpilot:
         #register on dbus as EV-Charger.
         self.vrmInstanceID = self.config['FroniusWattpilot']['VRMInstanceID']
         self.serviceType = "com.victronenergy.evcharger"
-        self.serviceName = self.serviceType + ".es-ess.FroniusWattpilot_" + self.vrmInstanceID
+        self.serviceName = self.serviceType + ".es-ESS.FroniusWattpilot_" + self.vrmInstanceID
         i(self, "Registering service as: {0}".format(self.serviceName))
         self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
 
@@ -296,6 +295,14 @@ class FroniusWattpilot:
         Helper.waitTimeout(lambda: self.wattpilot.power2 is not None, 30) or e(self, "Unable to connect to wattpilot wthin 30 seconds... Wattpilot offline or credentials wrong?")
         Helper.waitTimeout(lambda: self.wattpilot.power3 is not None, 30) or e(self, "Unable to connect to wattpilot wthin 30 seconds... Wattpilot offline or credentials wrong?")
         Helper.waitTimeout(lambda: self.wattpilot.carConnected is not None, 30) or e(self, "Unable to connect to wattpilot wthin 30 seconds... Wattpilot offline or credentials wrong?")
+        Helper.waitTimeout(lambda: self.wattpilot.mode is not None, 30) or e(self, "Unable to connect to wattpilot wthin 30 seconds... Wattpilot offline or credentials wrong?")
+
+        if (self.wattpilot.mode == "Eco"):
+            self.autostart = 1
+            self.mode = 1
+        else:
+            self.autostart = 0
+            self.mode = 0
 
         #After init, we need to determine the current phase mode. 
         #if the car is charging, we can do that by looking at the phase power. 
@@ -311,11 +318,12 @@ class FroniusWattpilot:
             self.wattpilot.set_phases(2)
 
         #subscribe to PV Overhead Allowance topic.  
-        self.allowanceTopic = "N/" + self.config["Default"]["VRMPortalID"] + "/settings/" + self.config["PVOverheadDistributor"]["VRMInstanceID"] + "/requests/wattpilot/allowance"
+        self.allowanceTopic = "es-ESS/Requests/Wattpilot/Allowance"
         Globals.mqttClient.subscribe(self.allowanceTopic)
 
         self.dumpEvChargerInfo()
         gobject.timeout_add(int(5000), self._automaticTick)
+        Globals.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "{0} initialized.".format(self.__class__.__name__))
 
     def dumpEvChargerInfo(self):
         #method is called, whenever new information arrive through mqtt. 
@@ -334,10 +342,11 @@ class FroniusWattpilot:
         self.Publish("/Ac/L3/PowerFactor", self.wattpilot.powerFactor3  if (self.wattpilot.powerFactor3 is not None and self.wattpilot.power>0) else 0)
         self.Publish("/Ac/Power", self.wattpilot.power * 1000 if (self.wattpilot.power is not None) else 0)
         self.Publish("/Current", (self.wattpilot.amps1 + self.wattpilot.amps2 + self.wattpilot.amps3) if (self.wattpilot.amp is not None and self.wattpilot.power>0) else 0)
+        self.Publish("/Mode", self.mode)
 
-        #Also write total power back to pvOverheadDistributor, in case we are in automatic mode. 
+        #Also write total power back to SolarOverheadDistributor, in case we are in automatic mode. 
         if (self.mode == 1):
-            Globals.mqttClient.publish("W/" + self.config["Default"]["VRMPortalID"] + "/esEss/PVOverheadDistributor/requests/wattpilot/consumption", self.wattpilot.power * 1000)
+            Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Consumption", self.wattpilot.power * 1000)
 
         updateStatus = self.dbusService["/Status"]
         if (self.wattpilot.carConnected and self.wattpilot.power > 0):
@@ -393,7 +402,7 @@ class FroniusWattpilot:
         self.Publish("/CarState", self.wattpilot.carConnected)
         self.Publish("/PhaseMode", self.currentPhaseMode)
 
-        d(self, "Model Status is: {0}".format(self.wattpilot.modelStatus))
+        #d(self, "Model Status is: {0}".format(self.wattpilot.modelStatus))
 
     def Publish(self, path, value):
         self.dbusService[path] = value

@@ -46,6 +46,7 @@ class DbusC:
             
         class AcC:
             def __init__(self, dbusConn):
+                self.Grid = DbusC.systemC.AcC.GridC(dbusConn)
                 self.Consumption = DbusC.systemC.AcC.ConsumptionC(dbusConn)
                 self.PvOnOutput = DbusC.systemC.AcC.PvOnOutputC(dbusConn)
 
@@ -81,6 +82,45 @@ class DbusC:
                     def __init__(self, dbusConn):
                         self._Current = VeDbusItemImport(dbusConn, 'com.victronenergy.system', '/Ac/Consumption/L3/Current')   
                         self._Power = VeDbusItemImport(dbusConn, 'com.victronenergy.system', '/Ac/Consumption/L3/Power')   
+
+                    @property
+                    def Current(self): return float(self._Current.get_value()) 
+
+                    @property
+                    def Power(self): return float(self._Power.get_value()) 
+
+            class GridC:
+                def __init__(self, dbusConn):
+                    self.L1 = DbusC.systemC.AcC.GridC.L1C(dbusConn)
+                    self.L2 = DbusC.systemC.AcC.GridC.L2C(dbusConn)
+                    self.L3 = DbusC.systemC.AcC.GridC.L3C(dbusConn)
+
+                class L1C:
+                    def __init__(self, dbusConn):
+                        self._Current = VeDbusItemImport(dbusConn, 'com.victronenergy.system', '/Ac/Grid/L1/Current')   
+                        self._Power = VeDbusItemImport(dbusConn, 'com.victronenergy.system', '/Ac/Grid/L1/Power')   
+
+                    @property
+                    def Current(self): return float(self._Current.get_value()) 
+
+                    @property
+                    def Power(self): return float(self._Power.get_value()) 
+
+                class L2C:
+                    def __init__(self, dbusConn):
+                        self._Current = VeDbusItemImport(dbusConn, 'com.victronenergy.system', '/Ac/Grid/L2/Current')   
+                        self._Power = VeDbusItemImport(dbusConn, 'com.victronenergy.system', '/Ac/Grid/L2/Power')   
+
+                    @property
+                    def Current(self): return float(self._Current.get_value()) 
+
+                    @property
+                    def Power(self): return float(self._Power.get_value()) 
+
+                class L3C:
+                    def __init__(self, dbusConn):
+                        self._Current = VeDbusItemImport(dbusConn, 'com.victronenergy.system', '/Ac/Grid/L3/Current')   
+                        self._Power = VeDbusItemImport(dbusConn, 'com.victronenergy.system', '/Ac/Grid/L3/Power')   
 
                     @property
                     def Current(self): return float(self._Current.get_value()) 

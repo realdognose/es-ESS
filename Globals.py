@@ -1,10 +1,12 @@
 import configparser
 import datetime
+from enum import Enum
 import json
 import os
 import sys
 import threading
 from time import sleep
+import time
 import paho.mqtt.client as mqtt # type: ignore
 from Helper import i, c, d, w, e
 # victron
@@ -25,17 +27,20 @@ DbusWrapper = DbusC()
 
 #Services
 esESS = None
-pvOverheadDistributionService = None
+pvOverhadDistributor = None
 timeToGoCalculator = None
 FroniusWattpilot = None
 chargeCurrentReducer = None
 
 #Various
 mqttClient = mqtt.Client("es-ESS-Mqtt-Client")
-knownPVOverheadConsumers = {}
-knownPVOverheadConsumersLock = threading.Lock()
+localMqttClient = mqtt.Client("es-ESS-Local-Mqtt-Client")
+knownSolarOverheadConsumers = {}
+knownSolarOverheadConsumersLock = threading.Lock()
 globalValueStore = {}
 logIncomingMqttMessages=True
+
+ServiceMessageType = Enum('ServiceMessageType', ['Operational', 'Info', 'Error', 'Warning'])
 
 #defs
 def getFromGlobalStoreValue(key, default):
@@ -54,26 +59,41 @@ def getConfig():
    return config
 
 def configureMqtt(config):
-  i(esEssTag, "MQTT client: Connecting to broker: {0}".format(config["Mqtt"]["Host"]))
-  mqttClient.on_disconnect = onGlobalMqttDisconnect
-  mqttClient.on_connect = onGlobalMqttConnect
-  mqttClient.on_message = onGlobalMqttMessage
-  
-  if 'User' in config['Mqtt'] and 'Password' in config['Mqtt'] and config['Mqtt']['User'] != '' and config['Mqtt']['Password'] != '':
+    i(esEssTag, "MQTT client: Connecting to broker: {0}".format(config["Mqtt"]["Host"]))
+    mqttClient.on_disconnect = onGlobalMqttDisconnect
+    mqttClient.on_connect = onGlobalMqttConnect
+    mqttClient.on_message = onGlobalMqttMessage
+
+    if 'User' in config['Mqtt'] and 'Password' in config['Mqtt'] and config['Mqtt']['User'] != '' and config['Mqtt']['Password'] != '':
         mqttClient.username_pw_set(username=config['Mqtt']['User'], password=config['Mqtt']['Password'])
 
-  mqttClient.will_set("es-ESS/$SYS/status", "Offline", 2, True)
+    mqttClient.will_set("es-ESS/$SYS/Status", "Offline", 2, True)
 
-  mqttClient.connect(
-      host=config["Mqtt"]["Host"],
-      port=int(config["Mqtt"]["Port"])
-  )
+    mqttClient.connect(
+        host=config["Mqtt"]["Host"],
+        port=int(config["Mqtt"]["Port"])
+    )
 
-  mqttClient.loop_start()
-  mqttClient.publish("es-ESS/$SYS/status", "Online", 2, True)
-  mqttClient.publish("es-ESS/$SYS/version", currentVersionString, 2, True)
-  mqttClient.publish("es-ESS/$SYS/connectionTime", str(datetime.datetime.now()), 2, True)
-  mqttClient.publish("es-ESS/$SYS/github", "https://github.com/realdognose/es-ESS", 2, True)
+    mqttClient.loop_start()
+    mqttClient.publish("es-ESS/$SYS/Status", "Online", 2, True)
+    mqttClient.publish("es-ESS/$SYS/Version", currentVersionString, 2, True)
+    mqttClient.publish("es-ESS/$SYS/ConnectionTime", time.time(), 2, True)
+    mqttClient.publish("es-ESS/$SYS/ConnectionDateTime", str(datetime.datetime.now()), 2, True)
+    mqttClient.publish("es-ESS/$SYS/Github", "https://github.com/realdognose/es-ESS", 2, True)
+
+    #local mqtt
+    i(esEssTag, "MQTT client: Connecting to broker: {0}".format("localhost"))
+    localMqttClient.on_disconnect = onGlobalMqttDisconnect
+    localMqttClient.on_connect = onGlobalMqttConnect
+    localMqttClient.on_message = onGlobalMqttMessage
+
+    localMqttClient.connect(
+        host="localhost",
+        port=1883
+    )
+
+    localMqttClient.loop_start()
+
 
 def onGlobalMqttDisconnect(client, userdata, rc):
     global connected
@@ -101,18 +121,34 @@ def onGlobalMqttConnect(client, userdata, flags, rc):
     else:
         e(esEssTag, "MQTT client: Failed to connect, return code %d\n", rc)
 
+def publishServiceMessage(module, messageKind, message, relatedRawValue=None):
+    if (not isinstance(module, str)):
+       module = module.__class__.__name__
+
+    if (isinstance(messageKind, ServiceMessageType)):
+        messageKind = messageKind.name
+
+    mqttClient.publish("{0}/{1}/ServiceMessages/{2}/Time".format(esEssTag, module, messageKind), time.time(), 1, False)
+    mqttClient.publish("{0}/{1}/ServiceMessages/{2}/DateTime".format(esEssTag, module, messageKind), str(datetime.datetime.now()), 1, False)
+    mqttClient.publish("{0}/{1}/ServiceMessages/{2}/Message".format(esEssTag, module, messageKind), message, 1, False)
+
+    if (relatedRawValue is not None):
+        mqttClient.publish("{0}/{1}/ServiceMessages/{2}/RawValue".format(esEssTag, module, messageKind), relatedRawValue, 1, False)
+    
+
 def onGlobalMqttMessage(client, userdata, msg):
     try:
-      d(esEssTag,'Received MQTT-Message: ' + msg.topic + ' => ' + str(msg.payload)[2:-1])
+      d(esEssTag, "Received MQTT-Message: {0} => {1}".format(msg.topic, str(msg.payload)[2:-1]))
 
       #Just forward Messages to their respective service.
-      if (msg.topic.find('esEss/PVOverheadDistributor') > -1):
-        if (pvOverheadDistributionService is not None):
-            pvOverheadDistributionService.processMqttMessage(msg)
+      if (msg.topic.find('es-ESS/SolarOverheadDistributor') > -1):
+        if (pvOverhadDistributor is not None):
+            pvOverhadDistributor.processMqttMessage(msg)
         else:
-          w(esEssTag,"PVOverheadDistributor-Module is not enabled.")
+          w(esEssTag,"SolarOverheadDistributor-Module is not enabled.")
       else:
-        #Not a dedicated service message. Store in globalValueStore, a service might have requested that value for observation. 
+        #Not a dedicated service message. Store in globalValueStore, a service might have requested that value for observation,
+        #without requiring immediatey notification on it.
         globalValueStore[msg.topic] = str(msg.payload)[2:-1]
     except Exception as e:
        c(esEssTag, "Exception catched", exc_info=e)

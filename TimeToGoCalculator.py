@@ -21,25 +21,25 @@ class TimeToGoCalculator:
       # add _update function 'timer'
       gobject.timeout_add(int(self.config['TimeToGoCalculator']['UpdateInterval']), self._update)
       i(self, "TimeToGoCalculator initialized.")
+      Globals.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "{0} initialized.".format(self.__class__.__name__))
     except Exception as e:
       c(self, "Exception catched", exc_info=e)
 
   def _update(self):
     try:
-      c
       power = Globals.DbusWrapper.system.Dc.Battery.Power
       soc = Globals.DbusWrapper.system.Dc.Battery.Soc
       socLimit = Globals.DbusWrapper.system.Control.ActiveSocLimit
       capacity = float(self.config["Default"]["BatteryCapacityInWh"])
 
-      d(self, "Power: {0}, Soc: {1}, socLimit: {2}".format(power, soc, socLimit))
+      #d(self, "Power: {0}, Soc: {1}, socLimit: {2}".format(power, soc, socLimit))
 
       remainingCapacity = (socLimit/100.0) * capacity
       missingCapacity = (1 - soc/100.0) * capacity  
       currentCapacity = (soc/100.0) * capacity
       usableCapacity = currentCapacity - remainingCapacity
       
-      d(self, "Capacity: {0}, RemCap: {1}, MisCap: {2}, CurCap: {3}, UsCap: {4}".format(capacity, remainingCapacity, missingCapacity, currentCapacity, usableCapacity))
+      #d(self, "Capacity: {0}, RemCap: {1}, MisCap: {2}, CurCap: {3}, UsCap: {4}".format(capacity, remainingCapacity, missingCapacity, currentCapacity, usableCapacity))
 
       remaining = None
       if (power < 0):
@@ -47,10 +47,11 @@ class TimeToGoCalculator:
       elif (power > 0):
         remaining = (missingCapacity / power) * 60 * 60
 
-      d(self, "=> TimeToGo (s): {0}s".format(remaining))
-
+      #d(self, "=> TimeToGo (s): {0}s".format(remaining))
+      
       #Inject calculated value through mqtt, so it will only affect display on vrm.
-      Globals.mqttClient.publish("N/" + self.config["Default"]["VRMPortalID"] + "/system/0/Dc/Battery/TimeToGo", "{\"value\": " + str(remaining) + "}", 0, False)
+      Globals.localMqttClient.publish("N/" + self.config["Default"]["VRMPortalID"] + "/system/0/Dc/Battery/TimeToGo", "{\"value\": " + str(remaining) + "}", 0, False)
+      Globals.mqttClient.publish("{0}/{1}/TimeToGo".format(Globals.esEssTag, self.__class__.__name__), remaining)
 
     except Exception as e:
       c("TimeToGoCalculator", "Exception catched", exc_info=e)
