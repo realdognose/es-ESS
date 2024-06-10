@@ -73,6 +73,8 @@ Example Relation between dbus-spy, config and mqtt:
 
 # ChargeCurrentReducer
 
+> :warning: Work-in-progress, not yet production ready! :warning:
+
 #### Overview
 When you are using DC-Coupled Solar-Chargers, DVCC can be used to limit the charge-current of the batteries. If you however
 decide to enable Feed-In from DC-Chargers, that limit has no effect. Reason is, that the MPPTs ofc. won't obey the limit anymore, 
