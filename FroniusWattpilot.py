@@ -83,6 +83,8 @@ class FroniusWattpilot:
         self.dbusService.add_path('/Ac/L3/PowerFactor', 0)
         self.dbusService.add_path('/ChargingTime', self.chargingTime)
         self.dbusService.add_path('/Ac/Power', 0)
+        self.dbusService.add_path('/Ac/PowerPercent', 0)
+        self.dbusService.add_path('/Ac/PowerMax', 0)
         self.dbusService.add_path('/Current', 0)
         self.dbusService.add_path('/AutoStart', self.autostart, writeable=False)
         self.dbusService.add_path('/SetCurrent', 0, writeable=True, onchangecallback=self._froniusHandleChangedValue)
@@ -351,6 +353,8 @@ class FroniusWattpilot:
         self.Publish("/Ac/L2/PowerFactor", self.wattpilot.powerFactor2  if (self.wattpilot.powerFactor2 is not None and self.wattpilot.power>0) else 0)
         self.Publish("/Ac/L3/PowerFactor", self.wattpilot.powerFactor3  if (self.wattpilot.powerFactor3 is not None and self.wattpilot.power>0) else 0)
         self.Publish("/Ac/Power", self.wattpilot.power * 1000 if (self.wattpilot.power is not None) else 0)
+        self.Publish("/Ac/PowerPercent", (self.wattpilot.power * 1000) / (3 * self.wattpilot.ampLimit * self.wattpilot.voltage1) if (self.wattpilot.power is not None) else 0)
+        self.Publish("/Ac/PowerMax", (3 * self.wattpilot.ampLimit * self.wattpilot.voltage1))
         self.Publish("/Current", (self.wattpilot.amps1 + self.wattpilot.amps2 + self.wattpilot.amps3) if (self.wattpilot.amp is not None and self.wattpilot.power>0) else 0)
         self.Publish("/Mode", self.mode)
 
