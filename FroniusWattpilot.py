@@ -260,21 +260,23 @@ class FroniusWattpilot:
                             #charging, adjust current
                             self.adjustChargeCurrent(targetAmps)
                         else:
-                            i(self, "Enough Allowance, but NOT charging, starting.")
-                           
-                            onOffCooldownSeconds = self.getOnOffCooldownSeconds()
-                            if (onOffCooldownSeconds <= 0):
-                                i(self, "START send!")
-                                self.wattpilot.set_phases(1)
-                                self.currentPhaseMode=1
-                                self.wattpilot.set_power(targetAmps)
-                                self.wattpilot.set_start_stop(2)
-                                self.lastOnOffTime = time.time()
-                                self.dbusService["/StartStop"] = 1
-                                self.tempStatusOverride = 21
-                            else:
-                                w(self, "Start-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
-                                self.tempStatusOverride = 21
+                            #Make sure, we are not phase-switching right now. 
+                            if (self.wattpilot.modelStatus != 22):
+                                i(self, "Enough Allowance, but NOT charging, starting.")
+                            
+                                onOffCooldownSeconds = self.getOnOffCooldownSeconds()
+                                if (onOffCooldownSeconds <= 0):
+                                    i(self, "START send!")
+                                    self.wattpilot.set_phases(1)
+                                    self.currentPhaseMode=1
+                                    self.wattpilot.set_power(targetAmps)
+                                    self.wattpilot.set_start_stop(2)
+                                    self.lastOnOffTime = time.time()
+                                    self.dbusService["/StartStop"] = 1
+                                    self.tempStatusOverride = 21
+                                else:
+                                    w(self, "Start-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
+                                    self.tempStatusOverride = 21
                     else:
                         if (self.wattpilot.power):
                             i(self, "NO Allowance, stopping charging.")
@@ -388,9 +390,9 @@ class FroniusWattpilot:
             #22 = Switching to 3-phase
             #23 = Switching to 1-phase
             if (self.currentPhaseMode == 1):
-                updateStatus = 23
-            elif (self.currentPhaseMode == 3):
                 updateStatus = 22
+            elif (self.currentPhaseMode == 3):
+                updateStatus = 23
 
         self.Publish("/Status", updateStatus)
 

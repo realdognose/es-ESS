@@ -253,10 +253,9 @@ class SolarOverheadDistributor:
 
          minBatCharge = 0    
          try:
-            if (batSoc < 100):
-               equation = self.config["SolarOverheadDistributor"]["MinBatteryCharge"]
-               equation = equation.replace("SOC", str(batSoc))
-               minBatCharge = eval(equation)
+            equation = self.config["SolarOverheadDistributor"]["MinBatteryCharge"]
+            equation = equation.replace("SOC", str(batSoc))
+            minBatCharge = eval(equation)
          except Exception as ex:
             e(self, "Error evaluation MinBatteryCharge-Equation. Using MinBatteryCharge=0.")
 
