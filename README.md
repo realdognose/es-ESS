@@ -26,19 +26,50 @@ Your system needs to match the following requirements in order to use es-ESS:
 - Have shell access enabled and know how to use it. (See: https://www.victronenergy.com/live/ccgx:root_access)
 
 # MqttExporter
-Victrons Venus OS / Cerbo Devices have a builtin Mqtt-Server. However, there are some flaws with that: You have to constantly post a Keep-Alive
-message, in order to keep values beeing published. VRM uses this in Order to receive data. On one hand, it is a unnecessary performance-penalty
-to keep thausands of values up-to-date, just because you want to use 10-12 of them for display purpose. 
+Victrons Venus OS / Cerbo Devices have a builtin Mqtt-Server. However, there are some flaws with that: You have to constantly post a Keep-Alive message, in order to keep values beeing published. VRM uses this in Order to receive data. On one hand, it is a unnecessary performance-penalty to keep thausands of values up-to-date, just because you want to use 10-12 of them for display purpose. 
 
-Second issue is - according to the forums - that while Keep-Alive is enabled, topics are continiously forwarded to the cloud, causing bandwith
-usage, which is bad on metered connections. 
+Second issue is - according to the forums: while Keep-Alive is enabled, topics are continiously forwarded to the cloud, causing bandwith usage, which is bad on metered connections or at least general bandwith pollution. 
 
-So, the MqttExporter has been created. With a quite easy notation you can define which values should be tracked on dbus, and then be forwarded
-to your desired mqtt.
+So, the MqttExporter has been created. With a quite easy notation you can define which values should be tracked on dbus, and then be forwarded to your desired mqtt server.
 
 # Configuration
 
-TODO
+MqttExporter requires a few variables to be set in `/data/es-ESS/config.ini`: 
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [Modules]    | MqttExporter | Flag, if the module should be enabled or not | Boolean | true |
+| [MqttExporter]  | Export_{whatever}_{x} |  Export definition, see details bellow | String  | com.victronenergy.grid.http_40, /Ac/Power, CerboValues/Grid/Power |
+
+To export values from DBus to your mqtt server, you need to specify 3 variables per value.
+You can create as many exports as you like, just increase the number of the keys.
+if you wanat to export from a certain service (like bms) you can use dbus-spy in ssh to figure out the service name. 
+- Each Key needs to be unique
+- Schema: {serviceName}, {DBusPath}, {MqttTarget}
+- use a * in the mqtt-path to append the original DBus-Path.
+
+**Note that dbus-Pahts start with a "/" and Mqtt Paths don't.**
+
+All Whitespaces will be trimmed, you can intend values to see any typos easily. 
+use dbus-spy on ssh to identify the service name. (right-arrow on selection to dig into available keys.)
+
+Example Relation between dbus-spy, config and mqtt: 
+
+| use `dbus-spy` to find the servicename |
+|:-------:|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter1.png" />|
+
+| use `dbus-spy` to find the desired dbus-keys (right arrow key) |
+|:-------:|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter2.png" />|
+
+| create config entries |
+|:-------:|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter3.png" />|
+
+| Values on MQTT |
+|:-------:|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter4.png" />|
 
 # ChargeCurrentReducer
 
