@@ -7,7 +7,7 @@ import inspect
 from time import sleep
 
 # victron
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
+sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
 from vedbus import VeDbusService # type: ignore
 import dbus # type: ignore
 

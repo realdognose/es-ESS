@@ -8,7 +8,7 @@ import paho.mqtt.client as mqtt # type: ignore
 from Helper import i, c, d, w, e
 import requests  # type: ignore
 # victron
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
+sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
 from vedbus import VeDbusService # type: ignore
 
 #es-ESS imports
@@ -40,7 +40,7 @@ class SolarOverheadConsumer:
      self.statusUrl = None
      self.onKeywordRegex = None
      
-     i(self, "PVOverhead Consumer created: " + consumerKey + ". Waiting for required values to arrive...")
+     i(self, "SolarOverheadConsumer created: " + consumerKey + ". Waiting for required values to arrive...")
 
   def setValue(self, key, value):
      key = key.replace('{0}/SolarOverheadDistributor/Requests/{1}/'.format(Globals.esEssTag, self.consumerKey), "")
@@ -126,7 +126,7 @@ class SolarOverheadConsumer:
                customName = self.customName
 
          if (self.isAutomatic):
-            customName += " (ƒ)"
+            customName += " ☼"
             
          
          if (self.request is not None and self.isAutomatic):

@@ -10,7 +10,7 @@ import time
 import paho.mqtt.client as mqtt # type: ignore
 from Helper import i, c, d, w, e
 # victron
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
+sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
 from vedbus import VeDbusService,VeDbusItemExport, VeDbusItemImport # type: ignore
 import dbus # type: ignore
 from dbus.mainloop.glib import DBusGMainLoop # type: ignore
@@ -27,10 +27,11 @@ DbusWrapper = DbusC()
 
 #Services
 esESS = None
-pvOverhadDistributor = None
+solarOverheadDistributor = None
 timeToGoCalculator = None
 FroniusWattpilot = None
 chargeCurrentReducer = None
+mqttExporter = None
 
 #Various
 mqttClient = mqtt.Client("es-ESS-Mqtt-Client")
@@ -45,10 +46,10 @@ ServiceMessageType = Enum('ServiceMessageType', ['Operational', 'Info', 'Error',
 #defs
 def getFromGlobalStoreValue(key, default):
   if (key in globalValueStore):
-     jsonObject = json.loads(globalValueStore[key])
-     if (jsonObject is not None):
-        return jsonObject["value"]
+     d(esEssTag, "Global Mqtt-Store contains {0}. Returning stored value {1}.".format(key, globalValueStore[key]))
+     return globalValueStore[key]
   
+  d(esEssTag, "Global Mqtt-Store doesn't contain {0}. Returning default value {1}".format(key, default))
   return default
 
 def getConfig():
@@ -142,14 +143,14 @@ def onGlobalMqttMessage(client, userdata, msg):
 
       #Just forward Messages to their respective service.
       if (msg.topic.find('es-ESS/SolarOverheadDistributor') > -1):
-        if (pvOverhadDistributor is not None):
-            pvOverhadDistributor.processMqttMessage(msg)
+        if (solarOverheadDistributor is not None):
+            solarOverheadDistributor.processMqttMessage(msg)
         else:
           w(esEssTag,"SolarOverheadDistributor-Module is not enabled.")
-      else:
-        #Not a dedicated service message. Store in globalValueStore, a service might have requested that value for observation,
-        #without requiring immediatey notification on it.
-        globalValueStore[msg.topic] = str(msg.payload)[2:-1]
+      
+    
+      #store in global store as well. 
+      globalValueStore[msg.topic] = str(msg.payload)[2:-1]
     except Exception as e:
        c(esEssTag, "Exception catched", exc_info=e)
 

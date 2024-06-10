@@ -14,7 +14,7 @@ else:
     from gi.repository import GLib as gobject # type: ignore
 
 # victron
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
+sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
 from vedbus import VeDbusService # type: ignore
 
 # esEss imports
@@ -27,6 +27,8 @@ from SolarOverheadConsumer import SolarOverheadConsumer
 class SolarOverheadDistributor:
   def __init__(self):
     self.config = Globals.getConfig()
+    self.futureUpdate = None
+    self.futureUpdateValues = None
     
     #register the root service. device specific service will be registered as they are 
     #discovered during runtime.
@@ -45,8 +47,8 @@ class SolarOverheadDistributor:
     # Create the mandatory objects
     self.dbusService.add_path('/DeviceInstance', self.vrmInstanceID)
     self.dbusService.add_path('/ProductId', 65535)
-    self.dbusService.add_path('/ProductName', "es-ESS PVOverheadService") 
-    self.dbusService.add_path('/CustomName', "es-ESS PVOverheadService") 
+    self.dbusService.add_path('/ProductName', "es-ESS SolarOverheadDistributorService") 
+    self.dbusService.add_path('/CustomName', "es-ESS SolarOverheadDistributorService") 
     self.dbusService.add_path('/Latency', None)    
     self.dbusService.add_path('/FirmwareVersion', Globals.currentVersionString)
     self.dbusService.add_path('/HardwareVersion', Globals.currentVersionString)
@@ -148,7 +150,7 @@ class SolarOverheadDistributor:
       if (consumerKeyMo is not None):
          consumerKey = consumerKeyMo.group(1)
          if (not consumerKey in Globals.knownSolarOverheadConsumers):
-            i("SolarOverheadDistributor","New PVOverhead-Consumer registered: " + consumerKey + ". Creating respective services.")
+            i("SolarOverheadDistributor","New SolarOverhead-Consumer registered: " + consumerKey + ". Creating respective services.")
             with Globals.knownSolarOverheadConsumersLock:
                Globals.knownSolarOverheadConsumers[consumerKey] = SolarOverheadConsumer(consumerKey)
 
@@ -158,6 +160,14 @@ class SolarOverheadDistributor:
        c(self, "Exception", exc_info=e)
      
   def _updateValues(self):
+    if (self.futureUpdateValues is None or self.futureUpdateValues.done()):
+      self.futureUpdateValues = Globals.esESS.threadPool.submit(self._updateValuesThreaded)
+    else:
+      w(self, "Processing Thread is still running, not submitting another one, to prevent Threadpool from filling up. ")
+   
+    return True
+
+  def _updateValuesThreaded(self):
       try:
          with Globals.knownSolarOverheadConsumersLock:
             for consumerKey in Globals.knownSolarOverheadConsumers:
@@ -184,21 +194,15 @@ class SolarOverheadDistributor:
 
       return True
         
-  
-  def _update(self):   
-    try:
-       # Each client is registering for pvOverheadShare. Topic structure: 
-       #
-       #  requests/clientKey/name             : name/key of the client.
-       #  requests/clientKey/customName       : customName of the client, for display purpose. 
-       #  requests/clientKey/request          : power requested by this client, watts. 
-       #  requests/clientKey/minimum          : minimum power that needs to be assigned for startup, i.e. starting an ev charger.
-       #  requests/clientKey/stepSize         : increment amount as more overhead becomes available.
-       #  requests/clientKey/consumption      : actual client consumption, to determine available overhead
-       #  requests/clientKey/automatic        : flag indicating wether this client is currently running in automatic mode.
-       #
+  def _update(self):
+     if (self.futureUpdate is None or self.futureUpdate.done()):
+        self.futureUpdate = Globals.esESS.threadPool.submit(self._updateThreaded)
+     else:
+         w(self, "Processing Thread is still running, not submitting another one, to prevent threadpool from filling up. ")
+     return True
 
-       #TODO: In case a client switches to manual mode, set the allowance to 0 anyway. Else there will be a ghost-allowance, when switching back to auto.
+  def _updateThreaded(self):   
+    try:
        d("SolarOverheadDistributor", "Updating Solar-Overhead distribution")
 
        with Globals.knownSolarOverheadConsumersLock:

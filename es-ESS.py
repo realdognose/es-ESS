@@ -12,6 +12,7 @@ import json
 import time
 from time import sleep
 from builtins import Exception, abs, eval, float, hasattr, int, max, min, round, str
+from concurrent.futures import ThreadPoolExecutor
 
 if sys.version_info.major == 2:
     import gobject # type: ignore
@@ -21,7 +22,7 @@ else:
 import paho.mqtt.client as mqtt # type: ignore
 
 # victronr
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
+sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
 from vedbus import VeDbusService # type: ignore
 import dbus # type: ignore
 from dbus.mainloop.glib import DBusGMainLoop # type: ignore
@@ -34,6 +35,7 @@ from SolarOverheadDistributor import SolarOverheadDistributor
 from TimeToGoCalculator import TimeToGoCalculator
 from FroniusWattpilot import FroniusWattpilot
 from ChargeCurrentReducer import ChargeCurrentReducer
+from MqttExporter import MqttExporter
 
 # Have a mainloop, so we can send/receive asynchronous calls to and from dbus
 DBusGMainLoop(set_as_default=True)
@@ -43,6 +45,9 @@ class esESS:
     self.config = configparser.ConfigParser()
     self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))   
     self.keepAliveTopic = "R/" + self.config["Default"]["VRMPortalID"] + "/keepalive"
+
+    i(self, "Initializing thread pool with a size of {0}".format(self.config["Default"]["NumberOfThreads"]))
+    self.threadPool = ThreadPoolExecutor(int(self.config["Default"]["NumberOfThreads"]))
 
     i(Globals.esEssTag, "Initializing " + Globals.esEssTag + " (" + Globals.currentVersionString + ")")
     self.enableModules()
@@ -54,7 +59,7 @@ class esESS:
       if((self.config['Modules']['SolarOverheadDistributor']).lower() == 'true'):
          i(Globals.esEssTag, 'SolarOverheadDistributor-Module is enabled.')
          Globals.mqttClient.publish("{0}/$SYS/Modules/SolarOverheadDistributor".format(Globals.esEssTag), "Enabled", 1, True)
-         Globals.pvOverhadDistributor = SolarOverheadDistributor()
+         Globals.solarOverheadDistributor = SolarOverheadDistributor()
       else:
          i(Globals.esEssTag, "SolarOverheadDistributor-Module is disabled.")
          Globals.mqttClient.publish("{0}/e$SYS/Modules/SolarOverheadDistributor".format(Globals.esEssTag), "Disabled", 1, True)
@@ -83,8 +88,18 @@ class esESS:
          i(Globals.esEssTag, 'ChargeCurrentReducer-Module is disabled.')
          Globals.mqttClient.publish("{0}/$SYS/Modules/ChargeCurrentReducer".format(Globals.esEssTag), "Disabled", 1, True)
 
+      if((self.config['Modules']['MqttExporter']).lower() == 'true'):
+        i(Globals.esEssTag, 'MqttExporter-Module is enabled.')
+        Globals.mqttClient.publish("{0}/$SYS/Modules/MqttExporter".format(Globals.esEssTag), "Enabled", 1, True)
+        Globals.mqttExporter = MqttExporter()
+      else:
+         i(Globals.esEssTag, 'MqttExporter-Module is disabled.')
+         Globals.mqttClient.publish("{0}/$SYS/Modules/MqttExporter".format(Globals.esEssTag), "Disabled", 1, True)
+
+      i(Globals.esEssTag, "Initialization completed. " + Globals.esEssTag + " (" + Globals.currentVersionString + ") is up and running.")
+
   def keepAliveLoop(self):
-      Globals.mqttClient.publish(self.keepAliveTopic, "")
+      #Nothing todo, but keep the looper active.
       return True
   
 def configureLogging(config):

@@ -1,5 +1,6 @@
 import configparser
 import os
+import time
 import paho.mqtt.client as mqtt # type: ignore
 import sys
 if sys.version_info.major == 2:
@@ -17,15 +18,22 @@ class TimeToGoCalculator:
   def __init__(self):
     try:
       self.config = Globals.getConfig()
-
-      # add _update function 'timer'
-      gobject.timeout_add(int(self.config['TimeToGoCalculator']['UpdateInterval']), self._update)
+      self.futureUpdate = None
       i(self, "TimeToGoCalculator initialized.")
       Globals.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "{0} initialized.".format(self.__class__.__name__))
+      gobject.timeout_add(int(self.config['TimeToGoCalculator']['UpdateInterval']), self._update)
     except Exception as e:
       c(self, "Exception catched", exc_info=e)
 
   def _update(self):
+    if (self.futureUpdate is None or self.futureUpdate.done()):
+      self.futureUpdate = Globals.esESS.threadPool.submit(self._updateThreaded)
+    else:
+      w(self, "Processing Thread is still running, not submitting another one, to prevent Threadpool from filling up. ")
+    
+    return True
+
+  def _updateThreaded(self):
     try:
       power = Globals.DbusWrapper.system.Dc.Battery.Power
       soc = Globals.DbusWrapper.system.Dc.Battery.Soc
