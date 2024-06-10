@@ -379,6 +379,11 @@ class FroniusWattpilot:
         elif (self.wattpilot.carConnected and self.wattpilot.power == 0 and self.mode==0):
             updateStatus = 1 # Connected/Idle
 
+        #Start/Stop Cooldown?
+        if (self.tempStatusOverride is not None):
+            updateStatus = self.tempStatusOverride
+
+        #Finally, cooldown display may be overwritten by a phase switch atempt. 
         if (self.wattpilot.modelStatus == 23):
             #22 = Switching to 3-phase
             #23 = Switching to 1-phase
@@ -386,10 +391,6 @@ class FroniusWattpilot:
                 updateStatus = 23
             elif (self.currentPhaseMode == 3):
                 updateStatus = 22
-
-        #Start/Stop Cooldown?
-        if (self.tempStatusOverride is not None):
-            updateStatus = self.tempStatusOverride
 
         self.Publish("/Status", updateStatus)
 
