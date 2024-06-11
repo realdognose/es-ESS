@@ -9,7 +9,6 @@ else:
 
 #esEss imports
 import Globals
-from Globals import getFromGlobalStoreValue
 from Helper import i, c, d, w, e
 from DBus import DbusC
 

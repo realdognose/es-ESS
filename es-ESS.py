@@ -33,7 +33,7 @@ from dbus.mainloop.glib import DBusGMainLoop # type: ignore
 #esEss imports
 import Globals
 import Helper
-from Globals import getFromGlobalStoreValue, MqttSubscriptionType
+from Globals import MqttSubscriptionType
 from Helper import i, c, d, w, e, logBlackList
 from SolarOverheadDistributor import SolarOverheadDistributor
 from TimeToGoCalculator import TimeToGoCalculator
