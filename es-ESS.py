@@ -39,7 +39,7 @@ from TimeToGoCalculator import TimeToGoCalculator
 from FroniusWattpilot import FroniusWattpilot
 from ChargeCurrentReducer import ChargeCurrentReducer
 from MqttExporter import MqttExporter
-from esESSService import DbusSubscription, esESSService, WorkerThread
+from esESSService import DbusSubscription, esESSService, WorkerThread, MqttSubscription
 
 # Have a mainloop, so we can send/receive asynchronous calls to and from dbus
 DBusGMainLoop(set_as_default=True)
@@ -54,6 +54,7 @@ class esESS:
         #init core values
         self._services: Dict[str, esESSService] = {}
         self._dbusSubscriptions: Dict[str, list[DbusSubscription]] = {}
+        self._mqttSubscriptions: Dict[str, list[MqttSubscription]] = {}
         self._dbusMonitor: DbusMonitor = None
         
         i(self, "Initializing thread pool with a size of {0}".format(self.config["Default"]["NumberOfThreads"]))
@@ -88,9 +89,9 @@ class esESS:
 
         #local mqtt
         i(self, "Connecting to broker: {0}".format("localhost"))
-        self.localMqttClient.on_disconnect = onLocalMqttDisconnect
-        self.localMqttClient.on_connect = onLocalMqttConnect
-        self.localMqttClient.on_message = onLocalMqttMessage
+        self.localMqttClient.on_disconnect = self.onLocalMqttDisconnect
+        self.localMqttClient.on_connect = self.onLocalMqttConnect
+        self.localMqttClient.on_message = self.onLocalMqttMessage
 
         self.localMqttClient.connect(
             host="localhost",
@@ -206,10 +207,10 @@ class esESS:
             for (topic, sub) in service._mqttSubscriptions.items():
                 d(self, "Creating Mqtt-Subscriptions for Service {0} on {1} with callback: {2}".format(name, sub.topic, sub.callback))
                 
-                if (sub.valueKey not in self._mqttSubscriptions):
+                if (topic not in self._mqttSubscriptions):
                     self._mqttSubscriptions[sub.topic] = []
                 
-                self._mqttSubscriptions[sub.topic].append(sub)
+                self._mqttSubscriptions[topic].append(sub)
 
         gobject.timeout_add(1000, self.loop)
         for (name, service) in self._services.items():
@@ -245,7 +246,7 @@ class esESS:
        self._dbusMonitor.set_value(sub.serviceName, sub.dbusPath, value)
     
     def _runThread(self, workerThread: WorkerThread):
-       d(self, "Attempting to run thread: {0}.{1}".format(workerThread.service.__class__.__name__, workerThread.thread.__name__))
+       d(self, "Running thread: {0}.{1}".format(workerThread.service.__class__.__name__, workerThread.thread.__name__))
        if (workerThread.future is None or workerThread.future.done()):
             self.threadPool.submit(workerThread.thread)
        else:
@@ -294,6 +295,10 @@ def main(config):
       # Have a mainloop, so we can send/receive asynchronous calls to and from dbus
       from dbus.mainloop.glib import DBusGMainLoop # type: ignore
       DBusGMainLoop(set_as_default=True)
+
+      i("Main", "-----------------------------------------------------------------------------------------")
+      i("Main", "-----------------------------------------------------------------------------------------")
+      i("Main", "-----------------------------------------------------------------------------------------")
            
       Globals.esESS = esESS()
       Globals.esESS._initializeServices()
@@ -309,6 +314,7 @@ if __name__ == "__main__":
   config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
   
   configureLogging(config)
+  
 
   try:
     main(config)

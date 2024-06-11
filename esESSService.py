@@ -32,7 +32,7 @@ class esESSService(ABC):
 
     def registerMqttSubscription(self, topic, qos=0, callback=None):
         sub = MqttSubscription(topic, qos, callback)
-        self.__mqttSubscriptions[sub.topic] = sub
+        self._mqttSubscriptions[sub.topic] = sub
         return sub
     
     @abstractmethod
@@ -75,8 +75,10 @@ class DbusSubscription:
         Globals.esESS.publishDbusValue(self, value)
 
 class MqttSubscription:
-    def __init__(self, topic, callback=None):
+    #TODO: Needs to handle two brokers.
+    def __init__(self, topic, qos, callback=None):
         self.topic = topic
+        self.qos = qos
         self.callback = callback
         self.value = None
     

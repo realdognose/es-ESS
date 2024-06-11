@@ -24,11 +24,11 @@ class TimeToGoCalculator(esESSService):
         pass
     
     def initDbusSubscriptions(self):
-        self.powerDbus      = self.registerDbusSubscription("com.victronenergy.battery", "/Dc/0/Power")
-        self.socDbus        = self.registerDbusSubscription("com.victronenergy.battery", "/Soc")
-        #self.timeToGoDbus   = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/TimeToGo")
-        self.activeBMSDbus  = self.registerDbusSubscription("com.victronenergy.system", "/ActiveBmsService", self.activeBMSChanged)
+        self.powerDbus      = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Power")
+        self.socDbus        = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Soc")
+        #self.activeBMSDbus  = self.registerDbusSubscription("com.victronenergy.system", "/ActiveBmsService", self.activeBMSChanged)
         self.socLimitDbus   = self.registerDbusSubscription("com.victronenergy.system", "/Control/ActiveSocLimit")
+        #self.timeToGoDbus   = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/TimeToGo")
 
     def initMqttSubscriptions(self):
         pass
@@ -55,7 +55,7 @@ class TimeToGoCalculator(esESSService):
         d(self, "{0} / {1} / {2}".format(power, soc, socLimit))
 
         if (soc == 0):
-          w("SoC value of 0 reported. Can't compute time2go.")
+          w(self, "SoC value of 0 reported. Can't compute time2go.")
           return
 
         remainingCapacity = (socLimit/100.0) * self.capacity

@@ -114,8 +114,7 @@ class SolarOverheadDistributor(esESSService):
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/VRMInstanceID', self.mqttMessageReceived)
 
    def initWorkerThreads(self):
-      self.registerWorkerThread(self.dumpConsumerBms, 60000)
-      self.registerWorkerThread(self.updateDistribution, 30000)
+      self.registerWorkerThread(self.updateDistribution, 20000)
       self.registerWorkerThread(self.dumpReservationBms, 2000)
    
    def initFinalize(self):
@@ -148,10 +147,10 @@ class SolarOverheadDistributor(esESSService):
             consumerKey = consumerKeyMo.group(1)
             if (not consumerKey in self._knownSolarOverheadConsumers):
                i(self, "New SolarOverhead-Consumer registered: " + consumerKey + ". Creating respective services.")
-               with self.knownSolarOverheadConsumersLock:
-                  self.knownSolarOverheadConsumers[consumerKey] = SolarOverheadConsumer(consumerKey)
+               with self._knownSolarOverheadConsumersLock:
+                  self._knownSolarOverheadConsumers[consumerKey] = SolarOverheadConsumer(consumerKey)
 
-            self.knownSolarOverheadConsumers[consumerKey].setValue(topic, msg)
+            self._knownSolarOverheadConsumers[consumerKey].setValue(topic, msg)
 
       except Exception as e:
          c(self, "Exception", exc_info=e)
@@ -159,8 +158,8 @@ class SolarOverheadDistributor(esESSService):
    def dumpConsumerBms(self):
       try:
          with self._knownSolarOverheadConsumersLock:
-            for consumerKey in self.knownSolarOverheadConsumers:
-               consumer = self.knownSolarOverheadConsumers[consumerKey]
+            for consumerKey in self._knownSolarOverheadConsumers:
+               consumer = self._knownSolarOverheadConsumers[consumerKey]
                   
                if (not consumer.isInitialized):
                   consumer.checkFinalInit(self)
@@ -183,16 +182,15 @@ class SolarOverheadDistributor(esESSService):
       else:
          self.dbusBmsService["/Soc"] = 0
 
-
    def updateDistribution(self):   
     try:
        d(self, "Updating Solar-Overhead distribution")
 
-       with self.knownSolarOverheadConsumersLock:
+       with self._knownSolarOverheadConsumersLock:
          # first, check if we have new Overhead consumers to initialize.
-         for consumerKey in self.knownSolarOverheadConsumers:
+         for consumerKey in self._knownSolarOverheadConsumers:
             d(self, "pre-checks on consumer {0}".format(consumerKey))
-            consumer = self.knownSolarOverheadConsumers[consumerKey]
+            consumer = self._knownSolarOverheadConsumers[consumerKey]
             
             if (not consumer.isInitialized):
                consumer.checkFinalInit(self)
@@ -219,8 +217,8 @@ class SolarOverheadDistributor(esESSService):
          i(self, "L1/L2/L3/Bat/Soc/Feedin is " + str(l1Power) + "/" + str(l2Power) + "/" + str(l3Power) + "/" + str(batPower) + "/" + str(batSoc) + "/" + str(feedIn))
 
          overheadDistribution = {}
-         for consumerKey in self.knownSolarOverheadConsumers:
-            consumer = self.knownSolarOverheadConsumers[consumerKey]
+         for consumerKey in self._knownSolarOverheadConsumers:
+            consumer = self._knownSolarOverheadConsumers[consumerKey]
 
             if (consumer.isInitialized and consumer.isAutomatic):
                overheadDistribution[consumerKey] = 0 #initialize with 0
@@ -260,8 +258,8 @@ class SolarOverheadDistributor(esESSService):
          if (self.config["SolarOverheadDistributor"]["Strategy"] == "TryFullfill"):
             overheadDistribution = self.doTryFullfill(overhead, overheadDistribution, minBatCharge) 
 
-         for consumerKey in self.knownSolarOverheadConsumers:
-            consumer = self.knownSolarOverheadConsumers[consumerKey]
+         for consumerKey in self._knownSolarOverheadConsumers:
+            consumer = self._knownSolarOverheadConsumers[consumerKey]
             
             if (consumer.isInitialized and consumer.isAutomatic):
                consumer.allowance = overheadDistribution[consumerKey]
@@ -284,11 +282,11 @@ class SolarOverheadDistributor(esESSService):
    def doTryFullfill(self, overhead, overheadDistribution, minBatCharge):
       overheadAssigned = 0
      
-      for consumerDupe in sorted(Globals.knownSolarOverheadConsumers.values(), key=operator.attrgetter('priority')): 
+      for consumerDupe in sorted(self._knownSolarOverheadConsumers.values(), key=operator.attrgetter('priority')): 
          while (True):
             consumerKey = consumerDupe.consumerKey
             overheadBefore = overhead
-            consumer = self.knownSolarOverheadConsumers[consumerKey]
+            consumer = self._knownSolarOverheadConsumers[consumerKey]
 
             #check, if this consumer is currently allowed to consume. 
             canConsume = 0
@@ -348,9 +346,9 @@ class SolarOverheadDistributor(esESSService):
      while (True):
       overheadBefore = overhead
 
-      for consumerDupe in sorted(self.knownSolarOverheadConsumers.values(), key=operator.attrgetter('priority')):   
+      for consumerDupe in sorted(self._knownSolarOverheadConsumers.values(), key=operator.attrgetter('priority')):   
          consumerKey = consumerDupe.consumerKey        
-         consumer = self.knownSolarOverheadConsumers[consumerKey]
+         consumer = self._knownSolarOverheadConsumers[consumerKey]
 
          #check, if this consumer is currently allowed to consume. 
          canConsume = 0
@@ -412,7 +410,7 @@ class SolarOverheadDistributor(esESSService):
    def Publish(self, path, value):
       try:
          self.dbusService[path] = value
-         Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor{0}".format(path), value, 1)
+         self.publishMainMqtt("es-ESS/SolarOverheadDistributor{0}".format(path), value, 1)
       except Exception as e:
        c(self, "Exception", exc_info=e)
 
@@ -544,12 +542,12 @@ class SolarOverheadConsumer:
          e(self, "Exception", exc_info=ex)
 
   def reportAllowance(self):
-     Globals.mqttClient.publish("{0}/SolarOverheadDistributor/Requests/{1}/Allowance".format(Globals.esEssTag, self.consumerKey), self.allowance, 1)
+     self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Allowance".format(Globals.esEssTag, self.consumerKey), self.allowance, 1)
      d(self, "Consumer {0} reporting allowance of {1}W".format(self.consumerKey, self.allowance))
 
      if (self.isNPC):
         self.npcControl()
-        Globals.mqttClient.publish("{0}/SolarOverheadDistributor/Requests/{1}/Consumption".format(Globals.esEssTag, self.consumerKey), self.consumption, 1)
+        self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Consumption".format(Globals.esEssTag, self.consumerKey), self.consumption, 1)
 
   def npcControl(self):
       try:
