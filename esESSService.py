@@ -9,7 +9,8 @@ from abc import ABC, abstractmethod
 class esESSService(ABC):
     def __init__(self):
         self.config = Globals.getConfig()
-        self._dbusPaths: Dict[str, DbusSubscription] = {}
+        self._dbusSubscriptions: Dict[str, DbusSubscription] = {}
+        self._mqttSubscriptions: Dict[str, MqttSubscription] = {}
         self._workerThreads: list[WorkerThread ]= []
 
     @abstractmethod
@@ -22,13 +23,18 @@ class esESSService(ABC):
 
     def registerDbusSubscription(self, serviceName, dbusPath, callback=None):
         sub = DbusSubscription(".".join(serviceName.split('.')[:3]), dbusPath, callback)
-        self._dbusPaths[sub.valueKey] = sub
+        self._dbusSubscriptions[sub.valueKey] = sub
         return sub
 
     @abstractmethod
     def initMqttSubscriptions(self):
         pass
 
+    def registerMqttSubscription(self, topic, qos=0, callback=None):
+        sub = MqttSubscription(topic, qos, callback)
+        self.__mqttSubscriptions[sub.topic] = sub
+        return sub
+    
     @abstractmethod
     def initWorkerThreads(self):
         pass
@@ -39,6 +45,9 @@ class esESSService(ABC):
     @abstractmethod
     def initFinalize(self):
         pass
+
+    def publishMainMqtt(self, topic, payload, qos=0, retain=False):
+        Globals.esESS.publishMainMqtt(topic, payload, qos, retain)
 
 class WorkerThread:
     def __init__(self, service, thread, interval):
@@ -64,6 +73,12 @@ class DbusSubscription:
     
     def publish(self, value):
         Globals.esESS.publishDbusValue(self, value)
+
+class MqttSubscription:
+    def __init__(self, topic, callback=None):
+        self.topic = topic
+        self.callback = callback
+        self.value = None
     
 
     

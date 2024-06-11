@@ -54,6 +54,10 @@ class TimeToGoCalculator(esESSService):
         
         d(self, "{0} / {1} / {2}".format(power, soc, socLimit))
 
+        if (soc == 0):
+          w("SoC value of 0 reported. Can't compute time2go.")
+          return
+
         remainingCapacity = (socLimit/100.0) * self.capacity
         missingCapacity = (1 - soc/100.0) * self.capacity  
         currentCapacity = (soc/100.0) * self.capacity

@@ -2,6 +2,7 @@
  
 # imports
 import configparser # for config/ini file
+import datetime
 from logging.handlers import TimedRotatingFileHandler
 import sys
 import os
@@ -47,6 +48,8 @@ class esESS:
     def __init__(self):
         self.config = configparser.ConfigParser()
         self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))   
+        
+        i(self, "Initializing " + Globals.esEssTag + " (" + Globals.currentVersionString + ")")
 
         #init core values
         self._services: Dict[str, esESSService] = {}
@@ -55,14 +58,103 @@ class esESS:
         
         i(self, "Initializing thread pool with a size of {0}".format(self.config["Default"]["NumberOfThreads"]))
         self.threadPool = ThreadPoolExecutor(int(self.config["Default"]["NumberOfThreads"]))
+        self.configureMqtt()
 
-        i(Globals.esEssTag, "Initializing " + Globals.esEssTag + " (" + Globals.currentVersionString + ")")
+    def configureMqtt(self):
+        self.mainMqttClient = mqtt.Client("es-ESS-MQTT-Client")
+        self.localMqttClient = mqtt.Client("es-ESS-Local-MQTT-Client")
+
+        i(Globals.esEssTag, "MQTT: Connecting to broker: {0}".format(config["Mqtt"]["Host"]))
+        self.mainMqttClient.on_disconnect = self.onMainMqttDisconnect
+        self.mainMqttClient.on_connect = self.onMainMqttConnect
+        self.mainMqttClient.on_message = self.onMainMqttMessage
+
+        if 'User' in config['Mqtt'] and 'Password' in config['Mqtt'] and config['Mqtt']['User'] != '' and config['Mqtt']['Password'] != '':
+            self.mainMqttClient.username_pw_set(username=config['Mqtt']['User'], password=config['Mqtt']['Password'])
+
+        self.mainMqttClient.will_set("es-ESS/$SYS/Status", "Offline", 2, True)
+
+        self.mainMqttClient.connect(
+            host=config["Mqtt"]["Host"],
+            port=int(config["Mqtt"]["Port"])
+        )
+
+        self.mainMqttClient.loop_start()
+        self.mainMqttClient.publish("es-ESS/$SYS/Status", "Online", 2, True)
+        self.mainMqttClient.publish("es-ESS/$SYS/Version", Globals.currentVersionString, 2, True)
+        self.mainMqttClient.publish("es-ESS/$SYS/ConnectionTime", time.time(), 2, True)
+        self.mainMqttClient.publish("es-ESS/$SYS/ConnectionDateTime", str(datetime.datetime.now()), 2, True)
+        self.mainMqttClient.publish("es-ESS/$SYS/Github", "https://github.com/realdognose/es-ESS", 2, True)
+
+        #local mqtt
+        i(self, "Connecting to broker: {0}".format("localhost"))
+        self.localMqttClient.on_disconnect = onLocalMqttDisconnect
+        self.localMqttClient.on_connect = onLocalMqttConnect
+        self.localMqttClient.on_message = onLocalMqttMessage
+
+        self.localMqttClient.connect(
+            host="localhost",
+            port=1883
+        )
+
+        self.localMqttClient.loop_start()
+
+    def onMainMqttConnect(self, client, userdata, flags, rc):
+        if rc == 0:
+            i(self, "Connected to MQTT broker!")
+        else:
+            e(self, "Failed to connect, return code %d\n", rc)
+    
+    def onLocalMqttConnect(self, client, userdata, flags, rc):
+        if rc == 0:
+            i(self, "Connected to MQTT broker!")
+        else:
+            e(self, "Failed to connect, return code %d\n", rc)
+
+    def onMainMqttDisconnect(self, client, userdata, rc):
+        c(self, "Mqtt Disconnect. Reconnect not yet implemented ;)")
+
+    def onLocalMqttDisconnect(self, client, userdata, rc):
+        c(self, "Mqtt Disconnect. Reconnect not yet implemented ;)")
+    
+    def onMainMqttMessage(self, client, userdata, msg):
+        try:
+          value =  str(msg.payload)[2:-1]
+          d(self, "Received MQTT-Message: {0} => {1}".format(msg.topic, value))
+
+          for sub in self._mqttSubscriptions[msg.topic]:
+            sub.value = value # only makes sence for non-wildcard topics, but convinient to access last value. 
+
+            if (sub.callback is not None):
+                 sub.callback(sub, msg.topic, value)
+
+        except Exception as e:
+          c(self, "Exception catched", exc_info=e)
+   
+    def onLocalMqttMessage(self, client, userdata, msg):
+        try:
+          d(self, "Received MQTT-Message: {0} => {1}".format(msg.topic, str(msg.payload)[2:-1]))
+
+          #TODO: Check for service subscriptions.
+          #TODO: Update Subscription object. 
+        except Exception as e:
+          c(self, "Exception catched", exc_info=e)
+
+    def _checkAndEnable(self, clazz):
+       if (self.config["Services"][clazz].lower()=="true"):
+          i(self, "Service {0} is enabled.".format(clazz))
+          imp = __import__(clazz)
+          class_ = getattr(imp, clazz)
+          self._services[clazz] = class_()
+       else:
+          i(self, "Service {0} is not enabled. Skipping initialization.".format(clazz))   
 
     def _initializeServices(self):
       try:
-        #Create Classes
-        self._services["TimeToGoCalculator"] = TimeToGoCalculator()
-
+        #Create Classes, if enabled.
+        self._checkAndEnable("SolarOverheadDistributor")
+        self._checkAndEnable("TimeToGoCalculator")
+        
         #Init DbusServices of each Service.
         for (name, service) in self._services.items():
             i(self, "Initializing Dbus-Service for Service {0}".format(name))
@@ -76,7 +168,7 @@ class esESS:
             service.initDbusSubscriptions()
 
             #nothing to to here, callback will handle subscriptions.
-            for (key, sub) in service._dbusPaths.items():
+            for (key, sub) in service._dbusSubscriptions.items():
                 d(self, "Creating Dbus-Subscriptions for Service {0} on {1}{2} with callback: {3}".format(name, sub.serviceName, sub.dbusPath, sub.callback))
                 
                 if (sub.valueKey not in self._dbusSubscriptions):
@@ -96,7 +188,7 @@ class esESS:
         #manualy fetch variables one time, then on change is sufficent. 
         d(self, "Initializing dbus values for first-use.")
         for (name, service) in self._services.items():
-           for (key, sub) in service._dbusPaths.items():
+           for (key, sub) in service._dbusSubscriptions.items():
               v = self._dbusMonitor.get_value(sub.commonServiceName, sub.dbusPath, 0)
               sub.value = v
               d(self, "{0}{1}: Value is: {2}".format(sub.commonServiceName, sub.dbusPath, v))
@@ -106,9 +198,18 @@ class esESS:
                   sub.callback(sub)
         
         d(self, "Dbusmonitor initalized.")
-        
 
-        #TODO: MQTT
+        for (name, service) in self._services.items():
+            i(self, "Initializing Mqtt-Subscriptions for Service {0}".format(name))
+            service.initMqttSubscriptions()
+
+            for (topic, sub) in service._mqttSubscriptions.items():
+                d(self, "Creating Mqtt-Subscriptions for Service {0} on {1} with callback: {2}".format(name, sub.topic, sub.callback))
+                
+                if (sub.valueKey not in self._mqttSubscriptions):
+                    self._mqttSubscriptions[sub.topic] = []
+                
+                self._mqttSubscriptions[sub.topic].append(sub)
 
         gobject.timeout_add(1000, self.loop)
         for (name, service) in self._services.items():
@@ -116,64 +217,11 @@ class esESS:
            for (t) in service._workerThreads:
               i(self, "Scheduling Workerthread {0}.{1}".format(t.service.__class__.__name__, t.thread.__name__))
               gobject.timeout_add(t.interval, self._runThread, t)
-        
       
+        i(Globals.esEssTag, "Initialization completed. " + Globals.esEssTag + " (" + Globals.currentVersionString + ") is up and running.")
+
       except Exception as ex:
         c(self, "Exception", exc_info=ex)
-      
-                      
-            
-
-    
-      
-      
-      
-      #legacy modules bellow. 
-      
-      
-      #check, which Modules are enabled and create the respective services. 
-      #Some services will be created dynamically during runtime as features/devices join. 
-      if((self.config['Modules']['SolarOverheadDistributor']).lower() == 'true'):
-        i(Globals.esEssTag, 'SolarOverheadDistributor-Module is enabled.')
-        Globals.mqttClient.publish("{0}/$SYS/Modules/SolarOverheadDistributor".format(Globals.esEssTag), "Enabled", 1, True)
-        Globals.solarOverheadDistributor = SolarOverheadDistributor()
-      else:
-        i(Globals.esEssTag, "SolarOverheadDistributor-Module is disabled.")
-        Globals.mqttClient.publish("{0}/e$SYS/Modules/SolarOverheadDistributor".format(Globals.esEssTag), "Disabled", 1, True)
-
-      if((self.config['Modules']['TimeToGoCalculator']).lower() == 'true'):
-        i(Globals.esEssTag, 'TimeToGoCalculator-Module is enabled.')
-        Globals.mqttClient.publish("{0}/$SYS/Modules/TimeToGoCalculator".format(Globals.esEssTag), "Enabled", 1, True)
-        Globals.timeToGoCalculator = TimeToGoCalculator()
-      else:
-        i(Globals.esEssTag, 'TimeToGoCalculator-Module is disabled.')
-        Globals.mqttClient.publish("{0}/$SYS/Modules/TimeToGoCalculator".format(Globals.esEssTag), "Disabled", 1, True)
-
-      if((self.config['Modules']['FroniusWattpilot']).lower() == 'true'):
-        i(Globals.esEssTag, 'FroniusWattpilot-Module is enabled.')
-        Globals.mqttClient.publish("{0}/$SYS/Modules/FroniusWattpilot".format(Globals.esEssTag), "Enabled", 1, True)
-        Globals.FroniusWattpilot = FroniusWattpilot()
-      else:
-        i(Globals.esEssTag, 'FroniusWattpilot-Module is disabled.')
-        Globals.mqttClient.publish("{0}/$SYS/Modules/FroniusWattpilot".format(Globals.esEssTag), "Disabled", 1, True)
-
-      if((self.config['Modules']['ChargeCurrentReducer']).lower() == 'true'):
-        i(Globals.esEssTag, 'ChargeCurrentReducer-Module is enabled.')
-        Globals.mqttClient.publish("{0}/$SYS/Modules/ChargeCurrentReducer".format(Globals.esEssTag), "Enabled", 1, True)
-        Globals.chargeCurrentReducer = ChargeCurrentReducer()
-      else:
-        i(Globals.esEssTag, 'ChargeCurrentReducer-Module is disabled.')
-        Globals.mqttClient.publish("{0}/$SYS/Modules/ChargeCurrentReducer".format(Globals.esEssTag), "Disabled", 1, True)
-
-      if((self.config['Modules']['MqttExporter']).lower() == 'true'):
-        i(Globals.esEssTag, 'MqttExporter-Module is enabled.')
-        Globals.mqttClient.publish("{0}/$SYS/Modules/MqttExporter".format(Globals.esEssTag), "Enabled", 1, True)
-        Globals.mqttExporter = MqttExporter()
-      else:
-        i(Globals.esEssTag, 'MqttExporter-Module is disabled.')
-        Globals.mqttClient.publish("{0}/$SYS/Modules/MqttExporter".format(Globals.esEssTag), "Disabled", 1, True)
-
-      i(Globals.esEssTag, "Initialization completed. " + Globals.esEssTag + " (" + Globals.currentVersionString + ") is up and running.")
     
     def _dbusValueChanged(self, dbusServiceName, dbusPath, dict, changes, deviceInstance):
         try:
@@ -185,6 +233,9 @@ class esESS:
             d(self, "reporting service: {0}, matchService: {1}".format(dbusServiceName, sub.serviceName))
             if (sub.serviceName == dbusServiceName):
               sub.value = changes["Value"]
+
+              if (sub.callback is not None):
+                 sub.callback(sub)
 
         except Exception as ex:
           c(self, "Exception", exc_info=ex)
@@ -205,6 +256,14 @@ class esESS:
     def loop(self):
        d(self, "Alive...")
        return True
+    
+    def publishMainMqtt(self, topic, payload, qos=0, retain=False):
+       #TODO: Add throttling here. 
+       self.mainMqttClient.publish(topic, payload, qos, retain)
+    
+    def publishLocalMqtt(self, topic, payload, qos=0, retain=False):
+       #TODO: Add throttling here. 
+       self.localMqttClient.publish(topic, payload, qos, retain)
     
 
 def configureLogging(config):
@@ -236,8 +295,6 @@ def main(config):
       from dbus.mainloop.glib import DBusGMainLoop # type: ignore
       DBusGMainLoop(set_as_default=True)
            
-      # MQTT setup
-      Globals.configureMqtt(config)
       Globals.esESS = esESS()
       Globals.esESS._initializeServices()
       
