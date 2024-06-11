@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import Dict
 import dbus # type: ignore
 import dbus.service # type: ignore
 import inspect
@@ -16,12 +17,12 @@ import Globals
 from Helper import i, c, d, w, e
 sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
 from dbusmonitor import DbusMonitor # type: ignore
+from esESSService import esESSService
 
-class MqttExporter:
+class MqttExporter(esESSService):
     def __init__(self):
-        self.config = Globals.getConfig()
-        self.futureUpdateMqtt = None
-        self.topicExports = {}
+        esESSService.__init__(self)
+        self.topicExports: Dict[str, TopicExport] = {}
         
         #Load all topics we should export from DBus to Mqtt and start listening for changes.
         #upon change, export according to the setup rules. 
@@ -30,40 +31,34 @@ class MqttExporter:
             for (k, v) in self.config.items("MqttExporter"):
                 if (k.startswith("Export_")):
                     parts = v.split(',')
-                    key = parts[0].strip() + "_" + parts[1].strip()
+                    key = parts[0].strip() + parts[1].strip()
                     self.topicExports[key] = TopicExport(parts[0].strip(), parts[1].strip(), parts[2].strip())
 
             i(self, "Found {0} export requests.".format(len(self.topicExports)))
-
-            gobject.timeout_add(10000, self._finishInit)
             
         except Exception as ex:
             c(self, "Exception", exc_info=ex)
 
-    def _finishInit(self):
-        Globals.esESS.threadPool.submit(self.__initThreaded)
-        i(self, "MqttExporter initialized.")
-        return False
+    def initDbusService(self):
+        pass
 
-    def __initThreaded(self):
-        #Fire up dbusmonitor 
-        dummy = {'code': None, 'whenToLog': 'configChange', 'accessLevel': None}
-        monitorList = {}
+    def initDbusSubscriptions(self):
         for (key, topicExport) in self.topicExports.items():
-            if (topicExport.commonService not in monitorList):
-                monitorList[topicExport.commonService] = {}
-            
-            d(self, "Starting to Monitor {0}{1} for export to {2}".format(topicExport.service, topicExport.source, topicExport.target))
-            monitorList[topicExport.commonService][topicExport.source] = dummy
+            self.registerDbusSubscription(topicExport.service, topicExport.source, self._dbusValueChanged)
         
-        self.monitor = DbusMonitor(monitorList, self.__dbusValueChanged)
+    def initWorkerThreads(self):
+        pass
 
-    def __dbusValueChanged(self, dbusServiceName, dbusPath, dict, changes, deviceInstance):
-        key = dbusServiceName + "_" + dbusPath
-        #d(self, "Change on dbus for {0} (new value: {1})".format(key, str(changes['Value'])))
-        #d(self, "Desired export target: {0}".format(self.topicExports[key].target))
-        if (key in self.topicExports):
-            Globals.mqttClient.publish(self.topicExports[key].target, str(changes['Value']), 0, True)
+    def initMqttSubscriptions(self):
+        pass
+
+    def initFinalize(self):
+        pass
+
+    def _dbusValueChanged(self, sub):
+        key = "{0}{1}".format(sub.serviceName, sub.dbusPath)
+        #d(self, "Change on dbus for {0} (new value: {1})".format(key, str(sub.value)))
+        self.publishMainMqtt(self.topicExports[key].target, sub.value, 0, True)
 
 class TopicExport:
     def __init__(self, service, source, target):

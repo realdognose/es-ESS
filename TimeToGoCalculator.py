@@ -10,7 +10,6 @@ else:
 
 #esEss imports
 import Globals
-from Globals import getFromGlobalStoreValue
 from Helper import i, c, d, w, e
 from DBus import DbusC
 from esESSService import esESSService
@@ -26,8 +25,8 @@ class TimeToGoCalculator(esESSService):
     def initDbusSubscriptions(self):
         self.powerDbus      = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Power")
         self.socDbus        = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Soc")
-        #self.activeBMSDbus  = self.registerDbusSubscription("com.victronenergy.system", "/ActiveBmsService", self.activeBMSChanged)
         self.socLimitDbus   = self.registerDbusSubscription("com.victronenergy.system", "/Control/ActiveSocLimit")
+        #self.activeBMSDbus  = self.registerDbusSubscription("com.victronenergy.system", "/ActiveBmsService", self.activeBMSChanged)
         #self.timeToGoDbus   = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/TimeToGo")
 
     def initMqttSubscriptions(self):
@@ -52,7 +51,7 @@ class TimeToGoCalculator(esESSService):
         soc       = self.socDbus.value
         socLimit  = self.socLimitDbus.value
         
-        d(self, "{0} / {1} / {2}".format(power, soc, socLimit))
+        #d(self, "{0} / {1} / {2}".format(power, soc, socLimit))
 
         if (soc == 0):
           w(self, "SoC value of 0 reported. Can't compute time2go.")
@@ -78,8 +77,8 @@ class TimeToGoCalculator(esESSService):
           #TODO: Figure out why dbus publishing is not working :( )
           #self.timeToGoDbus.publish(int(remaining))
 
-          Globals.localMqttClient.publish("N/{0}/system/0/Dc/Battery/TimeToGo".format(self.config["Default"]["VRMPortalID"]), "{\"value\": " + str(int(remaining)) + "}")
-          Globals.mqttClient.publish("{0}/{1}/TimeToGo".format(Globals.esEssTag, self.__class__.__name__), int(remaining))
+          self.publishLocalMqtt("N/{0}/system/0/Dc/Battery/TimeToGo".format(self.config["Default"]["VRMPortalID"]), "{\"value\": " + str(int(remaining)) + "}")
+          self.publishMainMqtt("{0}/{1}/TimeToGo".format(Globals.esEssTag, self.__class__.__name__), int(remaining))
 
       except Exception as e:
         c("TimeToGoCalculator", "Exception catched", exc_info=e)

@@ -43,6 +43,9 @@ class SolarOverheadDistributor(esESSService):
       self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
       self.dbusBmsService = VeDbusService(self.bmsServiceName, bus=dbusConnection())
 
+      d(self, "Registering as {0} on dbus.".format(self.serviceName))
+      d(self, "Registering as {0} on dbus.".format(self.bmsServiceName))
+
       #create management paths
       self.dbusService.add_path('/Mgmt/ProcessName', __file__)
       self.dbusService.add_path('/Mgmt/ProcessVersion', Globals.currentVersionString + ' on Python ' + platform.python_version())
@@ -65,7 +68,7 @@ class SolarOverheadDistributor(esESSService):
       self.dbusService.add_path('/LastUpdateDateTime', 0)
       self.dbusBmsService.add_path('/DeviceInstance', self.vrmInstanceIDBMS)
       self.dbusBmsService.add_path('/ProductId', 65535)
-      self.dbusBmsService.add_path('/ProductName', "es-ESS SolarOverheadConsumer") 
+      self.dbusBmsService.add_path('/ProductName', "es-ESS SolarOverheadDistributorBMS") 
       self.dbusBmsService.add_path('/CustomName', "Battery Charge Reservation") 
       self.dbusBmsService.add_path('/Latency', None)    
       self.dbusBmsService.add_path('/FirmwareVersion', Globals.currentVersionString)
@@ -91,30 +94,30 @@ class SolarOverheadDistributor(esESSService):
       self.dbusService.add_path('/Calculations/OverheadRemaining', 0)
     
    def initDbusSubscriptions(self):
-      self.gridL1Dbus      = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Grid/L1/Power")
-      self.gridL2Dbus      = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Grid/L2/Power")
-      self.gridL3Dbus      = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Grid/L3/Power")
+      self.gridL1Dbus      = self.registerDbusSubscription("com.victronenergy.grid", "/Ac/L1/Power")
+      self.gridL2Dbus      = self.registerDbusSubscription("com.victronenergy.grid", "/Ac/L2/Power")
+      self.gridL3Dbus      = self.registerDbusSubscription("com.victronenergy.grid", "/Ac/L3/Power")
       self.batteryPower    = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Power")
       self.batterySoc      = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Soc")
      
    def initMqttSubscriptions(self):
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsAutomatic', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Consumption', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/CustomName', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IgnoreBatReservation', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnKeywordRegex', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Minimum', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnUrl', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OffUrl', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Priority', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsNPC', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StatusUrl', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StepSize', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Request', self.mqttMessageReceived)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/VRMInstanceID', self.mqttMessageReceived)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsAutomatic', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Consumption', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/CustomName', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IgnoreBatReservation', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnKeywordRegex', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Minimum', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OffUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Priority', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsNPC', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StatusUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StepSize', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Request', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/VRMInstanceID', callback=self.onMqttMessage)
 
    def initWorkerThreads(self):
-      self.registerWorkerThread(self.updateDistribution, 20000)
+      self.registerWorkerThread(self.updateDistribution, int(self.config["SolarOverheadDistributor"]["UpdateInterval"]))
       self.registerWorkerThread(self.dumpReservationBms, 2000)
    
    def initFinalize(self):
@@ -139,10 +142,10 @@ class SolarOverheadDistributor(esESSService):
 
             except Exception as ex:
                c(self, "Error parsing NPC-Consumer: " + s + ". Please validate outline requirements.")
-
-   def mqttMessageReceived(self, sub, topic, msg):
+  
+   def onMqttMessage(self, client, userdata, msg):
       try:
-         consumerKeyMo = re.search('es\-ESS/SolarOverheadDistributor/Requests/([^/]+)/', topic)
+         consumerKeyMo = re.search('es\-ESS/SolarOverheadDistributor/Requests/([^/]+)/', msg.topic)
          if (consumerKeyMo is not None):
             consumerKey = consumerKeyMo.group(1)
             if (not consumerKey in self._knownSolarOverheadConsumers):
@@ -150,7 +153,7 @@ class SolarOverheadDistributor(esESSService):
                with self._knownSolarOverheadConsumersLock:
                   self._knownSolarOverheadConsumers[consumerKey] = SolarOverheadConsumer(consumerKey)
 
-            self._knownSolarOverheadConsumers[consumerKey].setValue(topic, msg)
+            self._knownSolarOverheadConsumers[consumerKey].setValue(msg.topic, str(msg.payload)[2:-1])
 
       except Exception as e:
          c(self, "Exception", exc_info=e)
@@ -263,7 +266,7 @@ class SolarOverheadDistributor(esESSService):
             
             if (consumer.isInitialized and consumer.isAutomatic):
                consumer.allowance = overheadDistribution[consumerKey]
-               consumer.reportAllowance()
+               consumer.reportAllowance(self)
          
          i(self, "New Overhead assigned: " + str(overheadAssigned) + "W")
          self.Publish("/Calculations/OverheadAssigned", overheadAssigned)
@@ -541,13 +544,13 @@ class SolarOverheadConsumer:
      except Exception as ex:
          e(self, "Exception", exc_info=ex)
 
-  def reportAllowance(self):
-     self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Allowance".format(Globals.esEssTag, self.consumerKey), self.allowance, 1)
+  def reportAllowance(self, sod):
+     sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Allowance".format(Globals.esEssTag, self.consumerKey), self.allowance, 1)
      d(self, "Consumer {0} reporting allowance of {1}W".format(self.consumerKey, self.allowance))
 
      if (self.isNPC):
         self.npcControl()
-        self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Consumption".format(Globals.esEssTag, self.consumerKey), self.consumption, 1)
+        sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Consumption".format(Globals.esEssTag, self.consumerKey), self.consumption, 1)
 
   def npcControl(self):
       try:

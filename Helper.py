@@ -73,6 +73,10 @@ _format_voltage = lambda p, v: (str(round(v, 1)) + ' V')
 _format_plain = lambda p, v: (str(v))
 _format_temp = lambda p, v: (str(round(v, 1)) + ' °C')   
 
+def formatCallback(callback):
+    return "[{0}]".format(callback.__qualname__ ) if callback is not None else None
+
+
 #Frequently usefull stuff
 def waitTimeout(lambdaE, timeout):
     t = 0

@@ -34,30 +34,16 @@ chargeCurrentReducer = None
 mqttExporter = None
 
 #Various
-
-globalValueStore = {}
 logIncomingMqttMessages=True
 
-ServiceMessageType = Enum('ServiceMessageType', ['Operational', 'Info', 'Error', 'Warning'])
+ServiceMessageType = Enum('ServiceMessageType', ['Operational'])
+MqttSubscriptionType = Enum('MqttSubscriptionType', ['Main', 'Local'])
 
 #defs
-def getFromGlobalStoreValue(key, default):
-  if (key in globalValueStore):
-     d(esEssTag, "Global Mqtt-Store contains {0}. Returning stored value {1}.".format(key, globalValueStore[key]))
-     return globalValueStore[key]
-  
-  d(esEssTag, "Global Mqtt-Store doesn't contain {0}. Returning default value {1}".format(key, default))
-  return default
-
 def getConfig():
    config = configparser.ConfigParser()
    config.optionxform = str
    config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
 
    return config
-
-
-
-def publishServiceMessage(module, messageKind, message, relatedRawValue=None):
-    pass
    
