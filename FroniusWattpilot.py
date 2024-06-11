@@ -297,16 +297,6 @@ class FroniusWattpilot (esESSService):
 
          if (msg.topic == self.allowanceTopic):
              self.allowance = float(message)
-             
-         consumerKeyMo = re.search('es\-ESS/SolarOverheadDistributor/Requests/([^/]+)/', msg.topic)
-         if (consumerKeyMo is not None):
-            consumerKey = consumerKeyMo.group(1)
-            if (not consumerKey in self._knownSolarOverheadConsumers):
-               i(self, "New SolarOverhead-Consumer registered: " + consumerKey + ". Creating respective services.")
-               with self._knownSolarOverheadConsumersLock:
-                  self._knownSolarOverheadConsumers[consumerKey] = SolarOverheadConsumer(consumerKey)
-
-            self._knownSolarOverheadConsumers[consumerKey].setValue(msg.topic,)
 
       except Exception as e:
          c(self, "Exception", exc_info=e)
