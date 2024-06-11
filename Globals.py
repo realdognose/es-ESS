@@ -15,15 +15,9 @@ from vedbus import VeDbusService,VeDbusItemExport, VeDbusItemImport # type: igno
 import dbus # type: ignore
 from dbus.mainloop.glib import DBusGMainLoop # type: ignore
 
-from DBus import DbusC
-
 #superglobals
 currentVersionString="es-ESS 24.6.4.25 b"
 esEssTag = "es-ESS"
-DbusWrapper = DbusC()
-
-#VEBus Value exports
-#VeDb_W_system_0_Dc_Battery_TimeToGo = VeDbusItemExport(dbusConn, 'com.victronenergy.system', "/system/0/Dc/Battery/TimeToGo")
 
 #Services
 esESS = None
