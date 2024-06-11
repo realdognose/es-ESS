@@ -1,12 +1,7 @@
 import configparser
 import os
 import time
-import paho.mqtt.client as mqtt # type: ignore
 import sys
-if sys.version_info.major == 2:
-    import gobject # type: ignore
-else:
-    from gi.repository import GLib as gobject # type: ignore
 
 #esEss imports
 import Globals

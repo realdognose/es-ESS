@@ -27,7 +27,6 @@ import paho.mqtt.client as mqtt # type: ignore
 sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
 from vedbus import VeDbusService # type: ignore
 from dbusmonitor import DbusMonitor # type: ignore
-import dbus # type: ignore
 from dbus.mainloop.glib import DBusGMainLoop # type: ignore
 
 #esEss imports
