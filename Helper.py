@@ -2,7 +2,6 @@ import logging
 from builtins import round, str
 import sys
 import os
-import itertools
 import inspect
 from time import sleep
 

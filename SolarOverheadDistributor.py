@@ -1,19 +1,13 @@
 from builtins import int
-import configparser
 import datetime
 import logging
 import operator
-import os
 import platform
 import re
 import sys
 import threading
 import time
 import requests  # type: ignore
-if sys.version_info.major == 2:
-    import gobject # type: ignore
-else:
-    from gi.repository import GLib as gobject # type: ignore
 
 # victron
 sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
@@ -21,8 +15,6 @@ from vedbus import VeDbusService # type: ignore
 
 # esEss imports
 import Globals
-from Globals import getFromGlobalStoreValue
-import Helper
 from Helper import i, c, d, w, e, dbusConnection
 from esESSService import esESSService
 

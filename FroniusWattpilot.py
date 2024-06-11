@@ -1,18 +1,10 @@
 
 from builtins import int
-import configparser
-import json
-import logging
 from math import floor
 import os
 import platform
 import sys
-from time import sleep
 import time
-if sys.version_info.major == 2:
-    import gobject # type: ignore
-else:
-    from gi.repository import GLib as gobject # type: ignore
 
 import paho.mqtt.client as mqtt # type: ignore
 

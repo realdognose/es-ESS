@@ -7,16 +7,9 @@ import inspect
 import pprint
 import os
 import sys
-if sys.version_info.major == 2:
-    import gobject # type: ignore
-else:
-    from gi.repository import GLib as gobject # type: ignore
 
 # esEss imports
-import Globals
 from Helper import i, c, d, w, e
-sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
-from dbusmonitor import DbusMonitor # type: ignore
 from esESSService import esESSService
 
 class MqttExporter(esESSService):
