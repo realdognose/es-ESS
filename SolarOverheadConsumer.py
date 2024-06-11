@@ -127,6 +127,8 @@ class SolarOverheadConsumer:
 
          if (self.isAutomatic):
             customName += " ☼"
+         else:
+            customName += " ◌"
             
          
          if (self.request is not None and self.isAutomatic):
