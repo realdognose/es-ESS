@@ -48,18 +48,18 @@ if you wanat to export from a certain service (like bms) you can use dbus-spy in
 - Schema: {serviceName}, {DBusPath}, {MqttTarget}
 - use a * in the mqtt-path to append the original DBus-Path.
 
-**Note that dbus-Pahts start with a "/" and Mqtt Paths don't.**
+**Note that dbus-paths start with a "/" and MQTT paths don't.**
 
-All Whitespaces will be trimmed, you can intend values to see any typos easily. 
+All whitespaces will be trimmed, you can indent values to see any typos easily. 
 use dbus-spy on ssh to identify the service name. (right-arrow on selection to dig into available keys.)
 
-Example Relation between dbus-spy, config and mqtt: 
+Example relation between dbus-spy, config and MQTT: 
 
 | use `dbus-spy` to find the servicename |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter1.png" />|
 
-| use `dbus-spy` to find the desired dbus-keys (right arrow key) |
+| use `dbus-spy` to find the desired Dbus-keys (right arrow key) |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter2.png" />|
 
