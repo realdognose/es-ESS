@@ -262,6 +262,8 @@ the required request values plus some additional parameters for remote-control. 
 
 the example consumerKey is *waterplay* here.
 
+#TODO: Update table bellow.
+
 | Section    | Value name |  Descripion | Type | Example Value|
 | ------------------ | ---------|---- | ------------- |--|
 | [NPC:waterplay]    | customName |  DisplayName on VRM   |String | Waterplay |
@@ -276,6 +278,7 @@ the example consumerKey is *waterplay* here.
 | [NPC:waterplay]    | isOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | '"ison":\s*true'      | 
 
 
+#TODO: Update image bellow.
 | Example of config section for NPC-SolarOverheadConsumer |
 |:-----------:|
 | <img src="https://github.com/realdognose/es-ESS/blob/main/img/visual_example_npc.png" /> | 
@@ -293,7 +296,9 @@ SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/con
 | [Modules]    | SolarOverheadDistributor | Flag, if the module should be enabled or not | Boolean | true |
 | [SolarOverheadDistributor]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
 | [SolarOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
-| [SolarOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />The example will maximum reserve 5000W, for every percent of SoC reached 40 watts are released. Mimimum of 1040 Watts will be reached at 99% Soc, until SoC is 100%<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | 5000 - 40 * SOC |
+| [SolarOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />*You can use any complex arithmetic you like, see example graphs bellow for 3 typical curves* | String  | 5000 - 40 * SOC |
+| [SolarOverheadDistributor]  | Strategy |  Strategy to assign overhead.<br /><br/>**RoundRobin**: available overhead is distributed among every consumer in {StepSize} pieces.<br />**TryFullfill**: Available overhead is assigned based on Priority and only moved to the next consumer if the consumer with the lower priority is running at 100% or can't be assigned more anymore. | String  | TryFullfill |
+| [SolarOverheadDistributor]  | UpdateInterval |  Time in milliseconds, how often the overhead should be redistributed. CAUTION: Do not use to small values. Theres a lot in the system happening that needs to catch up. Too small values will lead to imprecise readings of various meter values and lead to wrong calculations. I recommend 60s (60000ms), more frequent distribution doesn't yield better results.  | Integer  | 60000 |
 
 In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> System Setup -> Battery Measurement* and set the ones you'd like to see to *Visible*:
 
@@ -330,8 +335,8 @@ TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.in
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
-| [Default]  | BatteryCapacityInWh  | Your batteries capacity in Wh.  | Integer| 28000 |
+| [DEFAULT]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [DEFAULT]  | BatteryCapacityInWh  | Your batteries capacity in Wh.  | Integer| 28000 |
 | [Modules]    | TimeToGoCalculator | Flag, if the module should be enabled or not | Boolean | true |
 | [TimeToGoCalculator]  | UpdateInterval |  Time in milli seconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
 
@@ -345,8 +350,24 @@ The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day 
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [Default]    | LogLevel |  Options: DEBUG, INFO, WARNING, ERROR, CRITICAL | String | INFO |
-| [LogDetails]    | LogIncomingMqttMessages | Log messages received by mqtt | Boolean | true |
+| [DEFAULT]    | LogLevel |  Options: DEBUG, INFO, WARNING, ERROR, CRITICAL | String | INFO |
+| [LogDetails]    | DontLogDebug | Blacklist for method calls that shouldn't even be logged in DEBUG Mode.  | String | es-ESS.onLocalMqttMessage, esESS._dbusValueChanged|
+
+### Various Configuration
+
+Additionally there are the following configuration options available: 
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [DEFAULT]    | NumberOfThreads |  Number of threads, es-ESS should use. | int | 5 |
+| [DEFAULT]    | ServiceMessageCount | Number of service messages published on mqtt | int | 50 |
+| [DEFAULT]    | ConfigVersion | Current Config Version. DO NOT TOUCH THIS, it is required to update configuration files on new releases. | int | 1 |
+| [Mqtt]    | ThrottlePeriod | Minimum time in ms between two messages on the same topic. Useful to reduce overall network traffic. Intelligent backlog tracking ensures that "the last message" emitted is always published after {ThrottlePeriod} milliseconds. | int | 2000 |
+
+### Service Messages
+es-ESS also publishes Operational-Messages as well as Errors, Warnings and Critical failures under the `$SYS`-Topic of es-ESS. Check these from time to time to ensure proper functionality
+
+
 
 # F.A.Q.
 
