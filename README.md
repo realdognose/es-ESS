@@ -56,24 +56,28 @@ use dbus-spy on ssh to identify the service name. (right-arrow on selection to d
 Example relation between dbus-spy, config and MQTT: 
 
 <div align="center">
+
 | use `dbus-spy` to find the servicename |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter1.png" />|
 </div>
 
 <div align="center">
+
 | use `dbus-spy` to find the desired Dbus-keys (right arrow key) |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter2.png" />|
 </div>
 
 <div align="center">
+
 | create config entries |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter3.png" />|
 </div>
 
 <div align="center">
+
 | Values on MQTT |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter4.png" />|
@@ -127,6 +131,7 @@ Therefore, a complete integration of Wattpilot has been implemented:
 | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_3phases.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_switching_to_3.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_waitingSun.png" />| <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_start.png" /> <br /> <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_stop.png" />| 
 
 <div align="center">
+
 | Full integration |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/SolarOverheadConsumers%202.png" />|
@@ -290,6 +295,7 @@ the example consumerKey is *waterplay* here.
 
 #TODO: Update image bellow.
 <div align="center">
+
 | Example of config section for NPC-SolarOverheadConsumer |
 |:-----------:|
 | <img src="https://github.com/realdognose/es-ESS/blob/main/img/visual_example_npc.png" /> | 
@@ -315,12 +321,14 @@ SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/con
 In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> System Setup -> Battery Measurement* and set the ones you'd like to see to *Visible*:
 
 <div align="center">
+
 | Cerbo Configuration for FAKE-BMS |
 |:-----------:|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/cerboSettings.png" /> |
 </div>
 
 <div align="center">
+
 | Typically usefull equations for `MinBatCharge` |
 |:-----------:|
 | Blue := Linear going down, with a maxium of 5400Watts and a minimum of 400W: `5000-50*SOC+400`|
@@ -370,6 +378,7 @@ The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day 
 | [LogDetails]    | DontLogDebug | Blacklist for method calls that shouldn't even be logged in DEBUG Mode.  | String | es-ESS.onLocalMqttMessage, esESS._dbusValueChanged|
 
 <div align="center">
+
 | Logrotation to avoid filling up the disk |
 |:-----------:|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/logrotate.png" /> |
@@ -388,6 +397,7 @@ Additionally there are the following configuration options available:
 es-ESS also publishes Operational-Messages as well as Errors, Warnings and Critical failures under the `$SYS`-Topic of es-ESS. Check these from time to time to ensure proper functionality
 
 <div align="center">
+
 | Service Messages on MQTT |
 |:-----------:|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/ServiceMessages.png" /> |
