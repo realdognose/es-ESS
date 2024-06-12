@@ -38,7 +38,7 @@ MqttExporter requires a few variables to be set in `/data/es-ESS/config.ini`:
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [Modules]    | MqttExporter | Flag, if the module should be enabled or not | Boolean | true |
+| [Services]    | MqttExporter | Flag, if the module should be enabled or not | Boolean | true |
 | [MqttExporter]  | Export_{whatever}_{x} |  Export definition, see details bellow | String  | com.victronenergy.grid.http_40, /Ac/Power, CerboValues/Grid/Power |
 
 To export values from DBus to your mqtt server, you need to specify 3 variables per value.
@@ -101,7 +101,7 @@ ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
 | [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
-| [Modules]    | ChargeCurrentReducer | Flag, if the module should be enabled or not | Boolean | true |
+| [Services]    | ChargeCurrentReducer | Flag, if the module should be enabled or not | Boolean | true |
 | [ChargeCurrentReducer]  | DesiredChargeAmps |  Desired Charge Current in Amps. Your *feel-well-value*.<br /><br />Beside a fixed value, you can use a equation based on SoC as well. The example will reduce the charge current desired by 1A per SoC-Percent, but minimum 30A<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | max(100 - SOC, 30) |
 
 # FroniusWattpilot
@@ -150,7 +150,7 @@ FroniusWattpilot requires a few variables to be set in `/data/es-ESS/config.ini`
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [Modules]    | FroniusWattpilot | Flag, if the module should be enabled or not | Boolean | true |
+| [Services]    | FroniusWattpilot | Flag, if the module should be enabled or not | Boolean | true |
 | [FroniusWattpilot]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1001 |
 | [FroniusWattpilot]  | VRMInstanceID_OverheadRequest |  VRMInstanceId to be used on dbus for the FAKE-BMS | Integer  | 1002 |
 | [FroniusWattpilot]  | MinPhaseSwitchSeconds  | Seconds between Phase-Switching  | Integer| 300 |
@@ -290,7 +290,7 @@ SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/con
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
 | [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
-| [Modules]    | SolarOverheadDistributor | Flag, if the module should be enabled or not | Boolean | true |
+| [Services]    | SolarOverheadDistributor | Flag, if the module should be enabled or not | Boolean | true |
 | [SolarOverheadDistributor]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
 | [SolarOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
 | [SolarOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />The example will maximum reserve 5000W, for every percent of SoC reached 40 watts are released. Mimimum of 1040 Watts will be reached at 99% Soc, until SoC is 100%<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | 5000 - 40 * SOC |
@@ -326,7 +326,7 @@ TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.in
 | ---------- | ---------|---- | ------------- |--|
 | [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [Default]  | BatteryCapacityInWh  | Your batteries capacity in Wh.  | Integer| 28000 |
-| [Modules]    | TimeToGoCalculator | Flag, if the module should be enabled or not | Boolean | true |
+| [Services]    | TimeToGoCalculator | Flag, if the module should be enabled or not | Boolean | true |
 | [TimeToGoCalculator]  | UpdateInterval |  Time in milli seconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
 
 # This and that
