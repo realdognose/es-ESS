@@ -395,8 +395,9 @@ class esESS:
                self._localSendCount = 0
 
     def publishServiceMessage(self, service, type, message):
-        if (type == Globals.ServiceMessageType.Operational):
-           i(service, "Service Message: {0}".format(message))
+        #Na, that's annoying - for now ;)
+        #if (type == Globals.ServiceMessageType.Operational):
+        #   i(service, "Service Message: {0}".format(message))
 
         if (not self.mainMqttClient.is_connected):
            w(self, "Mqtt not connected, ignoring sending attempt.")
