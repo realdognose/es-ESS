@@ -1,7 +1,6 @@
 import configparser
 from enum import Enum
 import os
-
 #superglobals
 currentVersionString="es-ESS 24.6.4.25 b"
 esEssTag = "es-ESS"
@@ -10,7 +9,7 @@ esEssTag = "es-ESS"
 esESS = None
 
 #Enums
-ServiceMessageType = Enum('ServiceMessageType', ['Operational'])
+ServiceMessageType = Enum('ServiceMessageType', ['Operational', 'Critical', 'Error', 'Warning'])
 MqttSubscriptionType = Enum('MqttSubscriptionType', ['Main', 'Local'])
 
 #defs

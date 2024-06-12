@@ -173,7 +173,8 @@ class FroniusWattpilot (esESSService):
    # 1 = Automatic => Overhead Mode, disable VRM Control, reject wattpilot changes, register pv overhead observer.
    # 2 = Scheduled => Nightly low-price mode, TODO
     def switchMode(self, fromMode, toMode):
-        d("FroniusWattpilot", "Switching Mode from " + str(fromMode) + " to " + str(toMode))
+        d("FroniusWattpilot", "Switching Mode from {0} to {1}.".format(fromMode, toMode))
+        self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Switching Mode from {0} to {1}.".format(fromMode, toMode))
         self.mode = toMode
         self.dbusService["/Mode"] = toMode
         if (fromMode == 0 and toMode == 1):

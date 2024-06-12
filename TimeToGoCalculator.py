@@ -60,7 +60,7 @@ class TimeToGoCalculator(esESSService):
         elif (power > 0):
           remaining = (missingCapacity / power) * 60 * 60
 
-        #d(self, "=> TimeToGo (s): {0}s".format(remaining))
+        #d(self, "=> TimeToGo: {0}s".format(remaining))
         
         #Inject calculated value to dbus. 
         if (remaining is not None):
@@ -69,6 +69,7 @@ class TimeToGoCalculator(esESSService):
 
           self.publishLocalMqtt("N/{0}/system/0/Dc/Battery/TimeToGo".format(self.config["Default"]["VRMPortalID"]), "{\"value\": " + str(int(remaining)) + "}")
           self.publishMainMqtt("{0}/{1}/TimeToGo".format(Globals.esEssTag, self.__class__.__name__), int(remaining))
+          self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "TimeToGo: {0}s".format(remaining))
 
       except Exception as e:
         c("TimeToGoCalculator", "Exception catched", exc_info=e)

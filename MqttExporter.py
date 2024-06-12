@@ -50,7 +50,6 @@ class MqttExporter(esESSService):
 
     def _dbusValueChanged(self, sub):
         key = "{0}{1}".format(sub.serviceName, sub.dbusPath)
-        #d(self, "Change on dbus for {0} (new value: {1})".format(key, str(sub.value)))
         self.publishMainMqtt(self.topicExports[key].target, sub.value, 0, True)
 
 class TopicExport:

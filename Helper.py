@@ -3,6 +3,7 @@ from builtins import round, str
 import sys
 import os
 import inspect
+import threading
 from time import sleep
 
 # victron
@@ -21,6 +22,7 @@ def i(module, msg, **kwargs):
    lineIdentifier = "{0}.{1}".format(module, func.co_name)
 
    if (lineIdentifier not in logBlackList):
+     lineIdentifier = "{0}|{1}".format(threading.currentThread().getName(), lineIdentifier)
      logging.info("[" + lineIdentifier + "] " + msg, **kwargs)
 
 def d(module, msg, **kwargs):
@@ -31,25 +33,35 @@ def d(module, msg, **kwargs):
    lineIdentifier = "{0}.{1}".format(module, func.co_name)
 
    if (lineIdentifier not in logBlackList):
+     lineIdentifier = "{0}|{1}".format(threading.currentThread().getName(), lineIdentifier)
      logging.debug("[" + lineIdentifier + "] " + msg, **kwargs)
 
 def w(module, msg, **kwargs):
    if (not isinstance(module, str)):
        module = module.__class__.__name__
 
-   logging.warning("[%s] " + msg, module, **kwargs)
+   func = inspect.currentframe().f_back.f_code
+   lineIdentifier = "{0}|{1}.{2}".format(threading.currentThread().getName(), module, func.co_name)
+
+   logging.warning("[" + lineIdentifier + "] " + msg, **kwargs)
 
 def e(module, msg, **kwargs):
    if (not isinstance(module, str)):
        module = module.__class__.__name__
 
-   logging.error("[%s] " + msg, module, **kwargs)
+   func = inspect.currentframe().f_back.f_code
+   lineIdentifier = "{0}|{1}.{2}".format(threading.currentThread().getName(), module, func.co_name)
+
+   logging.error("[" + lineIdentifier + "] " + msg, **kwargs)
 
 def c(module, msg, **kwargs):
    if (not isinstance(module, str)):
        module = module.__class__.__name__
 
-   logging.critical("[%s] " + msg, module, **kwargs)
+   func = inspect.currentframe().f_back.f_code
+   lineIdentifier = "{0}|{1}.{2}".format(threading.currentThread().getName(), module, func.co_name)
+
+   logging.critical("[" + lineIdentifier + "] " + msg, **kwargs)
 
 #Helper defs for DBus
 class SystemBus(dbus.bus.BusConnection):

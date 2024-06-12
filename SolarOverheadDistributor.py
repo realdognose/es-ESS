@@ -180,7 +180,7 @@ class SolarOverheadDistributor(esESSService):
    def updateDistribution(self):   
     try:
        d(self, "Updating Solar-Overhead distribution")
-
+       
        with self._knownSolarOverheadConsumersLock:
          # first, check if we have new Overhead consumers to initialize.
          for consumerKey in self._knownSolarOverheadConsumers:
@@ -203,7 +203,6 @@ class SolarOverheadDistributor(esESSService):
          batSoc = self.batterySoc.value
          assignedConsumption = 0
 
-         #TODO: Refactor how publishing works?!
          self.Publish("/Calculations/Grid/L1/Power", l1Power)
          self.Publish("/Calculations/Grid/L2/Power", l2Power)
          self.Publish("/Calculations/Grid/L3/Power", l3Power)
@@ -236,6 +235,8 @@ class SolarOverheadDistributor(esESSService):
 
          overhead = max(0, feedIn + assignedConsumption + batPower)
          self.Publish("/Calculations/OverheadAvailable",  overhead)
+
+         self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Updating distribution. Available Overhead: {0}W, Battery Reservation: {1}W".format(overhead, minBatCharge))
          i("SolarOverheadDistributor","Available Overhead: " + str(overhead) + "W + ("+str(minBatCharge)+"W BatteryReservation, tho.)")
 
          overheadAssigned = 0
@@ -259,10 +260,17 @@ class SolarOverheadDistributor(esESSService):
             if (consumer.isInitialized and consumer.isAutomatic):
                consumer.allowance = overheadDistribution[consumerKey]
                consumer.reportAllowance(self)
+               self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Assigned {0}W to {1} ({2})".format(consumer.allowance, consumer.customName, consumerKey))
+            elif (not consumer.isInitialized):
+               self.publishServiceMessage(self, Globals.ServiceMessageType.Warning, "{0} ({1}) is not yet initialized.".format(consumer.customName, consumerKey))
+            elif (not consumer.isAutomatic):
+               self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "{0} ({1}) is not in automatic mode.".format(consumer.customName, consumerKey))
          
          i(self, "New Overhead assigned: " + str(overheadAssigned) + "W")
          self.Publish("/Calculations/OverheadAssigned", overheadAssigned)
          self.Publish("/Calculations/OverheadRemaining", overhead)
+
+         self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Assigned: {0}W; Unassigned: {1}W".format(overheadAssigned, overhead))
          
          #update lastupdate vars
          self.lastUpdate = time.time()   
@@ -473,6 +481,9 @@ class SolarOverheadConsumer:
         self.statusUrl = value
      elif (key == "OnKeywordRegex"):
         self.onKeywordRegex = value
+
+     #TODO: Delta publishing of only changed value.
+     self.dumpFakeBMS()
     
   def checkFinalInit(self, pods):
      #to create the final instance on DBUS, we need the VRMId at least.
@@ -510,8 +521,13 @@ class SolarOverheadConsumer:
      i(self,"Initialization of consumer {0} completed.".format(self.consumerKey))
      self.isInitialized = True
 
+     self.validateNpcStatus(None)
+
   def dumpFakeBMS(self):
      try:
+         if (self.dbusService is None):
+            return
+         
          self.dbusService["/Dc/0/Power"] = self.consumption
 
          customName = "Solar Overhead Consumer"
@@ -566,12 +582,13 @@ class SolarOverheadConsumer:
          status = requests.get(url=self.statusUrl)
          isMatch = re.search(str(self.onKeywordRegex), status.text) is not None
          d(self, "Status is: " + str(isMatch) + " and should be: " + str(should) + ". input text length was " + str(len(status.text)))
-         if (isMatch == should):
-            self.npcState = isMatch
+         
+         self.npcState = isMatch
 
-            if (isMatch):
-               self.consumption = self.request
-            else:
-              self.consumption = 0
+         if (isMatch):
+            self.consumption = self.request
+         else:
+            self.consumption = 0
+
       except Exception as ex:
        c(self, "Exception", exc_info=ex)
