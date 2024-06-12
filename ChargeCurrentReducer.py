@@ -1,18 +1,12 @@
 import configparser
 import os
-import paho.mqtt.client as mqtt # type: ignore
 import sys
-if sys.version_info.major == 2:
-    import gobject # type: ignore
-else:
-    from gi.repository import GLib as gobject # type: ignore
 
 #esEss imports
 import Globals
-from Globals import getFromGlobalStoreValue
 from Helper import i, c, d, w, e
-from DBus import DbusC
 
+'''
 class ChargeCurrentReducer:
   def __init__(self):
     try:
@@ -76,3 +70,4 @@ class ChargeCurrentReducer:
       c(self, "Exception catched", exc_info=ex)
       
     return True
+'''

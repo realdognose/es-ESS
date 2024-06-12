@@ -1,17 +1,13 @@
 from builtins import int
-import configparser
 import datetime
 import logging
 import operator
-import os
 import platform
 import re
 import sys
+import threading
 import time
-if sys.version_info.major == 2:
-    import gobject # type: ignore
-else:
-    from gi.repository import GLib as gobject # type: ignore
+import requests  # type: ignore
 
 # victron
 sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
@@ -19,214 +15,192 @@ from vedbus import VeDbusService # type: ignore
 
 # esEss imports
 import Globals
-from Globals import getFromGlobalStoreValue
-import Helper
 from Helper import i, c, d, w, e, dbusConnection
-from SolarOverheadConsumer import SolarOverheadConsumer
+from esESSService import esESSService
 
-class SolarOverheadDistributor:
-  def __init__(self):
-    self.config = Globals.getConfig()
-    self.futureUpdate = None
-    self.futureUpdateValues = None
+class SolarOverheadDistributor(esESSService):
+   def __init__(self):
+      esESSService.__init__(self)
+      self.vrmInstanceID = int(self.config['SolarOverheadDistributor']['VRMInstanceID'])
+      self.vrmInstanceIDBMS = int(self.config['SolarOverheadDistributor']['VRMInstanceID_ReservationMonitor'])
+      self.serviceType = "com.victronenergy.settings"
+      self.serviceName = self.serviceType + ".es-ESS.SolarOverheadDistributor_" + str(self.vrmInstanceID)
+      self.bmsServiceType = "com.victronenergy.battery"
+      self.bmsServiceName = self.bmsServiceType + ".es-ESS.SolarOverheadConsumer_" + str(self.vrmInstanceIDBMS)
+      self.lastUpdate = 0
+      self._knownSolarOverheadConsumers = { }
+      self._knownSolarOverheadConsumersLock = threading.Lock()
+
+   def initDbusService(self):
+      self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
+      self.dbusBmsService = VeDbusService(self.bmsServiceName, bus=dbusConnection())
+
+      d(self, "Registering as {0} on dbus.".format(self.serviceName))
+      d(self, "Registering as {0} on dbus.".format(self.bmsServiceName))
+
+      #create management paths
+      self.dbusService.add_path('/Mgmt/ProcessName', __file__)
+      self.dbusService.add_path('/Mgmt/ProcessVersion', Globals.currentVersionString + ' on Python ' + platform.python_version())
+      self.dbusService.add_path('/Mgmt/Connection', "dbus")
+      self.dbusBmsService.add_path('/Mgmt/ProcessName', __file__)
+      self.dbusBmsService.add_path('/Mgmt/ProcessVersion', Globals.currentVersionString + ' on Python ' + platform.python_version())
+      self.dbusBmsService.add_path('/Mgmt/Connection', "dbus")
     
-    #register the root service. device specific service will be registered as they are 
-    #discovered during runtime.
-    self.vrmInstanceID = int(self.config['SolarOverheadDistributor']['VRMInstanceID'])
-    self.vrmInstanceIDBMS = int(self.config['SolarOverheadDistributor']['VRMInstanceID_ReservationMonitor'])
-    self.serviceType = "com.victronenergy.settings"
-    self.serviceName = self.serviceType + ".es-ESS.SolarOverheadDistributor_" + str(self.vrmInstanceID)
-    i("SolarOverheadDistributor","Registering service as: " + self.serviceName)
-    self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
-
-    #dump root information about our service and register paths.
-    self.dbusService.add_path('/Mgmt/ProcessName', __file__)
-    self.dbusService.add_path('/Mgmt/ProcessVersion', Globals.currentVersionString + ' on Python ' + platform.python_version())
-    self.dbusService.add_path('/Mgmt/Connection', "Local DBus Injection")
-
-    # Create the mandatory objects
-    self.dbusService.add_path('/DeviceInstance', self.vrmInstanceID)
-    self.dbusService.add_path('/ProductId', 65535)
-    self.dbusService.add_path('/ProductName', "es-ESS SolarOverheadDistributorService") 
-    self.dbusService.add_path('/CustomName', "es-ESS SolarOverheadDistributorService") 
-    self.dbusService.add_path('/Latency', None)    
-    self.dbusService.add_path('/FirmwareVersion', Globals.currentVersionString)
-    self.dbusService.add_path('/HardwareVersion', Globals.currentVersionString)
-    self.dbusService.add_path('/Connected', 1)
-    self.dbusService.add_path('/Serial', "1337")
-    self.dbusService.add_path('/LastUpdateTime', 0)
-    self.dbusService.add_path('/LastUpdateDateTime', 0)
-
-    self.dbusService.add_path('/Calculations/Grid/L1/Power', 0)
-    self.dbusService.add_path('/Calculations/Grid/L2/Power', 0)
-    self.dbusService.add_path('/Calculations/Grid/L3/Power', 0)
-    self.dbusService.add_path('/Calculations/Grid/TotalFeedIn', 0)
-
-    self.dbusService.add_path('/Calculations/Battery/Power', 0)
-    self.dbusService.add_path('/Calculations/Battery/Soc', 0)
-    self.dbusService.add_path('/Calculations/Battery/Reservation', 0)
+      # Create mandatory paths
+      self.dbusService.add_path('/DeviceInstance', self.vrmInstanceID)
+      self.dbusService.add_path('/ProductId', 65535)
+      self.dbusService.add_path('/ProductName', "es-ESS SolarOverheadDistributorService") 
+      self.dbusService.add_path('/CustomName', "es-ESS SolarOverheadDistributorService") 
+      self.dbusService.add_path('/Latency', None)    
+      self.dbusService.add_path('/FirmwareVersion', Globals.currentVersionString)
+      self.dbusService.add_path('/HardwareVersion', Globals.currentVersionString)
+      self.dbusService.add_path('/Connected', 1)
+      self.dbusService.add_path('/Serial', "1337")
+      self.dbusService.add_path('/LastUpdateTime', 0)
+      self.dbusService.add_path('/LastUpdateDateTime', 0)
+      self.dbusBmsService.add_path('/DeviceInstance', self.vrmInstanceIDBMS)
+      self.dbusBmsService.add_path('/ProductId', 65535)
+      self.dbusBmsService.add_path('/ProductName', "es-ESS SolarOverheadDistributorBMS") 
+      self.dbusBmsService.add_path('/CustomName', "Battery Charge Reservation") 
+      self.dbusBmsService.add_path('/Latency', None)    
+      self.dbusBmsService.add_path('/FirmwareVersion', Globals.currentVersionString)
+      self.dbusBmsService.add_path('/HardwareVersion', Globals.currentVersionString)
+      self.dbusBmsService.add_path('/Connected', 1)
+      self.dbusBmsService.add_path('/Serial', "1337")
     
-    self.dbusService.add_path('/Calculations/OverheadAvailable', 0)
-    self.dbusService.add_path('/Calculations/OverheadAssigned', 0)
-    self.dbusService.add_path('/Calculations/OverheadRemaining', 0)
+      self.dbusBmsService.add_path('/Dc/0/Voltage', 0)
+      self.dbusBmsService.add_path('/Dc/0/Power', 0)
+      self.dbusBmsService.add_path('/Dc/0/Current', 0)
+      self.dbusBmsService.add_path('/Soc', 0)
 
-    #Create a Fake-BMS to outline batteryChargeLimit, if active.
-    self.bmsServiceType = "com.victronenergy.battery"
-    self.bmsServiceName = self.bmsServiceType + ".es-ESS.SolarOverheadConsumer_" + str(self.vrmInstanceIDBMS)
-    self.dbusBmsService = VeDbusService(self.bmsServiceName, bus=dbusConnection())
+      # Create custom paths
+      self.dbusService.add_path('/Calculations/Grid/L1/Power', 0)
+      self.dbusService.add_path('/Calculations/Grid/L2/Power', 0)
+      self.dbusService.add_path('/Calculations/Grid/L3/Power', 0)
+      self.dbusService.add_path('/Calculations/Grid/TotalFeedIn', 0)
+      self.dbusService.add_path('/Calculations/Battery/Power', 0)
+      self.dbusService.add_path('/Calculations/Battery/Soc', 0)
+      self.dbusService.add_path('/Calculations/Battery/Reservation', 0)
+      self.dbusService.add_path('/Calculations/OverheadAvailable', 0)
+      self.dbusService.add_path('/Calculations/OverheadAssigned', 0)
+      self.dbusService.add_path('/Calculations/OverheadRemaining', 0)
     
-    #Mgmt-Infos
-    self.dbusBmsService.add_path('/DeviceInstance', self.vrmInstanceIDBMS)
-    self.dbusBmsService.add_path('/Mgmt/ProcessName', __file__)
-    self.dbusBmsService.add_path('/Mgmt/ProcessVersion', Globals.currentVersionString + ' on Python ' + platform.python_version())
-    self.dbusBmsService.add_path('/Mgmt/Connection', "Local DBus Injection")
-
-    # Create the mandatory objects
-    self.dbusBmsService.add_path('/ProductId', 65535)
-    self.dbusBmsService.add_path('/ProductName', "es-ESS SolarOverheadConsumer") 
-    self.dbusBmsService.add_path('/CustomName', "Battery Charge Reservation") 
-    self.dbusBmsService.add_path('/Latency', None)    
-    self.dbusBmsService.add_path('/FirmwareVersion', Globals.currentVersionString)
-    self.dbusBmsService.add_path('/HardwareVersion', Globals.currentVersionString)
-    self.dbusBmsService.add_path('/Connected', 1)
-    self.dbusBmsService.add_path('/Serial', "1337")
-    
-    self.dbusBmsService.add_path('/Dc/0/Voltage', 0)
-    self.dbusBmsService.add_path('/Dc/0/Power', 0)
-    self.dbusBmsService.add_path('/Dc/0/Current', 0)
-    self.dbusBmsService.add_path('/Soc', 0)
-
-    #register for overhead topic on mqtt.
-    self.requestTopics = ['es-ESS/SolarOverheadDistributor/Requests/+/IsAutomatic', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/Consumption', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/CustomName', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/IgnoreBatReservation', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/OnKeywordRegex', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/Minimum', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/OnUrl', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/OffUrl', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/Priority',
-                          'es-ESS/SolarOverheadDistributor/Requests/+/IsNPC', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/StatusUrl', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/StepSize', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/Request', 
-                          'es-ESS/SolarOverheadDistributor/Requests/+/VRMInstanceID']
-    
-    for x in self.requestTopics: Globals.mqttClient.subscribe(x)
-
-    #Check, if we need any NPC-Consumers to be created.
-    #they will be fully orchestrated by SolarOverheadDistributor without external MQTT Requests.
-    for s in self.config.sections():
-      if (s.startswith("NPC:")):
-         i(self, "Found NPC SolarOverheadConsumer: " + s)
-         try:
-            #Consumer found. Create Request.
-            consumerKey = s.replace("NPC:", "")
-            Globals.mqttClient.publish("{0}/SolarOverheadDistributor/Requests/{1}/IsNPC".format(Globals.esEssTag, consumerKey), "true",1)
-            Globals.mqttClient.publish("{0}/SolarOverheadDistributor/Requests/{1}/IsAutomatic".format(Globals.esEssTag, consumerKey), "true",1)
-            for (k, v) in self.config.items(s):
-               if (k != "StepSize"):
-                  Globals.mqttClient.publish("{0}/SolarOverheadDistributor/Requests/{1}/{2}".format(Globals.esEssTag, consumerKey,k), v,1)
-
-               #NPC Consumers always have StepSize = request.
-               if (k == "Request"):
-                  Globals.mqttClient.publish("{0}/SolarOverheadDistributor/Requests/{1}/StepSize".format(Globals.esEssTag, consumerKey), v,1)
-
-         except Exception as ex:
-            c(self, "Error parsing NPC-Consumer: " + s + ". Please validate outline requirements.")
-        
-    # last update
-    self.lastUpdate = 0
- 
-    Globals.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "{0} initialized.".format(self.__class__.__name__))
-
-    # Updates.
-    gobject.timeout_add(5000, self._updateValues)
-    gobject.timeout_add(60000, self._update)
-
-  def processMqttMessage(self, msg):
-    try:
-      consumerKeyMo = re.search('es\-ESS/SolarOverheadDistributor/Requests/([^/]+)/', msg.topic)
-      if (consumerKeyMo is not None):
-         consumerKey = consumerKeyMo.group(1)
-         if (not consumerKey in Globals.knownSolarOverheadConsumers):
-            i("SolarOverheadDistributor","New SolarOverhead-Consumer registered: " + consumerKey + ". Creating respective services.")
-            with Globals.knownSolarOverheadConsumersLock:
-               Globals.knownSolarOverheadConsumers[consumerKey] = SolarOverheadConsumer(consumerKey)
-
-         Globals.knownSolarOverheadConsumers[consumerKey].setValue(msg.topic, str(msg.payload)[2:-1])
-
-    except Exception as e:
-       c(self, "Exception", exc_info=e)
+   def initDbusSubscriptions(self):
+      self.gridL1Dbus      = self.registerDbusSubscription("com.victronenergy.grid", "/Ac/L1/Power")
+      self.gridL2Dbus      = self.registerDbusSubscription("com.victronenergy.grid", "/Ac/L2/Power")
+      self.gridL3Dbus      = self.registerDbusSubscription("com.victronenergy.grid", "/Ac/L3/Power")
+      self.batteryPower    = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Power")
+      self.batterySoc      = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Soc")
      
-  def _updateValues(self):
-    if (self.futureUpdateValues is None or self.futureUpdateValues.done()):
-      self.futureUpdateValues = Globals.esESS.threadPool.submit(self._updateValuesThreaded)
-    else:
-      w(self, "Processing Thread is still running, not submitting another one, to prevent Threadpool from filling up. ")
-   
-    return True
+   def initMqttSubscriptions(self):
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsAutomatic', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Consumption', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/CustomName', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IgnoreBatReservation', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnKeywordRegex', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Minimum', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OffUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Priority', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsNPC', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StatusUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StepSize', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Request', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/VRMInstanceID', callback=self.onMqttMessage)
 
-  def _updateValuesThreaded(self):
+   def initWorkerThreads(self):
+      self.registerWorkerThread(self.updateDistribution, int(self.config["SolarOverheadDistributor"]["UpdateInterval"]))
+      self.registerWorkerThread(self.dumpReservationBms, 2000)
+   
+   def initFinalize(self):
+      #Service is operable already. Need to parse NPC consumer and throw them over to mqtt-based processing. 
+   
+      for s in self.config.sections():
+         if (s.startswith("NPC:")):
+            i(self, "Found NPC SolarOverheadConsumer: " + s)
+            try:
+               #Consumer found. Create Request.
+               consumerKey = s.replace("NPC:", "")
+               self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/IsNPC".format(Globals.esEssTag, consumerKey), "true",1)
+               self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/IsAutomatic".format(Globals.esEssTag, consumerKey), "true",1)
+
+               for (k, v) in self.config.items(s):
+                  if (k != "StepSize"):
+                     self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/{2}".format(Globals.esEssTag, consumerKey,k), v, 1)
+
+                  #NPC Consumers always have StepSize = request.
+                  if (k == "Request"):
+                     self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/StepSize".format(Globals.esEssTag, consumerKey), v,1)
+
+            except Exception as ex:
+               c(self, "Error parsing NPC-Consumer: " + s + ". Please validate outline requirements.")
+  
+   def onMqttMessage(self, client, userdata, msg):
       try:
-         with Globals.knownSolarOverheadConsumersLock:
-            for consumerKey in Globals.knownSolarOverheadConsumers:
-               consumer = Globals.knownSolarOverheadConsumers[consumerKey]
+         consumerKeyMo = re.search('es\-ESS/SolarOverheadDistributor/Requests/([^/]+)/', msg.topic)
+         if (consumerKeyMo is not None):
+            consumerKey = consumerKeyMo.group(1)
+            if (not consumerKey in self._knownSolarOverheadConsumers):
+               i(self, "New SolarOverhead-Consumer registered: " + consumerKey + ". Creating respective services.")
+               with self._knownSolarOverheadConsumersLock:
+                  self._knownSolarOverheadConsumers[consumerKey] = SolarOverheadConsumer(consumerKey)
+
+            self._knownSolarOverheadConsumers[consumerKey].setValue(msg.topic, str(msg.payload)[2:-1])
+
+      except Exception as e:
+         c(self, "Exception", exc_info=e)
+
+   def dumpConsumerBms(self):
+      try:
+         with self._knownSolarOverheadConsumersLock:
+            for consumerKey in self._knownSolarOverheadConsumers:
+               consumer = self._knownSolarOverheadConsumers[consumerKey]
                   
                if (not consumer.isInitialized):
                   consumer.checkFinalInit(self)
 
                if (consumer.isInitialized):
-                  #Update consumer values.
                   consumer.dumpFakeBMS()
-
-            #dump main bms information as well. 
-            self.dbusBmsService["/Dc/0/Power"] = 0
-            self.dbusBmsService["/CustomName"] = "Battery Charge Reservation: " + str(self.dbusService["/Calculations/Battery/Reservation"]) + "W"
-
-            if (self.dbusService["/Calculations/Battery/Reservation"] > 0 and self.dbusService["/Calculations/Battery/Power"] > 0):
-               self.dbusBmsService["/Soc"] = self.dbusService["/Calculations/Battery/Power"] / self.dbusService["/Calculations/Battery/Reservation"] * 100.0
-            else:
-               self.dbusBmsService["/Soc"] = 0
 
       except Exception as e:
           e(self, "Error", exc_info = e)
 
       return True
-        
-  def _update(self):
-     if (self.futureUpdate is None or self.futureUpdate.done()):
-        self.futureUpdate = Globals.esESS.threadPool.submit(self._updateThreaded)
-     else:
-         w(self, "Processing Thread is still running, not submitting another one, to prevent threadpool from filling up. ")
-     return True
+   
+   def dumpReservationBms(self):
+      #dump main bms information as well. 
+      self.dbusBmsService["/Dc/0/Power"] = 0
+      self.dbusBmsService["/CustomName"] = "Battery Charge Reservation: " + str(self.dbusService["/Calculations/Battery/Reservation"]) + "W"
 
-  def _updateThreaded(self):   
+      if (self.dbusService["/Calculations/Battery/Reservation"] > 0 and self.dbusService["/Calculations/Battery/Power"] > 0):
+         self.dbusBmsService["/Soc"] = self.dbusService["/Calculations/Battery/Power"] / self.dbusService["/Calculations/Battery/Reservation"] * 100.0
+      else:
+         self.dbusBmsService["/Soc"] = 0
+
+   def updateDistribution(self):   
     try:
-       d("SolarOverheadDistributor", "Updating Solar-Overhead distribution")
-
-       with Globals.knownSolarOverheadConsumersLock:
-
+       d(self, "Updating Solar-Overhead distribution")
+       
+       with self._knownSolarOverheadConsumersLock:
          # first, check if we have new Overhead consumers to initialize.
-         for consumerKey in Globals.knownSolarOverheadConsumers:
+         for consumerKey in self._knownSolarOverheadConsumers:
             d(self, "pre-checks on consumer {0}".format(consumerKey))
-            consumer = Globals.knownSolarOverheadConsumers[consumerKey]
+            consumer = self._knownSolarOverheadConsumers[consumerKey]
             
             if (not consumer.isInitialized):
                consumer.checkFinalInit(self)
 
-            if (consumer.isInitialized):
-               #Update consumer values.
-               consumer.dumpFakeBMS()
+               #now initialzed?
+               if (consumer.isInitialized):
+                  consumer.dumpFakeBMS()
 
          #query values we need to determine the overhead
-         l1Power = Globals.DbusWrapper.system.Ac.Grid.L1.Power
-         l2Power = Globals.DbusWrapper.system.Ac.Grid.L2.Power
-         l3Power = Globals.DbusWrapper.system.Ac.Grid.L3.Power
-
+         l1Power = self.gridL1Dbus.value
+         l2Power = self.gridL2Dbus.value
+         l3Power = self.gridL3Dbus.value
          feedIn = min(l1Power + l2Power + l3Power, 0) * -1
-         batPower = Globals.DbusWrapper.system.Dc.Battery.Power
-         batSoc = Globals.DbusWrapper.system.Dc.Battery.Soc
+         batPower = self.batteryPower.value
+         batSoc = self.batterySoc.value
          assignedConsumption = 0
 
          self.Publish("/Calculations/Grid/L1/Power", l1Power)
@@ -234,11 +208,11 @@ class SolarOverheadDistributor:
          self.Publish("/Calculations/Grid/L3/Power", l3Power)
          self.Publish("/Calculations/Grid/TotalFeedIn", feedIn)
 
-         i("SolarOverheadDistributor","L1/L2/L3/Bat/Soc/Feedin is " + str(l1Power) + "/" + str(l2Power) + "/" + str(l3Power) + "/" + str(batPower) + "/" + str(batSoc) + "/" + str(feedIn))
+         i(self, "L1/L2/L3/Bat/Soc/Feedin is " + str(l1Power) + "/" + str(l2Power) + "/" + str(l3Power) + "/" + str(batPower) + "/" + str(batSoc) + "/" + str(feedIn))
 
          overheadDistribution = {}
-         for consumerKey in Globals.knownSolarOverheadConsumers:
-            consumer = Globals.knownSolarOverheadConsumers[consumerKey]
+         for consumerKey in self._knownSolarOverheadConsumers:
+            consumer = self._knownSolarOverheadConsumers[consumerKey]
 
             if (consumer.isInitialized and consumer.isAutomatic):
                overheadDistribution[consumerKey] = 0 #initialize with 0
@@ -255,12 +229,14 @@ class SolarOverheadDistributor:
          try:
             equation = self.config["SolarOverheadDistributor"]["MinBatteryCharge"]
             equation = equation.replace("SOC", str(batSoc))
-            minBatCharge = eval(equation)
+            minBatCharge = round(eval(equation))
          except Exception as ex:
             e(self, "Error evaluation MinBatteryCharge-Equation. Using MinBatteryCharge=0.")
 
          overhead = max(0, feedIn + assignedConsumption + batPower)
          self.Publish("/Calculations/OverheadAvailable",  overhead)
+
+         self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Updating distribution. Available Overhead: {0}W, Battery Reservation: {1}W".format(overhead, minBatCharge))
          i("SolarOverheadDistributor","Available Overhead: " + str(overhead) + "W + ("+str(minBatCharge)+"W BatteryReservation, tho.)")
 
          overheadAssigned = 0
@@ -278,16 +254,23 @@ class SolarOverheadDistributor:
          if (self.config["SolarOverheadDistributor"]["Strategy"] == "TryFullfill"):
             overheadDistribution = self.doTryFullfill(overhead, overheadDistribution, minBatCharge) 
 
-         for consumerKey in Globals.knownSolarOverheadConsumers:
-            consumer = Globals.knownSolarOverheadConsumers[consumerKey]
+         for consumerKey in self._knownSolarOverheadConsumers:
+            consumer = self._knownSolarOverheadConsumers[consumerKey]
             
             if (consumer.isInitialized and consumer.isAutomatic):
                consumer.allowance = overheadDistribution[consumerKey]
-               consumer.reportAllowance()
+               consumer.reportAllowance(self)
+               self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Assigned {0}W to {1} ({2})".format(consumer.allowance, consumer.customName, consumerKey))
+            elif (not consumer.isInitialized):
+               self.publishServiceMessage(self, Globals.ServiceMessageType.Warning, "{0} ({1}) is not yet initialized.".format(consumer.customName, consumerKey))
+            elif (not consumer.isAutomatic):
+               self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "{0} ({1}) is not in automatic mode.".format(consumer.customName, consumerKey))
          
          i(self, "New Overhead assigned: " + str(overheadAssigned) + "W")
          self.Publish("/Calculations/OverheadAssigned", overheadAssigned)
          self.Publish("/Calculations/OverheadRemaining", overhead)
+
+         self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Assigned: {0}W; Unassigned: {1}W".format(overheadAssigned, overhead))
          
          #update lastupdate vars
          self.lastUpdate = time.time()   
@@ -297,17 +280,16 @@ class SolarOverheadDistributor:
     except Exception as e:
        c(self, "Exception", exc_info=e)
        
-    # return true, otherwise add_timeout will be removed from GObject - see docs http://library.isr.ist.utl.pt/docs/pygtk2reference/gobject-functions.html#function-gobject--timeout-add
     return True
  
-  def doTryFullfill(self, overhead, overheadDistribution, minBatCharge):
+   def doTryFullfill(self, overhead, overheadDistribution, minBatCharge):
       overheadAssigned = 0
      
-      for consumerDupe in sorted(Globals.knownSolarOverheadConsumers.values(), key=operator.attrgetter('priority')): 
+      for consumerDupe in sorted(self._knownSolarOverheadConsumers.values(), key=operator.attrgetter('priority')): 
          while (True):
             consumerKey = consumerDupe.consumerKey
             overheadBefore = overhead
-            consumer = Globals.knownSolarOverheadConsumers[consumerKey]
+            consumer = self._knownSolarOverheadConsumers[consumerKey]
 
             #check, if this consumer is currently allowed to consume. 
             canConsume = 0
@@ -362,14 +344,14 @@ class SolarOverheadDistributor:
 
       return overheadDistribution
   
-  def doRoundRobin(self, overhead, overheadDistribution, minBatCharge):
+   def doRoundRobin(self, overhead, overheadDistribution, minBatCharge):
      overheadAssigned = 0
      while (True):
       overheadBefore = overhead
 
-      for consumerDupe in sorted(Globals.knownSolarOverheadConsumers.values(), key=operator.attrgetter('priority')):   
+      for consumerDupe in sorted(self._knownSolarOverheadConsumers.values(), key=operator.attrgetter('priority')):   
          consumerKey = consumerDupe.consumerKey        
-         consumer = Globals.knownSolarOverheadConsumers[consumerKey]
+         consumer = self._knownSolarOverheadConsumers[consumerKey]
 
          #check, if this consumer is currently allowed to consume. 
          canConsume = 0
@@ -424,13 +406,189 @@ class SolarOverheadDistributor:
 
       return overheadDistribution
 
-  def _handlechangedvalue(self, path, value):
-    logging.critical("Someone else updated %s to %s" % (path, value))
-    return True # accept the change
+   def _handlechangedvalue(self, path, value):
+     logging.critical("Someone else updated %s to %s" % (path, value))
+     return True # accept the change
   
-  def Publish(self, path, value):
+   def Publish(self, path, value):
       try:
          self.dbusService[path] = value
-         Globals.mqttClient.publish("es-ESS/SolarOverheadDistributor{0}".format(path), value, 1)
+         self.publishMainMqtt("es-ESS/SolarOverheadDistributor{0}".format(path), value, 1)
       except Exception as e:
        c(self, "Exception", exc_info=e)
+
+class SolarOverheadConsumer:
+  def __init__(self, consumerKey):
+     #wait until we have gathered ALL required values.
+     #then, the device can be initialized finally.
+     self.vrmInstanceID = None
+     self.isInitialized = False
+     self.dbusService = None
+     self.customName = None
+     self.minimum = 0
+     self.request = 0
+     self.stepSize = 0
+     self.consumption = 0
+     self.priority = 100
+     self.allowance = 0
+     self.isAutomatic = False
+     self.consumerKey = consumerKey
+     self.isNPC = False
+     self.npcState = False
+     self.ignoreBatReservation = False
+     self.onUrl = None
+     self.offUrl = None
+     self.statusUrl = None
+     self.onKeywordRegex = None
+     
+     i(self, "SolarOverheadConsumer created: " + consumerKey + ". Waiting for required values to arrive...")
+
+  def setValue(self, key, value):
+     key = key.replace('{0}/SolarOverheadDistributor/Requests/{1}/'.format(Globals.esEssTag, self.consumerKey), "")
+     
+     d(self, "Setting value '{0}' to '{1}'".format(key, value))
+
+     if (key == "Minimum"):
+        self.minimum = float(value)
+     elif (key == "Request"):
+        self.request = float(value)
+     elif (key == "StepSize"):
+        self.stepSize = float(value)
+     elif (key == "Consumption"):
+        self.consumption = float(value)
+     elif (key == "IsAutomatic"):
+        self.isAutomatic = value.lower() == "true"
+     elif (key == "VRMInstanceID"):
+        self.vrmInstanceID = int(value)
+     elif (key == "Priority"):
+        if (value == ""):
+          self.priority = 100
+        else:
+          self.priority = int(value)
+     elif (key == "IgnoreBatReservation"):
+        self.ignoreBatReservation = value.lower() == "true"
+     elif (key == "Allowance"):
+        self.allowance = float(value)
+     elif (key == "CustomName"):
+        self.customName = value
+     elif (key == "IsNPC"):
+        self.isNPC = value.lower() == "true"
+     elif (key == "OnUrl"):
+        self.onUrl = value
+     elif (key == "OffUrl"):
+        self.offUrl = value
+     elif (key == "StatusUrl"):
+        self.statusUrl = value
+     elif (key == "OnKeywordRegex"):
+        self.onKeywordRegex = value
+
+     #TODO: Delta publishing of only changed value.
+     self.dumpFakeBMS()
+    
+  def checkFinalInit(self, pods):
+     #to create the final instance on DBUS, we need the VRMId at least.
+     if (self.vrmInstanceID is not None):
+        self.initialize()
+     else:
+        w(self, "Initialization of consumer {0} not yet possible, VRMInstanceID is missing.".format(self.consumerKey))
+
+  def initialize(self):
+     self.serviceType = "com.victronenergy.battery"
+     self.serviceName = self.serviceType + ".es-ESS.SolarOverheadConsumer_" + str(self.vrmInstanceID)
+     self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
+     
+     #Mgmt-Infos
+     self.dbusService.add_path('/DeviceInstance', self.vrmInstanceID)
+     self.dbusService.add_path('/Mgmt/ProcessName', __file__)
+     self.dbusService.add_path('/Mgmt/ProcessVersion', Globals.currentVersionString + ' on Python ' + platform.python_version())
+     self.dbusService.add_path('/Mgmt/Connection', "Local DBus Injection")
+
+     # Create the mandatory objects
+     self.dbusService.add_path('/ProductId', 65535)
+     self.dbusService.add_path('/ProductName', "{0} SolarOverheadConsumer".format(Globals.esEssTag)) 
+     self.dbusService.add_path('/CustomName', self.customName) 
+     self.dbusService.add_path('/Latency', None)    
+     self.dbusService.add_path('/FirmwareVersion', Globals.currentVersionString)
+     self.dbusService.add_path('/HardwareVersion', Globals.currentVersionString)
+     self.dbusService.add_path('/Connected', 1)
+     self.dbusService.add_path('/Serial', "1337")
+     
+     self.dbusService.add_path('/Dc/0/Voltage', 0)
+     self.dbusService.add_path('/Dc/0/Power', 0)
+     self.dbusService.add_path('/Dc/0/Current', 0)
+     self.dbusService.add_path('/Soc', 0)
+     
+     i(self,"Initialization of consumer {0} completed.".format(self.consumerKey))
+     self.isInitialized = True
+
+     self.validateNpcStatus(None)
+
+  def dumpFakeBMS(self):
+     try:
+         if (self.dbusService is None):
+            return
+         
+         self.dbusService["/Dc/0/Power"] = self.consumption
+
+         customName = "Solar Overhead Consumer"
+         if (self.customName is not None):
+               customName = self.customName
+
+         if (self.isAutomatic):
+            customName += " ☼"
+         else:
+            customName += " ◌"
+            
+         
+         if (self.request is not None and self.isAutomatic):
+            customName += " @ {0}W".format(self.request)
+
+         self.dbusService["/CustomName"] = customName
+         
+         if (self.request > 0):
+            self.dbusService["/Soc"] = self.consumption / self.request * 100.0
+         else:
+            self.dbusService["/Soc"] = 0
+     except Exception as ex:
+         e(self, "Exception", exc_info=ex)
+
+  def reportAllowance(self, sod):
+     sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Allowance".format(Globals.esEssTag, self.consumerKey), self.allowance, 1)
+     d(self, "Consumer {0} reporting allowance of {1}W".format(self.consumerKey, self.allowance))
+
+     if (self.isNPC):
+        self.npcControl()
+        sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Consumption".format(Globals.esEssTag, self.consumerKey), self.consumption, 1)
+
+  def npcControl(self):
+      try:
+         #invoke npc control! 
+         if (self.allowance >= self.request and not self.npcState):
+            #turn on!
+            d(self, "Turn on NPC-consumer required, calling: " + self.onUrl)
+            requests.get(url=self.onUrl)
+            self.validateNpcStatus(True)
+         elif (self.allowance == 0 and self.npcState):
+            #turn off!
+            requests.get(url=self.offUrl)
+            d(self, "Turn off NPC-consumer required, calling: " + self.offUrl)
+            self.validateNpcStatus(False)
+      except Exception as ex:
+         c(self, "Exception", exc_info=ex)
+
+  def validateNpcStatus(self, should):
+      try:
+         d(self, "Validating NPC-Consumer state through: " + self.statusUrl + " against: " + str(self.onKeywordRegex))
+         status = requests.get(url=self.statusUrl)
+         isMatch = re.search(str(self.onKeywordRegex), status.text) is not None
+         d(self, "Status is: " + str(isMatch) + " and should be: " + str(should) + ". input text length was " + str(len(status.text)))
+         
+         self.npcState = isMatch
+
+         if (isMatch):
+            self.consumption = self.request
+         else:
+            self.consumption = 0
+
+      except Exception as ex:
+       c(self, "Exception", exc_info=ex)
