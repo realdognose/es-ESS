@@ -2,7 +2,7 @@
 es-ESS (equinox solutions Energy Storage Systems) is an extension for Victrons VenusOS running on GX-Devices.
 es-ESS brings various functions starting with tiny helpers, but also including major functionalities.
 
-es-ESS is structered into individual modules and every module can be enabled or disabled seperate. So, only certain
+es-ESS is structered into individual services and every service can be enabled or disabled seperate. So, only certain
 features can be enabled, based on your needs.
 
 ### Table of Contents
@@ -26,7 +26,7 @@ Your system needs to match the following requirements in order to use es-ESS:
 - Have shell access enabled and know how to use it. (See: https://www.victronenergy.com/live/ccgx:root_access)
 
 # MqttExporter
-Victrons Venus OS / Cerbo Devices have a builtin Mqtt-Server. However, there are some flaws with that: You have to constantly post a Keep-Alive message, in order to keep values beeing published. VRM uses this in Order to receive data. On one hand, it is a unnecessary performance-penalty to keep thausands of values up-to-date, just because you want to use 10-12 of them for display purpose. 
+Victrons Venus OS / Cerbo Devices have a builtin Mqtt-Server. However, there are some flaws with that: You have to constantly post a Keep-Alive message, in order to keep values beeing published. VRM uses this in order to receive data. On one hand, it is a unnecessary performance-penalty to keep thausands of values up-to-date, just because you want to use 10-12 of them for display purpose. 
 
 Second issue is - according to the forums: while Keep-Alive is enabled, topics are continiously forwarded to the cloud, causing bandwith usage, which is bad on metered connections or at least general bandwith pollution. 
 
@@ -48,18 +48,18 @@ if you wanat to export from a certain service (like bms) you can use dbus-spy in
 - Schema: {serviceName}, {DBusPath}, {MqttTarget}
 - use a * in the mqtt-path to append the original DBus-Path.
 
-**Note that dbus-Pahts start with a "/" and Mqtt Paths don't.**
+**Note that dbus-paths start with a "/" and MQTT paths don't.**
 
-All Whitespaces will be trimmed, you can intend values to see any typos easily. 
+All whitespaces will be trimmed, you can indent values to see any typos easily. 
 use dbus-spy on ssh to identify the service name. (right-arrow on selection to dig into available keys.)
 
-Example Relation between dbus-spy, config and mqtt: 
+Example relation between dbus-spy, config and MQTT: 
 
 | use `dbus-spy` to find the servicename |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter1.png" />|
 
-| use `dbus-spy` to find the desired dbus-keys (right arrow key) |
+| use `dbus-spy` to find the desired Dbus-keys (right arrow key) |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter2.png" />|
 
@@ -164,7 +164,7 @@ FroniusWattpilot requires a few variables to be set in `/data/es-ESS/config.ini`
 # Credits
 Wattpilot control functionality has been taken from https://github.com/joscha82/wattpilot and modified to extract all variables required for full integration.
 All buggy overhead (Home-Assistant / Mqtt) has been removed and some bug fixes have been applied to achieve a stable running Wattpilot-Core. (It seems to be unmaintained
-since 2 years)
+since 2 years, lot of pull-requests are not accepted.)
 
 # MqttToEVSoc
 TODO
@@ -262,6 +262,8 @@ the required request values plus some additional parameters for remote-control. 
 
 the example consumerKey is *waterplay* here.
 
+#TODO: Update table bellow.
+
 | Section    | Value name |  Descripion | Type | Example Value|
 | ------------------ | ---------|---- | ------------- |--|
 | [NPC:waterplay]    | customName |  DisplayName on VRM   |String | Waterplay |
@@ -276,6 +278,7 @@ the example consumerKey is *waterplay* here.
 | [NPC:waterplay]    | isOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | '"ison":\s*true'      | 
 
 
+#TODO: Update image bellow.
 | Example of config section for NPC-SolarOverheadConsumer |
 |:-----------:|
 | <img src="https://github.com/realdognose/es-ESS/blob/main/img/visual_example_npc.png" /> | 
@@ -293,7 +296,9 @@ SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/con
 | [Services]    | SolarOverheadDistributor | Flag, if the module should be enabled or not | Boolean | true |
 | [SolarOverheadDistributor]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
 | [SolarOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
-| [SolarOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />The example will maximum reserve 5000W, for every percent of SoC reached 40 watts are released. Mimimum of 1040 Watts will be reached at 99% Soc, until SoC is 100%<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | 5000 - 40 * SOC |
+| [SolarOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />*You can use any complex arithmetic you like, see example graphs bellow for 3 typical curves* | String  | 5000 - 40 * SOC |
+| [SolarOverheadDistributor]  | Strategy |  Strategy to assign overhead.<br /><br/>**RoundRobin**: available overhead is distributed among every consumer in {StepSize} pieces.<br />**TryFullfill**: Available overhead is assigned based on Priority and only moved to the next consumer if the consumer with the lower priority is running at 100% or can't be assigned more anymore. | String  | TryFullfill |
+| [SolarOverheadDistributor]  | UpdateInterval |  Time in milliseconds, how often the overhead should be redistributed. CAUTION: Do not use to small values. Theres a lot in the system happening that needs to catch up. Too small values will lead to imprecise readings of various meter values and lead to wrong calculations. I recommend 60s (60000ms), more frequent distribution doesn't yield better results.  | Integer  | 60000 |
 
 In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> System Setup -> Battery Measurement* and set the ones you'd like to see to *Visible*:
 
@@ -301,6 +306,12 @@ In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> Sys
 |:-----------:|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/cerboSettings.png" /> |
 
+| Typically usefull equations for `MinBatCharge` |
+|:-----------:|
+| Blue := Linear going down, with a maxium of 5400Watts and a minimum of 400W: `5000-50*SOC+400`|
+| Green := Enforce battery charge of 3000W upto ~ 90% SoC: `3000/(SOC-100)+3000`|
+| Red := Just enforce at very low SoC, but 1500W minimum: `(1/(SOC/8)*5000)+1000`|
+| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/socFormula.png"> |
 
 # TimeToGoCalculator
 
@@ -340,7 +351,20 @@ The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
 | [DEFAULT]    | LogLevel |  Options: DEBUG, INFO, WARNING, ERROR, CRITICAL | String | INFO |
-| [LogDetails]    | LogIncomingMqttMessages | Log messages received by mqtt | Boolean | true |
+| [LogDetails]    | DontLogDebug | Blacklist for method calls that shouldn't even be logged in DEBUG Mode.  | String | es-ESS.onLocalMqttMessage, esESS._dbusValueChanged|
+
+Additionally there are the following configuration options available: 
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [DEFAULT]    | NumberOfThreads |  Number of threads, es-ESS should use. | int | 5 |
+| [DEFAULT]    | ServiceMessageCount | Number of service messages published on mqtt | int | 50 |
+| [DEFAULT]    | ConfigVersion | Current Config Version. DO NOT TOUCH THIS, it is required to update configuration files on new releases. | int | 1 |
+| [Mqtt]    | ThrottlePeriod | Minimum time in ms between two messages on the same topic. Useful to reduce overall network traffic. Intelligent backlog tracking ensures that "the last message" emitted is always published after {ThrottlePeriod} milliseconds. | int | 2000 |
+
+### Service Messages
+es-ESS also publishes Operational-Messages as well as Errors, Warnings and Critical failures under the `$SYS`-Topic of es-ESS. Check these from time to time to ensure proper functionality
+
 
 # F.A.Q.
 
