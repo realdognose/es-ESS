@@ -7,7 +7,7 @@ from esESSService import esESSService
 class TimeToGoCalculator(esESSService):
     def __init__(self):
         esESSService.__init__(self)
-        self.capacity   = float(self.config["DEFAULT"]["BatteryCapacityInWh"]
+        self.capacity   = float(self.config["DEFAULT"]["BatteryCapacityInWh"])
 
     def initDbusService(self):
         pass
@@ -60,16 +60,16 @@ class TimeToGoCalculator(esESSService):
         elif (power > 0):
           remaining = (missingCapacity / power) * 60 * 60
 
-        #d(self, "=> TimeToGo: {0}s".format(remaining))
+        #d(self, "=> TimeToGo (s): {0}s".format(remaining))
         
         #Inject calculated value to dbus. 
         if (remaining is not None):
           #TODO: Figure out why dbus publishing is not working :( )
           #self.timeToGoDbus.publish(int(remaining))
 
-          self.publishLocalMqtt("N/{0}/system/0/Dc/Battery/TimeToGo".format(self.config["DEFAULT"]["VRMPortalID"], "{\"value\": " + str(int(remaining)) + "}")
+          self.publishLocalMqtt("N/{0}/system/0/Dc/Battery/TimeToGo".format(self.config["DEFAULT"]["VRMPortalID"]), "{\"value\": " + str(int(remaining)) + "}")
           self.publishMainMqtt("{0}/{1}/TimeToGo".format(Globals.esEssTag, self.__class__.__name__), int(remaining))
-          self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "TimeToGo: {0}s".format(remaining))
+          self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "TimeToGo (s): {0}s".format(remaining))
 
       except Exception as e:
         c("TimeToGoCalculator", "Exception catched", exc_info=e)

@@ -78,7 +78,7 @@ class esESS:
         self.mainMqttClient.on_disconnect = self.onMainMqttDisconnect
         self.mainMqttClient.on_connect = self.onMainMqttConnect
 
-        if 'User' in config["DEFAULT"]['Mqtt']and 'Password' in config["DEFAULT"]['Mqtt']and config['Mqtt']['User'] != '' and config['Mqtt']['Password'] != '':
+        if 'User' in config['Mqtt'] and 'Password' in config['Mqtt'] and config['Mqtt']['User'] != '' and config['Mqtt']['Password'] != '':
             self.mainMqttClient.username_pw_set(username=config['Mqtt']['User'], password=config['Mqtt']['Password'])
 
         self.mainMqttClient.will_set("es-ESS/$SYS/Status", "Offline", 2, True)
@@ -397,12 +397,12 @@ class esESS:
         else:
            self._serviceMessageIndex[key] +=1
         
-        if (self._serviceMessageIndex[key] > int(self.config["DEFAULT"]["ServiceMessageCount"] + 1)):
+        if (self._serviceMessageIndex[key] > int(self.config["DEFAULT"]["ServiceMessageCount"]) + 1):
            self._serviceMessageIndex[key] = 1
 
         self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=self._serviceMessageIndex[key]), "{0} | {1}".format(str(datetime.datetime.now()), message) , 0, True, True)
         nextOne = self._serviceMessageIndex[key] +1
-        if (nextOne > int(self.config["DEFAULT"]["ServiceMessageCount"] + 1)):
+        if (nextOne > int(self.config["DEFAULT"]["ServiceMessageCount"]) + 1):
             nextOne = 1
         
         self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=nextOne), "{0} | {1}".format(str(datetime.datetime.now()), "-------------------------") , 0, True, True)
@@ -410,7 +410,7 @@ class esESS:
     
 
 def configureLogging(config):
-  logLevelString = config['LogLevel']
+  logLevelString = config["DEFAULT"]['LogLevel']
   logLevel = logging.getLevelName(logLevelString)
   logDir = "/data/log/es-ESS"
   
