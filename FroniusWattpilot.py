@@ -427,3 +427,9 @@ class FroniusWattpilot (esESSService):
     def Publish(self, path, value):
         self.dbusService[path] = value
         self.publishMainMqtt("es-ESS/FroniusWattpilot{0}".format(path), value, 0)
+
+    def handleSigterm(self):
+       self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "SIGTERM received, sending STOP-command to wattpilot, despite any state.")
+       self.wattpilot.set_start_stop(1)
+       self.wattpilot._auto_reconnect = False
+       self.wattpilot.disconnect()

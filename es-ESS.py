@@ -4,6 +4,7 @@
 import configparser # for config/ini file
 import datetime
 from logging.handlers import TimedRotatingFileHandler
+import signal
 import sys
 import os
 import logging
@@ -39,7 +40,9 @@ DBusGMainLoop(set_as_default=True)
 class esESS:
     def __init__(self):
         self.config = configparser.ConfigParser()
-        self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))   
+        self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
+        
+        self._sigTermInvoked=False   
         self.mainMqttClientConnected = False
         self.localMqttClientConnected = False
         self.mqttThrottlePeriod = int(self.config["Mqtt"]["ThrottlePeriod"])
@@ -280,6 +283,9 @@ class esESS:
        self._dbusMonitor.set_value(sub.serviceName, sub.dbusPath, value)
     
     def _runThread(self, workerThread: WorkerThread):
+       if (self._sigTermInvoked):
+            return False
+       
        d(self, "Running thread: {0}".format(Helper.formatCallback(workerThread.thread)))
        if (workerThread.future is None or workerThread.future.done()):
             self._threadExecutionsMinute+=1
@@ -389,6 +395,13 @@ class esESS:
                self._localSendCount = 0
 
     def publishServiceMessage(self, service, type, message):
+        if (type == Globals.ServiceMessageType.Operational):
+           i(service, "Service Message: {0}".format(message))
+
+        if (not self.mainMqttClient.is_connected):
+           w(self, "Mqtt not connected, ignoring sending attempt.")
+           return
+
         serviceName = service.__class__.__name__ if not isinstance(service, str) else service
 
         key = "{0}{1}".format(serviceName, type)
@@ -407,7 +420,40 @@ class esESS:
         
         self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=nextOne), "{0} | {1}".format(str(datetime.datetime.now()), "-------------------------") , 0, True, True)
 
-    
+    def handleSigterm(self, signum, frame):
+        self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "SIGTERM received. Shuting down services gracefully.")
+
+        #set flag, so dbus handler stops forwarding new messages, threads are no longer started, etc.
+        self._sigTermInvoked=True
+
+        #unsubscribe any mqtt sub, so we no longer receive new messages. 
+        for (topic, sublist) in self._mqttSubscriptions.items():
+            for sub in sublist:
+                d(self, "Unsubscribing from Mqtt-Subscriptions for Service {0} on {1} with callback: {2}".format(sub.requestingService.__class__.__name__, sub.topic, Helper.formatCallback(sub.callback)))
+                if (sub.type == MqttSubscriptionType.Main):
+                    self.mainMqttClient.unsubscribe(sub.topic)
+                elif (sub.type == MqttSubscriptionType.Local):
+                    self.localMqttClient.unsubscribe(sub.topic)
+        
+        #dbusmonitor has no disconnect method, so we just stop forwarding the messages in the global handler. 
+
+        #tell each service to clean up as well.
+        for (key, service) in self._services.items():
+           service.handleSigterm()
+           i(self, "Service {0} is in safe exit state.".format(service.__class__.__name__))
+
+        #finally, clean up internally.
+        self._handleSigterm()
+
+        i(self, "Bye.")
+        sys.exit(0)
+        
+    def _handleSigterm(self):
+       #disconnect from mqtts
+       self.mainMqttClient.reconnect = False
+       self.localMqttClient.reconnect = False
+       self.mainMqttClient.disconnect()
+       self.localMqttClient.disconnect()           
 
 def configureLogging(config):
   logLevelString = config["DEFAULT"]['LogLevel']
@@ -443,6 +489,9 @@ def main(config):
       i("Main", "-----------------------------------------------------------------------------------------")
            
       Globals.esESS = esESS()
+      for sig in [signal.SIGTERM, signal.SIGINT]:
+        signal.signal(sig, Globals.esESS.handleSigterm)
+
       Globals.esESS.initialize()
       
       mainloop = gobject.MainLoop()
@@ -450,13 +499,14 @@ def main(config):
   except Exception as e:
     c("Main", "Exception", exc_info=e)
 
+    sys.exit(0)    
+
 if __name__ == "__main__":
   # read configuration. TODO: Migrate to UI-Based configuration later.
   config = configparser.ConfigParser()
   config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
   
   configureLogging(config)
-  
 
   try:
     main(config)

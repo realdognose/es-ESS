@@ -28,7 +28,7 @@ class SolarOverheadDistributor(esESSService):
       self.bmsServiceType = "com.victronenergy.battery"
       self.bmsServiceName = self.bmsServiceType + ".es-ESS.SolarOverheadConsumer_" + str(self.vrmInstanceIDBMS)
       self.lastUpdate = 0
-      self._knownSolarOverheadConsumers = { }
+      self._knownSolarOverheadConsumers: dict[str, SolarOverheadConsumer] = { }
       self._knownSolarOverheadConsumersLock = threading.Lock()
 
    def initDbusService(self):
@@ -111,6 +111,7 @@ class SolarOverheadDistributor(esESSService):
    def initWorkerThreads(self):
       self.registerWorkerThread(self.updateDistribution, int(self.config["SolarOverheadDistributor"]["UpdateInterval"]))
       self.registerWorkerThread(self.dumpReservationBms, 2000)
+      self.registerWorkerThread(self._validateNPCConsumerStates, 15 * 60 * 1000)
    
    def initFinalize(self):
       #Service is operable already. Need to parse NPC consumer and throw them over to mqtt-based processing. 
@@ -147,8 +148,8 @@ class SolarOverheadDistributor(esESSService):
 
             self._knownSolarOverheadConsumers[consumerKey].setValue(msg.topic, str(msg.payload)[2:-1])
 
-      except Exception as e:
-         c(self, "Exception", exc_info=e)
+      except Exception as ex:
+         c(self, "Exception", exc_info=ex)
 
    def dumpConsumerBms(self):
       try:
@@ -162,10 +163,26 @@ class SolarOverheadDistributor(esESSService):
                if (consumer.isInitialized):
                   consumer.dumpFakeBMS()
 
-      except Exception as e:
-          e(self, "Error", exc_info = e)
+      except Exception as ex:
+          e(self, "Error", exc_info = ex)
 
       return True
+   
+   def _validateNPCConsumerStates(self):
+      try:
+         with self._knownSolarOverheadConsumersLock:
+            for consumerKey in self._knownSolarOverheadConsumers:
+               consumer = self._knownSolarOverheadConsumers[consumerKey]
+         
+               if (consumer.isInitialized and consumer.isNPC):
+                  consumer.validateNpcStatus(None)
+                  consumer.npcControl()
+
+      except Exception as ex:
+          e(self, "Error", exc_info = ex)
+
+      return True
+
    
    def dumpReservationBms(self):
       #dump main bms information as well. 
@@ -230,8 +247,10 @@ class SolarOverheadDistributor(esESSService):
             equation = self.config["SolarOverheadDistributor"]["MinBatteryCharge"]
             equation = equation.replace("SOC", str(batSoc))
             minBatCharge = round(eval(equation))
+         except ZeroDivisionError as ex:
+            e(self, "Error ZeroDivisionError on MinBatteryCharge-Equation. Using MinBatteryCharge=0.", exc_info=ex)
          except Exception as ex:
-            e(self, "Error evaluation MinBatteryCharge-Equation. Using MinBatteryCharge=0.")
+            e(self, "Error evaluation MinBatteryCharge-Equation. Using MinBatteryCharge=0.", exc_info=ex)
 
          overhead = max(0, feedIn + assignedConsumption + batPower)
          self.Publish("/Calculations/OverheadAvailable",  overhead)
@@ -258,6 +277,9 @@ class SolarOverheadDistributor(esESSService):
             consumer = self._knownSolarOverheadConsumers[consumerKey]
             
             if (consumer.isInitialized and consumer.isAutomatic):
+               if (Globals.esESS._sigTermInvoked == True):
+                  return
+               
                consumer.allowance = overheadDistribution[consumerKey]
                consumer.reportAllowance(self)
                overheadAssigned += consumer.allowance
@@ -279,8 +301,8 @@ class SolarOverheadDistributor(esESSService):
          self.Publish('/LastUpdateTime', self.lastUpdate)   
          self.Publish('/LastUpdateDateTime', str(datetime.datetime.now()))     
          d(self, "Updating PV-Overhead distribution -> done") 
-    except Exception as e:
-       c(self, "Exception", exc_info=e)
+    except Exception as ex:
+       c(self, "Exception", exc_info=ex)
        
     return True
  
@@ -416,8 +438,17 @@ class SolarOverheadDistributor(esESSService):
       try:
          self.dbusService[path] = value
          self.publishMainMqtt("es-ESS/SolarOverheadDistributor{0}".format(path), value, 1)
-      except Exception as e:
-       c(self, "Exception", exc_info=e)
+      except Exception as ex:
+       c(self, "Exception", exc_info=ex)
+   
+   def handleSigterm(self):
+       self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "SIGTERM received, revoking allowance for every consumer and stopping NPCs.")
+       for (key, consumer) in self._knownSolarOverheadConsumers.items():
+          consumer.allowance=0
+          consumer.reportAllowance(self)
+          
+          if (consumer.isNPC):
+             consumer.npcControl()
 
 class SolarOverheadConsumer:
   def __init__(self, consumerKey):
@@ -489,8 +520,14 @@ class SolarOverheadConsumer:
     
   def checkFinalInit(self, pods):
      #to create the final instance on DBUS, we need the VRMId at least.
+     #NPC consumers need at least: statusUrl, onKeywordRegex, onUrl, offUrl.
      if (self.vrmInstanceID is not None):
-        self.initialize()
+        if (self.isNPC and self.statusUrl is not None and self.onKeywordRegex is not None and self.onUrl is not None and self.offUrl is not None):
+          self.initialize()
+        elif (not self.isNPC and not self.isNPC is None):
+          self.initialize()
+        else:
+           w(self, "Initialization of consumer {0} not yet possible, some minimum-values are missing.".format(self.consumerKey))
      else:
         w(self, "Initialization of consumer {0} not yet possible, VRMInstanceID is missing.".format(self.consumerKey))
 
@@ -594,3 +631,5 @@ class SolarOverheadConsumer:
 
       except Exception as ex:
        c(self, "Exception", exc_info=ex)
+   
+  

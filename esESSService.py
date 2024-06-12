@@ -46,6 +46,10 @@ class esESSService(ABC):
     def initFinalize(self):
         pass
 
+    @abstractmethod
+    def handleSigterm(self):
+        pass
+
     def publishMainMqtt(self, topic, payload, qos=0, retain=False):
         Globals.esESS.publishMainMqtt(topic, payload, qos, retain)
     

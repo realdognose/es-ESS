@@ -69,9 +69,11 @@ class TimeToGoCalculator(esESSService):
 
           self.publishLocalMqtt("N/{0}/system/0/Dc/Battery/TimeToGo".format(self.config["DEFAULT"]["VRMPortalID"]), "{\"value\": " + str(int(remaining)) + "}")
           self.publishMainMqtt("{0}/{1}/TimeToGo".format(Globals.esEssTag, self.__class__.__name__), int(remaining))
-          self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "TimeToGo (s): {0}s".format(remaining))
 
       except Exception as e:
         c("TimeToGoCalculator", "Exception catched", exc_info=e)
       
       return True
+    
+    def handleSigterm(self):
+       pass
