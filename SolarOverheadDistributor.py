@@ -260,6 +260,8 @@ class SolarOverheadDistributor(esESSService):
             if (consumer.isInitialized and consumer.isAutomatic):
                consumer.allowance = overheadDistribution[consumerKey]
                consumer.reportAllowance(self)
+               overheadAssigned += consumer.allowance
+               overhead -= consumer.allowance
                self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Assigned {0}W to {1} ({2})".format(consumer.allowance, consumer.customName, consumerKey))
             elif (not consumer.isInitialized):
                self.publishServiceMessage(self, Globals.ServiceMessageType.Warning, "{0} ({1}) is not yet initialized.".format(consumer.customName, consumerKey))

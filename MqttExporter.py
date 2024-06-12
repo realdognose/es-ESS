@@ -10,12 +10,14 @@ import sys
 
 # esEss imports
 from Helper import i, c, d, w, e
+import Globals
 from esESSService import esESSService
 
 class MqttExporter(esESSService):
     def __init__(self):
         esESSService.__init__(self)
         self.topicExports: Dict[str, TopicExport] = {}
+        self.forwardedTopicsPastMinute = 0
         
         #Load all topics we should export from DBus to Mqtt and start listening for changes.
         #upon change, export according to the setup rules. 
@@ -40,7 +42,7 @@ class MqttExporter(esESSService):
             self.registerDbusSubscription(topicExport.service, topicExport.source, self._dbusValueChanged)
         
     def initWorkerThreads(self):
-        pass
+        self.registerWorkerThread(self._signOfLife, 60000)
 
     def initMqttSubscriptions(self):
         pass
@@ -51,6 +53,11 @@ class MqttExporter(esESSService):
     def _dbusValueChanged(self, sub):
         key = "{0}{1}".format(sub.serviceName, sub.dbusPath)
         self.publishMainMqtt(self.topicExports[key].target, sub.value, 0, True)
+        self.forwardedTopicsPastMinute += 1
+
+    def _signOfLife(self):
+        self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Forwarded {0} Dbus-Messages in the past minute.".format(self.forwardedTopicsPastMinute))
+        self.forwardedTopicsPastMinute = 0
 
 class TopicExport:
     def __init__(self, service, source, target):

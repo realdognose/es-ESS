@@ -285,10 +285,6 @@ class esESS:
        
        return True
     
-    def loop(self):
-       d(self, "Alive...")
-       return True
-    
     def registerDbusSubscription(self, sub):
        if (sub.valueKey not in self._dbusSubscriptions):
           self._dbusSubscriptions[sub.valueKey] = []
@@ -384,7 +380,9 @@ class esESS:
                self._localSendCount = 0
 
     def publishServiceMessage(self, service, type, message):
-        key = "{0}{1}".format(service.__class__.__name__, type)
+        serviceName = service.__class__.__name__ if not isinstance(service, str) else service
+
+        key = "{0}{1}".format(serviceName, type)
         if (key not in self._serviceMessageIndex):
            self._serviceMessageIndex[key] = 1
         else:
@@ -393,12 +391,12 @@ class esESS:
         if (self._serviceMessageIndex[key] > int(self.config["Default"]["ServiceMessageCount"]) + 1):
            self._serviceMessageIndex[key] = 1
 
-        self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=service.__class__.__name__, type=type, id=self._serviceMessageIndex[key]), "{0} | {1}".format(str(datetime.datetime.now()), message) , 0, True, True)
+        self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=self._serviceMessageIndex[key]), "{0} | {1}".format(str(datetime.datetime.now()), message) , 0, True, True)
         nextOne = self._serviceMessageIndex[key] +1
         if (nextOne > int(self.config["Default"]["ServiceMessageCount"]) + 1):
             nextOne = 1
         
-        self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=service.__class__.__name__, type=type, id=nextOne), "{0} | {1}".format(str(datetime.datetime.now()), "-------------------------") , 0, True, True)
+        self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=nextOne), "{0} | {1}".format(str(datetime.datetime.now()), "-------------------------") , 0, True, True)
 
     
 

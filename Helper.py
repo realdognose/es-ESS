@@ -11,6 +11,9 @@ sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
 from vedbus import VeDbusService # type: ignore
 import dbus # type: ignore
 
+#es-ESS
+import Globals
+
 # Helper defs for logging
 logBlackList = []
 
@@ -43,6 +46,8 @@ def w(module, msg, **kwargs):
    func = inspect.currentframe().f_back.f_code
    lineIdentifier = "{0}|{1}.{2}".format(threading.currentThread().getName(), module, func.co_name)
 
+   Globals.esESS.publishServiceMessage(module, Globals.ServiceMessageType.Warning, "[" + lineIdentifier + "] " + msg)
+
    logging.warning("[" + lineIdentifier + "] " + msg, **kwargs)
 
 def e(module, msg, **kwargs):
@@ -52,6 +57,8 @@ def e(module, msg, **kwargs):
    func = inspect.currentframe().f_back.f_code
    lineIdentifier = "{0}|{1}.{2}".format(threading.currentThread().getName(), module, func.co_name)
 
+   Globals.esESS.publishServiceMessage(module, Globals.ServiceMessageType.Error, "[" + lineIdentifier + "] " + msg)
+
    logging.error("[" + lineIdentifier + "] " + msg, **kwargs)
 
 def c(module, msg, **kwargs):
@@ -60,6 +67,8 @@ def c(module, msg, **kwargs):
 
    func = inspect.currentframe().f_back.f_code
    lineIdentifier = "{0}|{1}.{2}".format(threading.currentThread().getName(), module, func.co_name)
+
+   Globals.esESS.publishServiceMessage(module, Globals.ServiceMessageType.Critical, "[" + lineIdentifier + "] " + msg)
 
    logging.critical("[" + lineIdentifier + "] " + msg, **kwargs)
 
