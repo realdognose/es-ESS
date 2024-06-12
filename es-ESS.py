@@ -43,6 +43,7 @@ class esESS:
         self.mainMqttClientConnected = False
         self.localMqttClientConnected = False
         self.mqttThrottlePeriod = int(self.config["Mqtt"]["ThrottlePeriod"])
+        self._threadExecutionsMinute = 0
                 
         i(self, "Initializing " + Globals.esEssTag + " (" + Globals.currentVersionString + ")")
 
@@ -53,8 +54,8 @@ class esESS:
         self._serviceMessageIndex: Dict[str, int] = {}
         self._dbusMonitor: DbusMonitor = None
         
-        i(self, "Initializing thread pool with a size of {0}".format(self.config["Default"]["NumberOfThreads"]))
-        self.threadPool = ThreadPoolExecutor(int(self.config["Default"]["NumberOfThreads"]))
+        i(self, "Initializing thread pool with a size of {0}".format(self.config["NumberOfThreads"]))
+        self.threadPool = ThreadPoolExecutor(int(self.config["NumberOfThreads"]))
 
         if (self.mqttThrottlePeriod > 0):
            self._mainMqttThrottleDictLock = threading.Lock()
@@ -143,6 +144,8 @@ class esESS:
 
        self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "es-ESS is starting up...")
 
+       gobject.timeout_add(60000, self._signOfLive)
+       
        self._initializeServices()
 
        #Finally, do some mqtt reports. 
@@ -277,14 +280,19 @@ class esESS:
        self._dbusMonitor.set_value(sub.serviceName, sub.dbusPath, value)
     
     def _runThread(self, workerThread: WorkerThread):
-       d(self, "Running thread: {0}.{1}".format(workerThread.service.__class__.__name__, workerThread.thread.__name__))
+       d(self, "Running thread: {0}".format(Helper.formatCallback(workerThread.thread)))
        if (workerThread.future is None or workerThread.future.done()):
+            self._threadExecutionsMinute+=1
             self.threadPool.submit(workerThread.thread)
        else:
             w(self, "Thread {0} from {1} is scheduled to run every {2}ms - Future not done, skipping call attempt.".format(workerThread.service.__class__.__name__, workerThread.thread.__name__, workerThread.interval))
        
        return True
     
+    def _signOfLive(self):
+       self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Executed {0} threads in the past minute.".format(self._threadExecutionsMinute))
+       self._threadExecutionsMinute = 0
+
     def registerDbusSubscription(self, sub):
        if (sub.valueKey not in self._dbusSubscriptions):
           self._dbusSubscriptions[sub.valueKey] = []
@@ -388,12 +396,12 @@ class esESS:
         else:
            self._serviceMessageIndex[key] +=1
         
-        if (self._serviceMessageIndex[key] > int(self.config["Default"]["ServiceMessageCount"]) + 1):
+        if (self._serviceMessageIndex[key] > int(self.config["ServiceMessageCount"]) + 1):
            self._serviceMessageIndex[key] = 1
 
         self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=self._serviceMessageIndex[key]), "{0} | {1}".format(str(datetime.datetime.now()), message) , 0, True, True)
         nextOne = self._serviceMessageIndex[key] +1
-        if (nextOne > int(self.config["Default"]["ServiceMessageCount"]) + 1):
+        if (nextOne > int(self.config["ServiceMessageCount"]) + 1):
             nextOne = 1
         
         self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=nextOne), "{0} | {1}".format(str(datetime.datetime.now()), "-------------------------") , 0, True, True)
