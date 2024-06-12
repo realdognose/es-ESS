@@ -55,21 +55,33 @@ use dbus-spy on ssh to identify the service name. (right-arrow on selection to d
 
 Example relation between dbus-spy, config and MQTT: 
 
+<div align="center">
+
 | use `dbus-spy` to find the servicename |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter1.png" />|
+</div>
+
+<div align="center">
 
 | use `dbus-spy` to find the desired Dbus-keys (right arrow key) |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter2.png" />|
+</div>
+
+<div align="center">
 
 | create config entries |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter3.png" />|
+</div>
+
+<div align="center">
 
 | Values on MQTT |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter4.png" />|
+</div>
 
 # ChargeCurrentReducer
 
@@ -118,10 +130,13 @@ Therefore, a complete integration of Wattpilot has been implemented:
 |:-------:|:-------:|:-------:|:-------:|
 | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_3phases.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_switching_to_3.png" /> | <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_waitingSun.png" />| <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_start.png" /> <br /> <img src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_stop.png" />| 
 
+<div align="center">
+
 | Full integration |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/SolarOverheadConsumers%202.png" />|
 | Communication is bidirectional between VRM <-> Wattpilot app for both, auto and manual mode. |
+</div>
 
 # Installation
 Despite the installation of es-ESS, an additional python module *websocket-client* is required to communicate with Wattpilot. 
@@ -249,6 +264,12 @@ takes various environment conditions into account before creating a request:
 
 After evaluating and creating the proper request, the current allowance is processed, consumer is adjusted based on allowance, and actual consumption is reported back.
 
+> :warning: NOTE: es-ESS will set the allowance for every consumer to 0, when the service is receiving proper shutdown signals (aka SIGTERM) - However, in case of unexpected
+> powerlosses of your GX-device, complete Hardware-failure or networking-issues that may not be the case.
+> To ensure your scripted consumers don't run for an indefinite amount of time, you should not only validate the `allowance` as outlined above, but also the topic
+> `es-ESS/$SYS/Status`. This is set to `Online` at startup and set to `Offline` per last-will. So, if your consumers note that es-ESS is going offline - it is
+> up to you if they should keep running or stop as well.
+
 ### NPC-SolarOverheadConsumer
 Some consumers are not controllable in steps, they are simple on/off consumers. Also measuring the actual consumption is not always possible or required, so a fixed known consumption can 
 work out as well. To eliminate the need to create multiple on/off-scripts for these consumers, the NPC-SolarOverheadConsumer has been introduced. 
@@ -279,11 +300,18 @@ the example consumerKey is *waterplay* here.
 
 
 #TODO: Update image bellow.
+<div align="center">
+
 | Example of config section for NPC-SolarOverheadConsumer |
 |:-----------:|
 | <img src="https://github.com/realdognose/es-ESS/blob/main/img/visual_example_npc.png" /> | 
+</div>
 
-
+> :warning: NOTE: es-ESS will turn off every NPC-Consumer, when the service is receiving proper shutdown signals (aka SIGTERM) - However, in case of unexpected
+> powerlosses of your GX-device, complete Hardware-failure or networking-issues that may not be the case.
+> To ensure your NPC consumers don't run for an indefinite amount of time, you should - if possible - limit the runtime to whatever should be the worst-case.
+> For instance, with shelly devices, I used the Auto-Turnoff Feature @ 1h or whatever is reasonable for the consumer in question.
+> While a NPC-Consumer should be active, es-ESS will check it's status every 15 minutes, and turn it on again, if it unexpectedly turned off.
 
 ### Configuration
 SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/config.ini`: 
@@ -302,16 +330,22 @@ SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/con
 
 In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> System Setup -> Battery Measurement* and set the ones you'd like to see to *Visible*:
 
+<div align="center">
+
 | Cerbo Configuration for FAKE-BMS |
 |:-----------:|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/cerboSettings.png" /> |
+</div>
+
+<div align="center">
 
 | Typically usefull equations for `MinBatCharge` |
 |:-----------:|
 | Blue := Linear going down, with a maxium of 5400Watts and a minimum of 400W: `5000-50*SOC+400`|
-| Green := Enforce battery charge of 3000W upto ~ 90% SoC: `3000/(SOC-100)+3000`|
+| Green := Enforce battery charge of 3000W upto ~ 90% SoC: `3000/(min(SOC,99)-100)+3000`|
 | Red := Just enforce at very low SoC, but 1500W minimum: `(1/(SOC/8)*5000)+1000`|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/socFormula.png"> |
+</div>
 
 # TimeToGoCalculator
 
@@ -353,6 +387,13 @@ The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day 
 | [DEFAULT]    | LogLevel |  Options: DEBUG, INFO, WARNING, ERROR, CRITICAL | String | INFO |
 | [LogDetails]    | DontLogDebug | Blacklist for method calls that shouldn't even be logged in DEBUG Mode.  | String | es-ESS.onLocalMqttMessage, esESS._dbusValueChanged|
 
+<div align="center">
+
+| Logrotation to avoid filling up the disk |
+|:-----------:|
+| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/logrotate.png" /> |
+</div>
+
 Additionally there are the following configuration options available: 
 
 | Section    | Value name |  Descripion | Type | Example Value|
@@ -365,6 +406,12 @@ Additionally there are the following configuration options available:
 ### Service Messages
 es-ESS also publishes Operational-Messages as well as Errors, Warnings and Critical failures under the `$SYS`-Topic of es-ESS. Check these from time to time to ensure proper functionality
 
+<div align="center">
+
+| Service Messages on MQTT |
+|:-----------:|
+| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/ServiceMessages.png" /> |
+</div>
 
 # F.A.Q.
 
