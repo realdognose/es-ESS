@@ -310,7 +310,7 @@ In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> Sys
 |:-----------:|
 | Blue := Linear going down, with a maxium of 5400Watts and a minimum of 400W: `5000-50*SOC+400`|
 | Green := Enforce battery charge of 3000W upto ~ 90% SoC: `3000/(SOC-100)+3000`|
-| Red := Just enforce at very low SoC, but 1500W minimum: `(1/(x/8)*5000)+1000`|
+| Red := Just enforce at very low SoC, but 1500W minimum: `(1/(SOC/8)*5000)+1000`|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/socFormula.png"> |
 
 # TimeToGoCalculator
