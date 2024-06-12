@@ -307,7 +307,11 @@ the example consumerKey is *waterplay* here.
 | <img src="https://github.com/realdognose/es-ESS/blob/main/img/visual_example_npc.png" /> | 
 </div>
 
-
+> :warning: NOTE: es-ESS will turn off every NPC-Consumer, when the service is receiving proper shutdown signals (aka SIGTERM) - However, in case of unexpected
+> powerlosses of your GX-device, complete Hardware-failure or networking-issues that may not be the case.
+> To ensure your NPC consumers don't run for an indefinite amount of time, you should - if possible - limit the runtime to whatever should be the worst-case.
+> For instance, with shelly devices, I used the Auto-Turnoff Feature @ 1h or whatever is reasonable for the consumer in question.
+> While a NPC-Consumer should be active, es-ESS will check it's status every 15 minutes, and turn it on again, if it unexpectedly turned off.
 
 ### Configuration
 SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/config.ini`: 
