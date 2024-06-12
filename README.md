@@ -264,6 +264,11 @@ takes various environment conditions into account before creating a request:
 
 After evaluating and creating the proper request, the current allowance is processed, consumer is adjusted based on allowance, and actual consumption is reported back.
 
+> :warning: NOTE: es-ESS will set the allowance for every consumer to 0, when the service is receiving proper shutdown signals (aka SIGTERM) - However, in case of unexpected
+> powerlosses of your GX-device or complete Hardware-failure that may not be the case. To ensure your scripted consumers don't run for an indefinite amount of time, you should
+> not only validate the `allowance` as outlined above, but also the topic `es-ESS/$SYS/Status`. This is set to `Online` at startup and set to `Offline` per last-will.
+> So, if your consumers note that es-ESS is going offline - it is up to you if they should keep running or stop as well.
+
 ### NPC-SolarOverheadConsumer
 Some consumers are not controllable in steps, they are simple on/off consumers. Also measuring the actual consumption is not always possible or required, so a fixed known consumption can 
 work out as well. To eliminate the need to create multiple on/off-scripts for these consumers, the NPC-SolarOverheadConsumer has been introduced. 
