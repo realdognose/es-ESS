@@ -2,7 +2,7 @@
 es-ESS (equinox solutions Energy Storage Systems) is an extension for Victrons VenusOS running on GX-Devices.
 es-ESS brings various functions starting with tiny helpers, but also including major functionalities.
 
-es-ESS is structered into individual modules and every module can be enabled or disabled seperate. So, only certain
+es-ESS is structered into individual services and every service can be enabled or disabled seperate. So, only certain
 features can be enabled, based on your needs.
 
 ### Table of Contents
