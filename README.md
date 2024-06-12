@@ -353,6 +353,10 @@ The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day 
 | [DEFAULT]    | LogLevel |  Options: DEBUG, INFO, WARNING, ERROR, CRITICAL | String | INFO |
 | [LogDetails]    | DontLogDebug | Blacklist for method calls that shouldn't even be logged in DEBUG Mode.  | String | es-ESS.onLocalMqttMessage, esESS._dbusValueChanged|
 
+| Logrotation to avoid filling up the disk |
+|:-----------:|
+| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/logrotate.png" /> |
+
 Additionally there are the following configuration options available: 
 
 | Section    | Value name |  Descripion | Type | Example Value|
@@ -365,7 +369,9 @@ Additionally there are the following configuration options available:
 ### Service Messages
 es-ESS also publishes Operational-Messages as well as Errors, Warnings and Critical failures under the `$SYS`-Topic of es-ESS. Check these from time to time to ensure proper functionality
 
-
+| Service Messages on MQTT |
+|:-----------:|
+| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/ServiceMessages.png" /> |
 # F.A.Q.
 
 TODO
