@@ -18,7 +18,7 @@ from vedbus import VeDbusService # type: ignore
 
 # esEss imports
 import Globals
-from Helper import i, c, d, w, e, dbusConnection
+from Helper import i, c, d, w, e, t, dbusConnection
 from esESSService import esESSService
 
 class SolarOverheadDistributor(esESSService):
@@ -29,7 +29,7 @@ class SolarOverheadDistributor(esESSService):
       self.serviceType = "com.victronenergy.settings"
       self.serviceName = self.serviceType + ".esESS.SolarOverheadDistributor_" + str(self.vrmInstanceID)
       self.bmsServiceType = "com.victronenergy.battery"
-      self.bmsServiceName = self.bmsServiceType + ".esESS.SolarOverheadConsumer_" + str(self.vrmInstanceIDBMS)
+      self.bmsServiceName = self.bmsServiceType + ".esESS.SolarOverheadBatteryReservation_" + str(self.vrmInstanceIDBMS)
       self.lastUpdate = 0
       self._knownSolarOverheadConsumers: dict[str, SolarOverheadConsumer] = { }
       self._knownSolarOverheadConsumersLock = threading.Lock()
@@ -98,22 +98,22 @@ class SolarOverheadDistributor(esESSService):
       self.batterySoc      = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Soc")
      
    def initMqttSubscriptions(self):
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/IsAutomatic', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/Consumption', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/CustomName', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/IgnoreBatReservation', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/OnKeywordRegex', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/Minimum', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/OnUrl', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/OffUrl', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/Priority', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/IsHttpConsumer', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/IsMqttConsumer', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/IsScriptedConsumer', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/StatusUrl', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/StepSize', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/Request', callback=self.onMqttMessage)
-      self.registerMqttSubscription('esESS/SolarOverheadDistributor/Requests/+/VRMInstanceID', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsAutomatic', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Consumption', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/CustomName', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IgnoreBatReservation', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnKeywordRegex', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Minimum', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OffUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Priority', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsHttpConsumer', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsMqttConsumer', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsScriptedConsumer', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StatusUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StepSize', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Request', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/VRMInstanceID', callback=self.onMqttMessage)
 
    def initWorkerThreads(self):
       self.registerWorkerThread(self.updateDistribution, int(self.config["SolarOverheadDistributor"]["UpdateInterval"]))
@@ -497,7 +497,7 @@ class SolarOverheadDistributor(esESSService):
    def Publish(self, path, value):
       try:
          self.dbusService[path] = value
-         self.publishMainMqtt("esESS/SolarOverheadDistributor{0}".format(path), value, 1)
+         self.publishMainMqtt("es-ESS/SolarOverheadDistributor{0}".format(path), value, 1)
       except Exception as ex:
        c(self, "Exception", exc_info=ex)
    
@@ -600,7 +600,7 @@ class SolarOverheadConsumer:
   def setValue(self, key, value):
      key = key.replace('{0}/SolarOverheadDistributor/Requests/{1}/'.format(Globals.esEssTag, self.consumerKey), "")
      
-     d(self, "Setting value '{0}' to '{1}'".format(key, value))
+     t(self, "Setting value '{0}' to '{1}'".format(key, value))
 
      if (key == "Minimum"):
         self.minimum = float(value)
@@ -674,7 +674,7 @@ class SolarOverheadConsumer:
 
       if r:
          self.initialize(sod)
-
+         
   def _checkAttrSet(self, propName, displayName, sod:SolarOverheadDistributor):
      if (getattr(self, propName) is not None):
         return True
@@ -690,10 +690,10 @@ class SolarOverheadConsumer:
      self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
      
      #Mgmt-Infos
-     self.dbusService.add_path('/DeviceInstance', self.vrmInstanceID)
+     self.dbusService.add_path('/DeviceInstance', int(self.vrmInstanceID))
      self.dbusService.add_path('/Mgmt/ProcessName', __file__)
      self.dbusService.add_path('/Mgmt/ProcessVersion', Globals.currentVersionString + ' on Python ' + platform.python_version())
-     self.dbusService.add_path('/Mgmt/Connection', "Local DBus Injection")
+     self.dbusService.add_path('/Mgmt/Connection', "dbus")
 
      # Create the mandatory objects
      self.dbusService.add_path('/ProductId', 65535)

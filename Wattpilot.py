@@ -26,7 +26,7 @@ from time import sleep
 from types import SimpleNamespace
 
 import Helper
-from Helper import i, c, d, w, e, d
+from Helper import i, c, d, w, e, d, t
 
 class LoadMode():
     """Wrapper Class to represent the Load Mode of the Wattpilot"""
@@ -440,7 +440,7 @@ class Wattpilot(object):
             self.__send(message)
 
     def __update_property(self,name,value):
-        d(self, "Updated property {0} to {1}".format(name,value))
+        t(self, "Updated property {0} to {1}".format(name,value))
         self._allProps[name] = value
 
         if name=="acs":

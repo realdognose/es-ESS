@@ -31,7 +31,7 @@ from dbus.mainloop.glib import DBusGMainLoop # type: ignore
 import Globals
 import Helper
 from Globals import MqttSubscriptionType
-from Helper import i, c, d, w, e
+from Helper import i, c, d, w, e, t
 from esESSService import DbusSubscription, esESSService, WorkerThread, MqttSubscription
 
 # Have a mainloop, so we can send/receive asynchronous calls to and from dbus
@@ -185,11 +185,15 @@ class esESS:
                     dbusSubStructure[sub.commonServiceName] = {}
 
                 if (sub.dbusPath not in dbusSubStructure[sub.commonServiceName]):
-                        dbusSubStructure[sub.commonServiceName][sub.dbusPath] = dummy
+                    dbusSubStructure[sub.commonServiceName][sub.dbusPath] = dummy
         
         #Ignore our own services, we don't need them to be scanned. 
-        # ignoreServices=["com.victronenergy.battery.es-ESS", "com.victronenergy.settings.es-ESS"]
-        self._dbusMonitor = DbusMonitor(dbusSubStructure, self._dbusValueChanged)
+        #ignoreServices is no longer available at the moment.
+        ignoreServices=["com.victronenergy.battery.esESS", "com.victronenergy.settings.esESS"]
+        
+        #Initialize dbus on a seperate thred, so our services currently initializing can
+        #respond to service calls during monitoring.
+        self._dbusMonitor = DbusMonitor(dbusSubStructure, self._dbusValueChanged, ignoreServices=ignoreServices)
     
         #now, that we have subscribed with some generic subscriptions, 
         #we need to elevate these subscriptions to device specific ones,
@@ -261,7 +265,7 @@ class esESS:
     def _dbusValueChanged(self, dbusServiceName, dbusPath, dict, changes, deviceInstance):
         try:
           key = DbusSubscription.buildValueKey(dbusServiceName, dbusPath)
-          d(self, "Change on dbus for {0} (new value: {1})".format(key, changes['Value'])) 
+          t(self, "Change on dbus for {0} (new value: {1})".format(key, changes['Value'])) 
 
           for sub in self._dbusSubscriptions[key]:
             #verify serviceinstance. if the subscription is to the more global
@@ -283,7 +287,7 @@ class esESS:
        if (self._sigTermInvoked):
             return False
        
-       d(self, "Running thread: {0}".format(Helper.formatCallback(workerThread.thread)))
+       t(self, "Running thread: {0}".format(Helper.formatCallback(workerThread.thread)))
        if (workerThread.future is None or workerThread.future.done()):
             self._threadExecutionsMinute+=1
             self.threadPool.submit(workerThread.thread)
@@ -459,12 +463,34 @@ class esESS:
        self.localMqttClient.disconnect()           
 
 def configureLogging(config):
-  logLevelString = config["DEFAULT"]['LogLevel']
-  logLevel = logging.getLevelName(logLevelString)
+
   logDir = "/data/log/es-ESS"
   
   if not os.path.exists(logDir):
     os.mkdir(logDir)
+
+  logLevelTrace = 9
+  logLevelApp = 11
+
+  def trace(msg, **kwargs):
+     if logging.getLogger().isEnabledFor(logLevelTrace):
+        logging.log(logLevelTrace, msg, **kwargs)
+
+  def appDebug(msg, **kwargs):
+     if logging.getLogger().isEnabledFor(logLevelApp):
+        logging.log(logLevelApp, msg, **kwargs)
+  
+  logging.addLevelName(logLevelTrace, "TRACE")
+  logging.addLevelName(logLevelApp, "APP_DEBUG")
+
+  logging.appDebug = appDebug
+  logging.Logger.appDebug = appDebug
+
+  logging.trace = trace
+  logging.Logger.trace = trace
+
+  logLevelString = config["DEFAULT"]['LogLevel']
+  logLevel = logging.getLevelName(logLevelString)
 
   logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                       datefmt='%Y-%m-%d %H:%M:%S',
