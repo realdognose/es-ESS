@@ -39,7 +39,9 @@ class esESSService(ABC):
         pass
 
     def registerWorkerThread(self, thread, interval):
-        Globals.esESS.registerWorkerThread(thread, interval)
+        wt = WorkerThread(self, thread, interval)
+        Globals.esESS.registerWorkerThread(wt)
+        return wt
 
     @abstractmethod
     def initFinalize(self):
@@ -55,8 +57,8 @@ class esESSService(ABC):
     def publishLocalMqtt(self, topic, payload, qos=0, retain=False):
         Globals.esESS.publishLocalMqtt(topic, payload, qos, retain)
 
-    def publishServiceMessage(self, service, type, message):
-        Globals.esESS.publishServiceMessage(service, type, message)
+    def publishServiceMessage(self, service, message, type=Globals.ServiceMessageType.Operational):
+        Globals.esESS.publishServiceMessage(service, message, type)
 
 class WorkerThread:
     def __init__(self, service, thread, interval):

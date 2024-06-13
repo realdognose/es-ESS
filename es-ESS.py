@@ -145,7 +145,7 @@ class esESS:
        Helper.waitTimeout(lambda: self.mainMqttClientConnected, 30) or e(self, "Unable to connect to main mqtt wthin 30 seconds...  offline or credentials wrong?")
        Helper.waitTimeout(lambda: self.localMqttClientConnected, 30) or e(self, "Unable to connect to wattpilot wthin 30 seconds...offline or credentials wrong?")
 
-       self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "es-ESS is starting up...")
+       self.publishServiceMessage(self,  "es-ESS is starting up...")
 
        gobject.timeout_add(60000, self._signOfLive)
        
@@ -154,14 +154,14 @@ class esESS:
        #Finally, do some mqtt reports. 
        if (self.mqttThrottlePeriod > 0):
            self.publishMainMqtt("{0}/$SYS/MqttThrottle/Status", "Enabled")
-           self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Enabling Mqtt-Throttling.")
+           self.publishServiceMessage(self, "Enabling Mqtt-Throttling.")
        else:
            self.publishMainMqtt("{0}/$SYS/MqttThrottle/Status", "Disabled")
 
     def _initializeServices(self):
       try:
         #Create Classes, if enabled.
-        self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Initializing Services.")
+        self.publishServiceMessage(self, "Initializing Services.")
 
         self._checkAndEnable("SolarOverheadDistributor")
         self._checkAndEnable("TimeToGoCalculator")
@@ -172,7 +172,7 @@ class esESS:
         dbusSubStructure = {}
         dummy = {'code': None, 'whenToLog': 'configChange', 'accessLevel': None}
         for (name, service) in self._services.items():
-            self.publishServiceMessage(service, Globals.ServiceMessageType.Operational, "Initializing Dbus-Subscriptions.")
+            self.publishServiceMessage(service, "Initializing Dbus-Subscriptions.")
             i(self, "Initializing Dbus-Subscriptions for Service {0}".format(name))
             service.initDbusSubscriptions()
 
@@ -188,7 +188,8 @@ class esESS:
                         dbusSubStructure[sub.commonServiceName][sub.dbusPath] = dummy
         
         #Ignore our own services, we don't need them to be scanned. 
-        self._dbusMonitor = DbusMonitor(dbusSubStructure, self._dbusValueChanged, ignoreServices=["com.victronenergy.battery.es-ESS", "com.victronenergy.settings.es-ESS"])
+        # ignoreServices=["com.victronenergy.battery.es-ESS", "com.victronenergy.settings.es-ESS"]
+        self._dbusMonitor = DbusMonitor(dbusSubStructure, self._dbusValueChanged)
     
         #now, that we have subscribed with some generic subscriptions, 
         #we need to elevate these subscriptions to device specific ones,
@@ -217,12 +218,12 @@ class esESS:
         #Init DbusServices of each Service.
         for (name, service) in self._services.items():
             i(self, "Initializing Dbus-Service for Service {0}".format(name))
-            self.publishServiceMessage(service, Globals.ServiceMessageType.Operational, "Initializing Dbus-Service.")
+            self.publishServiceMessage(service, "Initializing Dbus-Service.")
             service.initDbusService()
 
         for (name, service) in self._services.items():
             i(self, "Initializing Mqtt-Subscriptions for Service {0}".format(name))
-            self.publishServiceMessage(service, Globals.ServiceMessageType.Operational, "Initializing Mqtt-Subscriptions.")
+            self.publishServiceMessage(service, "Initializing Mqtt-Subscriptions.")
             service.initMqttSubscriptions()
 
         for (topic, sublist) in self._mqttSubscriptions.items():
@@ -243,20 +244,16 @@ class esESS:
                     self.localMqttClient.message_callback_add(sub.topic, sub.callback)
 
         for (name, service) in self._services.items():
-           service.initWorkerThreads()
-           for (t) in service._workerThreads:
-              i(self, "Scheduling Workerthread {0}".format(Helper.formatCallback(t.thread)))
-              self.publishServiceMessage(service, Globals.ServiceMessageType.Operational, "Initializing Worker Thread: {0}".format(Helper.formatCallback(t.thread)))
-              gobject.timeout_add(t.interval, self._runThread, t)
+           service.initWorkerThreads()             
       
         #Last round for every service to do some stuff :0)
         for (name, service) in self._services.items():
            d(self, "Finalizing service {0}".format(name))
-           self.publishServiceMessage(service, Globals.ServiceMessageType.Operational, "Initializing finished.")
+           self.publishServiceMessage(service, "Initializing finished.")
            service.initFinalize()
 
         i(Globals.esEssTag, "Initialization completed. " + Globals.esEssTag + " (" + Globals.currentVersionString + ") is up and running.")
-        self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Initializing finished.")
+        self.publishServiceMessage(self, "Initializing finished.")
 
       except Exception as ex:
         c(self, "Exception", exc_info=ex)
@@ -296,7 +293,7 @@ class esESS:
        return True
     
     def _signOfLive(self):
-       self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Executed {0} threads in the past minute.".format(self._threadExecutionsMinute))
+       self.publishServiceMessage(self, "Executed {0} threads in the past minute.".format(self._threadExecutionsMinute))
        self._threadExecutionsMinute = 0
        return True
 
@@ -311,6 +308,11 @@ class esESS:
           self._mqttSubscriptions[sub.valueKey] = []
        
        self._mqttSubscriptions[sub.valueKey].append(sub)
+
+    def registerWorkerThread(self, t):
+        i(self, "Scheduling Workerthread {0}".format(Helper.formatCallback(t.thread)))
+        self.publishServiceMessage(t.service, "Initializing Worker Thread: {0}".format(Helper.formatCallback(t.thread)))
+        gobject.timeout_add(t.interval, self._runThread, t)
 
     def publishMainMqtt(self, topic, payload, qos=0, retain=False, forceSend=False):
         
@@ -394,7 +396,7 @@ class esESS:
                self._localMessageCount = 0
                self._localSendCount = 0
 
-    def publishServiceMessage(self, service, type, message):
+    def publishServiceMessage(self, service, message, type=Globals.ServiceMessageType.Operational):
         #Na, that's annoying - for now ;)
         #if (type == Globals.ServiceMessageType.Operational):
         #   i(service, "Service Message: {0}".format(message))
@@ -422,7 +424,7 @@ class esESS:
         self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=nextOne), "{0} | {1}".format(str(datetime.datetime.now()), "-------------------------") , 0, True, True)
 
     def handleSigterm(self, signum, frame):
-        self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "SIGTERM received. Shuting down services gracefully.")
+        self.publishServiceMessage(self, "SIGTERM received. Shuting down services gracefully.")
 
         #set flag, so dbus handler stops forwarding new messages, threads are no longer started, etc.
         self._sigTermInvoked=True

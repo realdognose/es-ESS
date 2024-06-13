@@ -56,7 +56,7 @@ class MqttExporter(esESSService):
         self.forwardedTopicsPastMinute += 1
 
     def _signOfLife(self):
-        self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Forwarded {0} Dbus-Messages in the past minute.".format(self.forwardedTopicsPastMinute))
+        self.publishServiceMessage(self, "Forwarded {0} Dbus-Messages in the past minute.".format(self.forwardedTopicsPastMinute))
         self.forwardedTopicsPastMinute = 0
     
     def handleSigterm(self):

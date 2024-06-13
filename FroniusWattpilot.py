@@ -118,11 +118,11 @@ class FroniusWattpilot (esESSService):
         if (self.wattpilot.mode == "Eco"):
             self.autostart = 1
             self.mode = 1
-            self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Mode determined as: auto")
+            self.publishServiceMessage(self, "Mode determined as: auto")
         else:
             self.autostart = 0
             self.mode = 0
-            self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Mode determined as: manual")
+            self.publishServiceMessage(self, "Mode determined as: manual")
 
         #Adetermine the current phase mode. 
         #if the car is charging, we can do that by looking at the phase power. 
@@ -130,12 +130,12 @@ class FroniusWattpilot (esESSService):
         #otherwise. 
         if (self.wattpilot.carConnected and self.wattpilot.power2 > 0):
             self.currentPhaseMode = 2
-            self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Currently charging on 3 phases.")
+            self.publishServiceMessage(self, "Currently charging on 3 phases.")
         elif (self.wattpilot.carConnected and self.wattpilot.power1 > 0):
             self.currentPhaseMode = 1
-            self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Currently charging on 1 phase.")
+            self.publishServiceMessage(self, "Currently charging on 1 phase.")
         else:
-            self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Currently not charging. Negiotiating 3 phases.")
+            self.publishServiceMessage(self, "Currently not charging. Negiotiating 3 phases.")
             self.currentPhaseMode = 2
             self.wattpilot.set_phases(2)
 
@@ -177,7 +177,7 @@ class FroniusWattpilot (esESSService):
    # 2 = Scheduled => Nightly low-price mode, TODO
     def switchMode(self, fromMode, toMode):
         d("FroniusWattpilot", "Switching Mode from {0} to {1}.".format(fromMode, toMode))
-        self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Switching Mode from {0} to {1}.".format(fromMode, toMode))
+        self.publishServiceMessage(self, "Switching Mode from {0} to {1}.".format(fromMode, toMode))
         self.mode = toMode
         self.dbusService["/Mode"] = toMode
         if (fromMode == 0 and toMode == 1):
@@ -198,9 +198,9 @@ class FroniusWattpilot (esESSService):
 
             #switch idle mode to reduce load, when not required.
             if (not self.isIdleMode and not self.wattpilot.carConnected):
-                self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Car no longer connected. Switching to Idle-Mode.")
+                self.publishServiceMessage(self, "Car no longer connected. Switching to Idle-Mode.")
             elif (self.isIdleMode and self.wattpilot.carConnected):
-                self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Car connected. Switching to Operation-Mode.")
+                self.publishServiceMessage(self, "Car connected. Switching to Operation-Mode.")
             
             self.isIdleMode = not self.wattpilot.carConnected
 
@@ -247,7 +247,7 @@ class FroniusWattpilot (esESSService):
                         targetAmps = min(self.wattpilot.ampLimit * 3, targetAmps) #obey limits.
 
                         d(self, "Target Amps that is: {0}A".format(targetAmps))
-                        self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Current allowance is {0}W, that's {1}A".format(self.allowance, targetAmps))
+                        self.publishServiceMessage(self, "Current allowance is {0}W, that's {1}A".format(self.allowance, targetAmps))
 
                         if (self.wattpilot.power > 0):
                             #charging, adjust current
@@ -256,7 +256,7 @@ class FroniusWattpilot (esESSService):
                             #Make sure, we are not phase-switching right now. 
                             if (self.wattpilot.modelStatus != 22 and self.tempStatusOverride != 21):
                                 i(self, "Enough Allowance, but NOT charging, starting.")
-                                self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Starting to charge.")
+                                self.publishServiceMessage(self, "Starting to charge.")
                                 onOffCooldownSeconds = self.getOnOffCooldownSeconds()
                                 if (onOffCooldownSeconds <= 0):
                                     i(self, "START send!")
@@ -269,12 +269,12 @@ class FroniusWattpilot (esESSService):
                                     self.tempStatusOverride = 22
                                 else:
                                     i(self, )
-                                    self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Start-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
+                                    self.publishServiceMessage(self, "Start-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
                                     self.tempStatusOverride = 23
                     else:
                         if (self.wattpilot.power):
                             i(self, "NO Allowance, stopping charging.")
-                            self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Stopping to charge.")
+                            self.publishServiceMessage(self, "Stopping to charge.")
                             onOffCooldownSeconds = self.getOnOffCooldownSeconds()
                             if (onOffCooldownSeconds <= 0):
                                 #stop charging
@@ -285,7 +285,7 @@ class FroniusWattpilot (esESSService):
                                 self.tempStatusOverride = 24
                             else:
                                 i(self, "Stop-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
-                                self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Stop-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
+                                self.publishServiceMessage(self, "Stop-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
                                 self.tempStatusOverride = 24
 
                 #update UI anyway
@@ -330,7 +330,7 @@ class FroniusWattpilot (esESSService):
             phaseSwitchCooldownSeconds = self.getPhaseSwitchCooldownSeconds()
             if (phaseSwitchCooldownSeconds <= 0):
                 i(self, "Switching to Phase-Mode: {0}. Send.".format(desiredPhaseMode))
-                self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Switching to Phase-Mode: {0}. Send.".format(desiredPhaseMode))
+                self.publishServiceMessage(self, "Switching to Phase-Mode: {0}. Send.".format(desiredPhaseMode))
                 self.lastPhaseSwitchTime = time.time()
                 self.wattpilot.set_phases(desiredPhaseMode)
                 self.currentPhaseMode = desiredPhaseMode
@@ -338,12 +338,12 @@ class FroniusWattpilot (esESSService):
             else:
                 if (self.currentPhaseMode == 1):
                     i(self, "Attempted to switch to Phase-Mode {0}, but cooldown is active! Using {1}A on Phase-Mode {2} until cooldown is over in {3}s".format(desiredPhaseMode, self.wattpilot.ampLimit, self.currentPhaseMode, phaseSwitchCooldownSeconds))
-                    self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Attempted to switch to Phase-Mode {0}, but cooldown is active! Using {1}A on Phase-Mode {2} until cooldown is over in {3}s".format(desiredPhaseMode, self.wattpilot.ampLimit, self.currentPhaseMode, phaseSwitchCooldownSeconds))
+                    self.publishServiceMessage(self, "Attempted to switch to Phase-Mode {0}, but cooldown is active! Using {1}A on Phase-Mode {2} until cooldown is over in {3}s".format(desiredPhaseMode, self.wattpilot.ampLimit, self.currentPhaseMode, phaseSwitchCooldownSeconds))
                     self.wattpilot.set_power(self.wattpilot.ampLimit)
                     self.tempStatusOverride = 21
                 elif (self.currentPhaseMode == 3):
                     i(self, "Attempted to switch to Phase-Mode {0}, but cooldown is active! Using 6A on Phase-Mode {1} until cooldown is over in {2}s".format(desiredPhaseMode, self.currentPhaseMode, phaseSwitchCooldownSeconds))
-                    self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "Attempted to switch to Phase-Mode {0}, but cooldown is active! Using 6A on Phase-Mode {1} until cooldown is over in {2}s".format(desiredPhaseMode, self.currentPhaseMode, phaseSwitchCooldownSeconds))
+                    self.publishServiceMessage(self, "Attempted to switch to Phase-Mode {0}, but cooldown is active! Using 6A on Phase-Mode {1} until cooldown is over in {2}s".format(desiredPhaseMode, self.currentPhaseMode, phaseSwitchCooldownSeconds))
                     self.wattpilot.set_power(6)       
                     self.tempStatusOverride = 22         
 
@@ -431,7 +431,8 @@ class FroniusWattpilot (esESSService):
         self.publishMainMqtt("es-ESS/FroniusWattpilot{0}".format(path), value, 0)
 
     def handleSigterm(self):
-       self.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "SIGTERM received, sending STOP-command to wattpilot, despite any state.")
-       self.wattpilot.set_start_stop(1)
-       self.wattpilot._auto_reconnect = False
-       self.wattpilot.disconnect()
+       self.publishServiceMessage(self, "SIGTERM received, sending STOP-command to wattpilot, despite any state.")
+       if (self.wattpilot is not None):
+        self.wattpilot.set_start_stop(1)
+        self.wattpilot._auto_reconnect = False
+        self.wattpilot.disconnect()
