@@ -11,7 +11,6 @@ from Globals import MqttSubscriptionType
 class esESSService(ABC):
     def __init__(self):
         self.config = Globals.getConfig()
-        self._workerThreads: list[WorkerThread ]= []
 
     @abstractmethod
     def initDbusService(self):
@@ -40,7 +39,7 @@ class esESSService(ABC):
         pass
 
     def registerWorkerThread(self, thread, interval):
-        self._workerThreads.append(WorkerThread(self, thread, interval))
+        Globals.esESS.registerWorkerThread(thread, interval)
 
     @abstractmethod
     def initFinalize(self):

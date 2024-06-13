@@ -14,9 +14,6 @@ import dbus # type: ignore
 #es-ESS
 import Globals
 
-# Helper defs for logging
-logBlackList = []
-
 def i(module, msg, **kwargs):
    if (not isinstance(module, str)):
        module = module.__class__.__name__
@@ -24,9 +21,9 @@ def i(module, msg, **kwargs):
    func = inspect.currentframe().f_back.f_code
    lineIdentifier = "{0}.{1}".format(module, func.co_name)
 
-   if (lineIdentifier not in logBlackList):
-     lineIdentifier = "{0}|{1}".format(threading.currentThread().getName(), lineIdentifier)
-     logging.info("[" + lineIdentifier + "] " + msg, **kwargs)
+   
+   lineIdentifier = "{0}|{1}".format(threading.currentThread().getName(), lineIdentifier)
+   logging.info("[" + lineIdentifier + "] " + msg, **kwargs)
 
 def d(module, msg, **kwargs):
    if (not isinstance(module, str)):
@@ -35,9 +32,8 @@ def d(module, msg, **kwargs):
    func = inspect.currentframe().f_back.f_code
    lineIdentifier = "{0}.{1}".format(module, func.co_name)
 
-   if (lineIdentifier not in logBlackList):
-     lineIdentifier = "{0}|{1}".format(threading.currentThread().getName(), lineIdentifier)
-     logging.debug("[" + lineIdentifier + "] " + msg, **kwargs)
+   lineIdentifier = "{0}|{1}".format(threading.currentThread().getName(), lineIdentifier)
+   logging.debug("[" + lineIdentifier + "] " + msg, **kwargs)
 
 def w(module, msg, **kwargs):
    if (not isinstance(module, str)):

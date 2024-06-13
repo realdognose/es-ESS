@@ -474,8 +474,6 @@ def configureLogging(config):
   
   import Helper
   #persist some log flags.
-  blacklistString = config["LogDetails"]["DontLogDebug"]
-  Helper.logBlackList = [x.strip() for x in blacklistString.split(',')] # type: ignore
   
 
 def main(config):

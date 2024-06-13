@@ -18,7 +18,7 @@ from vedbus import VeDbusService # type: ignore
 
 # esEss imports
 import Globals
-from Helper import i, c, d, w, e, t, dbusConnection
+from Helper import i, c, d, w, e, dbusConnection
 from esESSService import esESSService
 
 class SolarOverheadDistributor(esESSService):
@@ -168,7 +168,7 @@ class SolarOverheadDistributor(esESSService):
       message = str(msg.payload)[2:-1]
 
       if (message == ""):
-         t(self, "Empty message on topic {0}. Ignoring.".format(msg.topic))
+         d(self, "Empty message on topic {0}. Ignoring.".format(msg.topic))
          return
       
       try:
@@ -337,7 +337,7 @@ class SolarOverheadDistributor(esESSService):
             consumer = self._knownSolarOverheadConsumers[consumerKey]
             
             if (consumer.isInitialized and consumer.isAutomatic):
-               if (esESS.esESSi._sigTermInvoked == True):
+               if (Globals.esESS._sigTermInvoked == True):
                   return
                
                consumer.allowance = overheadDistribution[consumerKey]
@@ -578,7 +578,7 @@ class SolarOverheadConsumer:
          self.runtimeData.set("Energy","runtimeTotal",str(self.runtimeTotal))
 
          with open("{0}/runtimeData/energy_{1}.ini".format(os.path.dirname(os.path.realpath(__file__)), self.consumerKey), 'w+') as cfile:
-            t(self, "File open for w+")
+            d(self, "File open for w+")
             self.runtimeData.write(cfile)
             cfile.flush()
 
@@ -600,7 +600,7 @@ class SolarOverheadConsumer:
   def setValue(self, key, value):
      key = key.replace('{0}/SolarOverheadDistributor/Requests/{1}/'.format(Globals.esEssTag, self.consumerKey), "")
      
-     t(self, "Setting value '{0}' to '{1}'".format(key, value))
+     d(self, "Setting value '{0}' to '{1}'".format(key, value))
 
      if (key == "Minimum"):
         self.minimum = float(value)
