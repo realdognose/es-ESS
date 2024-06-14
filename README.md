@@ -175,6 +175,7 @@ FroniusWattpilot requires a few variables to be set in `/data/es-ESS/config.ini`
 | [FroniusWattpilot]  | Host | hostname / ip of Wattpilot | String  | wallbox.ad.equinox-solutions.de |
 | [FroniusWattpilot]  | Username | Username of Wattpilot | String  | User |
 | [FroniusWattpilot]  | Password | Password of Wattpilot | String  | Secret123! |
+| [FroniusWattpilot]  | HibernateMode | When the car is disconnected, es-ESS will switch into idle mode, stop doing heavy lifting. Connection to wattpilot remains established and VRM control enabled. With hibernate enabled, wattpilot will also be disconnected, and connected every 5 minutes for a car-state-check. This greatly reduces the number of incoming socket messages from wattpilot by about 95% per day, but causes an delay of upto 5 minutes when the car is connected. | Boolean  | true |
 
 # Credits
 Wattpilot control functionality has been taken from https://github.com/joscha82/wattpilot and modified to extract all variables required for full integration.

@@ -37,6 +37,7 @@ class FroniusWattpilot (esESSService):
         self.mode = 0 # will be detected later
         self.autostart = 0 
         self.isIdleMode = False
+        self.isHibernateEnabled = self.config["FroniusWattpilot"]["HibernateMode"].lower() == "true"
         self.tempStatusOverride = None
         self.mqttAllowanceTopic = 'es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Allowance'
 
@@ -135,9 +136,9 @@ class FroniusWattpilot (esESSService):
             self.currentPhaseMode = 1
             self.publishServiceMessage(self, "Currently charging on 1 phase.")
         else:
-            self.publishServiceMessage(self, "Currently not charging. Negiotiating 3 phases.")
-            self.currentPhaseMode = 2
-            self.wattpilot.set_phases(2)
+            self.publishServiceMessage(self, "Currently not charging. Negiotiating 1 phase for startup.")
+            self.currentPhaseMode = 1
+            self.wattpilot.set_phases(1)
 
         self.dumpEvChargerInfo()
 
@@ -197,12 +198,26 @@ class FroniusWattpilot (esESSService):
             self.lastVarDump = time.time()
 
             #switch idle mode to reduce load, when not required.
+            skipIdleCheck = False
             if (not self.isIdleMode and not self.wattpilot.carConnected):
                 self.publishServiceMessage(self, "Car no longer connected. Switching to Idle-Mode.")
-            elif (self.isIdleMode and self.wattpilot.carConnected):
-                self.publishServiceMessage(self, "Car connected. Switching to Operation-Mode.")
-            
-            self.isIdleMode = not self.wattpilot.carConnected
+                if (self.isHibernateEnabled):
+                    self.publishServiceMessage(self, "Hibernate is enabled. Disconnecting from wattpilot.")
+                    self.wattpilot._auto_reconnect=False
+                    self.wattpilot.disconnect()
+
+            elif (self.isIdleMode):
+                if (self.wattpilot.connected and self.wattpilot.carConnected):
+                    self.publishServiceMessage(self, "Car connected. Switching to Operation-Mode.")
+                elif (not self.wattpilot.connected):
+                    self.publishServiceMessage(self, "Connecting to wattpilot to verify car status.")
+                    self.wattpilot.connect()
+                    self.wattpilot._auto_reconnect=True
+                    self.isIdleMode=False
+                    skipIdleCheck=True
+                    
+            if (not skipIdleCheck):                    
+                self.isIdleMode = not self.wattpilot.carConnected
 
             try:
                 self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/VRMInstanceID", self.config["FroniusWattpilot"]["VRMInstanceID_OverheadRequest"])
@@ -433,7 +448,7 @@ class FroniusWattpilot (esESSService):
 
     def handleSigterm(self):
        self.publishServiceMessage(self, "SIGTERM received, sending STOP-command to wattpilot, despite any state.")
-       if (self.wattpilot is not None):
+       if (self.wattpilot is not None and self.wattpilot.connected) :
         self.wattpilot.set_start_stop(1)
         self.wattpilot._auto_reconnect = False
         self.wattpilot.disconnect()

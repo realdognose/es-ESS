@@ -15,7 +15,6 @@ class ChargeCurrentReducer:
       # add _update function 'timer'
       gobject.timeout_add(2500, self._update)
       i(self, "ChargeCurrentReducer initialized.")
-      Globals.publishServiceMessage(self, Globals.ServiceMessageType.Operational, "{0} initialized.".format(self.__class__.__name__))
     except Exception as e:
       c("TimeToGoCalculator", "Exception catched", exc_info=e)
 
@@ -36,13 +35,11 @@ class ChargeCurrentReducer:
         desiredChargeAmps = eval(limitEquation)
       except NameError as ex:
           e(self,"Error evaluation MinBatteryCharge-Equation. Not touching anything :-(")
-          Globals.publishServiceMessage(self, Globals.ServiceMessageType.Error, "Error evaluation MinBatteryCharge-Equation. Check formula for valid python syntax.", limitEquationRaw)
           #TODO: Ensure Default Setpoint.
           return
 
       if (desiredChargeAmps < 0):
          w(self, "Desired ChargeAmps is negative... Not touching anything ;-)")
-         Globals.publishServiceMessage(self, Globals.ServiceMessageType.Error, "Error evaluation MinBatteryCharge-Equation. Negative Result. Check formula for logic.", limitEquationRaw)
          #TODO: Ensure Default Setpoint.
          return
 
