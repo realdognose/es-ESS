@@ -117,6 +117,11 @@ ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.
 | [ChargeCurrentReducer]  | DesiredChargeAmps |  Desired Charge Current in Amps. Your *feel-well-value*.<br /><br />Beside a fixed value, you can use a equation based on SoC as well. The example will reduce the charge current desired by 1A per SoC-Percent, but minimum 30A<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | max(100 - SOC, 30) |
 
 # FroniusWattpilot
+
+:white_check_mark: Production Ready
+
+### Overview
+
 When using a Fronius Wattpilot, there are issues with the default ECO-Mode-Charging. Using the native functionality of Wattpilot can't take 
 the battery discharge of the victron universe into account, which may lead to Wattpilot not reducing its charge current, and your home battery
 is kicking in to supply missing power.
@@ -189,6 +194,9 @@ TODO
 TODO
 
 # SolarOverheadDistributor
+
+:large_orange_diamond: Release-Candiate-Version
+
 #### Overview
 Sometimes you need to manage multiple consumers based on solar overhead available. If every consumer is deciding on it's own, it can 
 lead to a continious up and down on available energy, causing consumers to turn on/off in a uncontrolled, frequent fashion. 
