@@ -368,6 +368,7 @@ fills that gap and calculates the time, when BMS don't. Calculation is done in b
 
 #### Configuration
 
+TimeToGoCalculatore requires your local mqtt to be enabled, either in plain or ssl mode.<br />
 TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.ini`: 
 
 | Section    | Value name |  Descripion | Type | Example Value|
