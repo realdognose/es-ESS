@@ -5,6 +5,14 @@ es-ESS brings various functions starting with tiny helpers, but also including m
 es-ESS is structered into individual services and every service can be enabled or disabled seperate. So, only certain
 features can be enabled, based on your needs.
 
+Services are marked according to their current development state: 
+
+> :white_check_mark: Production Ready: Feature is finished, tested and fully operable.
+
+> :large_orange_diamond: Release-Candiate-Version: FEature is still undergoing development, but current version is already satisfying.
+
+> :red_circle: Work-in-progress, beta: Feature is a beta, may have bugs or not work at all.
+
 ### Table of Contents
 - [Setup](#setup) - General setup process and requirements for es-ESS.
 - [MqttExporter](#mqttexporter) - Export selected values form dbus to your MQTT-Server.
