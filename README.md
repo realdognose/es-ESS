@@ -85,7 +85,7 @@ Example relation between dbus-spy, config and MQTT:
 
 # ChargeCurrentReducer
 
-> :warning: Work-in-progress, not yet production ready! :warning:
+> :red_circle: Work-in-progress, beta!
 
 #### Overview
 When you are using DC-Coupled Solar-Chargers, DVCC can be used to limit the charge-current of the batteries. If you however
@@ -118,7 +118,7 @@ ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.
 
 # FroniusWattpilot
 
-:white_check_mark: Production Ready
+> :white_check_mark: Production Ready
 
 ### Overview
 
@@ -358,7 +358,7 @@ In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> Sys
 
 # TimeToGoCalculator 
 
-:white_check_mark: Production Ready
+> :white_check_mark: Production Ready
 
 <img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/TimeToGo.png" /> 
 
