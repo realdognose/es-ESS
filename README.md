@@ -195,7 +195,7 @@ TODO
 
 # SolarOverheadDistributor
 
-:large_orange_diamond: Release-Candiate-Version
+> :large_orange_diamond: Release-Candiate-Version
 
 #### Overview
 Sometimes you need to manage multiple consumers based on solar overhead available. If every consumer is deciding on it's own, it can 
