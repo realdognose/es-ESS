@@ -184,7 +184,7 @@ class SolarOverheadDistributor(esESSService):
             self._knownSolarOverheadConsumers[consumerKey].setValue(msg.topic, message)
 
       except Exception as ex:
-         c(self, "Exception", exc_info=ex)
+         c(self, "Exception while receiving message '{0}' on topic '{1}'".format(message, msg.topic), exc_info=ex)
 
    def _moveEnergyData(self):
        #reschedule in 24h.
@@ -218,9 +218,9 @@ class SolarOverheadDistributor(esESSService):
       return True
    
    def _validateNpcConsumerStates(self):
-      try:
-         with self._knownSolarOverheadConsumersLock:
-            for consumerKey in self._knownSolarOverheadConsumers:
+      with self._knownSolarOverheadConsumersLock:
+         for consumerKey in self._knownSolarOverheadConsumers:            
+            try:
                consumer = self._knownSolarOverheadConsumers[consumerKey]
 
                if (consumer.isInitialized):
@@ -232,8 +232,8 @@ class SolarOverheadDistributor(esESSService):
                   elif (consumer.isMqttConsumer):
                      consumer.mqttControl()
 
-      except Exception as ex:
-          e(self, "Error", exc_info = ex)
+            except Exception as ex:
+               e(self, "Error validating consumer {0}".format(consumerKey), exc_info = ex)
 
       return True
 
@@ -578,7 +578,7 @@ class SolarOverheadConsumer:
          self.runtimeData.set("Energy","runtimeTotal",str(self.runtimeTotal))
 
          with open("{0}/runtimeData/energy_{1}.ini".format(os.path.dirname(os.path.realpath(__file__)), self.consumerKey), 'w+') as cfile:
-            d(self, "File open for w+")
+            t(self, "File open for w+: {0}/runtimeData/energy_{1}.ini".format(os.path.dirname(os.path.realpath(__file__)), self.consumerKey))
             self.runtimeData.write(cfile)
             cfile.flush()
 
