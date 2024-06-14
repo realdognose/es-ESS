@@ -194,31 +194,39 @@ class FroniusWattpilot (esESSService):
         #just dump values every 5 minutes then. If car is connected, we need
         #to perform updates every tick.
         self.tempStatusOverride = None
-        if (self.wattpilot.carConnected or not self.isIdleMode or (self.lastVarDump < (time.time() - 300)) or self.mode==0):
+        if (self.wattpilot.carConnected or not self.isIdleMode or (self.lastVarDump < (time.time() - 300)) or not self.wattpilot.carStateReady):
             self.lastVarDump = time.time()
 
             #switch idle mode to reduce load, when not required.
             skipIdleCheck = False
-            if (not self.isIdleMode and not self.wattpilot.carConnected):
-                self.publishServiceMessage(self, "Car no longer connected. Switching to Idle-Mode.")
-                if (self.isHibernateEnabled):
-                    self.publishServiceMessage(self, "Hibernate is enabled. Disconnecting from wattpilot.")
-                    self.wattpilot._auto_reconnect=False
-                    self.wattpilot.disconnect()
+            if (self.wattpilot.carStateReady):
+                if (not self.isIdleMode and not self.wattpilot.carConnected):
+                    self.publishServiceMessage(self, "Car no longer connected. Switching to Idle-Mode.")
+                    if (self.isHibernateEnabled):
+                        self.publishServiceMessage(self, "Hibernate is enabled. Disconnecting from wattpilot.")
+                        self.wattpilot._auto_reconnect=False
+                        self.wattpilot.disconnect()
 
-            elif (self.isIdleMode):
-                if (self.wattpilot.connected and self.wattpilot.carConnected):
-                    self.publishServiceMessage(self, "Car connected. Switching to Operation-Mode.")
-                elif (not self.wattpilot.connected):
-                    self.publishServiceMessage(self, "Connecting to wattpilot to verify car status.")
-                    self.wattpilot.connect()
-                    self.wattpilot._auto_reconnect=True
-                    self.isIdleMode=False
-                    skipIdleCheck=True
+                elif (self.isIdleMode):
+                    if (self.wattpilot.connected and self.wattpilot.carConnected):
+                        self.publishServiceMessage(self, "Car connected. Switching to Operation-Mode.")
+                    elif (not self.wattpilot.connected):
+                        self.publishServiceMessage(self, "Connecting to wattpilot to verify car status.")
+                        self.wattpilot._auto_reconnect=True
+                        self.wattpilot.connect()
+                        self.isIdleMode=False
+                        skipIdleCheck=True
+
+                        if (Helper.waitTimeout(lambda: self.wattpilot.carStateReady, 30)):
+                            if (self.wattpilot.carConnected):
+                                self.publishServiceMessage(self, "Car connected. Entering operation mode.")
+
                     
-            if (not skipIdleCheck):                    
-                self.isIdleMode = not self.wattpilot.carConnected
-
+                if (not skipIdleCheck):                    
+                    self.isIdleMode = not self.wattpilot.carConnected
+            else:
+                d(self, "Car State not yet ready, not performing idle checks.")
+            
             try:
                 self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/VRMInstanceID", self.config["FroniusWattpilot"]["VRMInstanceID_OverheadRequest"])
                 self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IsScriptedConsumer", "true")
@@ -448,7 +456,7 @@ class FroniusWattpilot (esESSService):
 
     def handleSigterm(self):
        self.publishServiceMessage(self, "SIGTERM received, sending STOP-command to wattpilot, despite any state.")
-       if (self.wattpilot is not None and self.wattpilot.connected) :
-        self.wattpilot.set_start_stop(1)
-        self.wattpilot._auto_reconnect = False
-        self.wattpilot.disconnect()
+       if (self.wattpilot is not None and self.wattpilot.connected):
+            self.wattpilot.set_start_stop(1)
+            self.wattpilot._auto_reconnect = False
+            self.wattpilot.disconnect()

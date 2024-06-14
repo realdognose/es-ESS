@@ -348,7 +348,9 @@ In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> Sys
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/socFormula.png"> |
 </div>
 
-# TimeToGoCalculator
+# TimeToGoCalculator 
+
+:white_check_mark: Production Ready
 
 <img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/TimeToGo.png" /> 
 

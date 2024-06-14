@@ -97,7 +97,6 @@ class Wattpilot(object):
     acsValues[0] = "Open"
     acsValues[1] = "Wait"
 
-
     @property
     def allProps(self):
         """Returns a dictionary with all properties"""
@@ -204,6 +203,10 @@ class Wattpilot(object):
     @property
     def connected(self):
         return self._connected
+
+    @property
+    def carStateReady(self):
+        return self._carStateReady
 
     @property
     def voltage1(self):
@@ -340,6 +343,7 @@ class Wattpilot(object):
 
         return ret
     def connect(self):
+        self._carStateReady = False
         self._wst = threading.Thread(target=self._wsapp.run_forever)
         self._wst.daemon = True
         self._wst.start()
@@ -403,6 +407,21 @@ class Wattpilot(object):
         message["requestId"]=self.__requestid
         message["key"]=name
         message["value"]=value
+        if (self._secured is not None):
+            if  (self._secured > 0):
+                self.__send(message,True)
+            else:
+                self.__send(message)
+        else:
+            self.__send(message)
+    
+    def request_full_status(self):
+        self._carStateReady = False
+        message = {}
+        message["type"]="requestFullStatus"
+        self.__requestid = self.__requestid+1
+        message["requestId"]=self.__requestid
+
         if (self._secured is not None):
             if  (self._secured > 0):
                 self.__send(message,True)
@@ -480,6 +499,7 @@ class Wattpilot(object):
             self._mode = Wattpilot.lmoValues[value]
         elif name=="car":
             self._carConnected = (Wattpilot.carValues[value] != "no car")
+            self._carStateReady = True
         elif name=="alw":
             self._AllowCharging = Wattpilot.alwValues[value]
         elif name=="nrg":
@@ -572,6 +592,7 @@ class Wattpilot(object):
         self.__call_event_handler(Event.WP_FULL_STATUS, message)
         self._allPropsInitialized = not message.partial
         if message.partial == False:
+            d("Full Status update completed.")
             self.__call_event_handler(Event.WP_FULL_STATUS_FINISHED, message)
 
     def __on_AuthError(self,message):
@@ -659,6 +680,7 @@ class Wattpilot(object):
         else:
             self._url = "ws://"+ip+"/ws"
         self.serial = None
+        self._carStateReady = False
         self._connected = False
         self._allProps={}
         self._allPropsInitialized=False
