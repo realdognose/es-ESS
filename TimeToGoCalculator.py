@@ -7,7 +7,7 @@ from esESSService import esESSService
 class TimeToGoCalculator(esESSService):
     def __init__(self):
         esESSService.__init__(self)
-        self.capacity   = float(self.config["DEFAULT"]["BatteryCapacityInWh"])
+        self.capacity   = float(self.config["Default"]["BatteryCapacityInWh"])
 
     def initDbusService(self):
         pass
@@ -67,7 +67,7 @@ class TimeToGoCalculator(esESSService):
           #TODO: Figure out why dbus publishing is not working :( )
           #self.timeToGoDbus.publish(int(remaining))
 
-          self.publishLocalMqtt("N/{0}/system/0/Dc/Battery/TimeToGo".format(self.config["DEFAULT"]["VRMPortalID"]), "{\"value\": " + str(int(remaining)) + "}")
+          self.publishLocalMqtt("N/{0}/system/0/Dc/Battery/TimeToGo".format(self.config["Default"]["VRMPortalID"]), "{\"value\": " + str(int(remaining)) + "}")
           self.publishMainMqtt("{0}/{1}/TimeToGo".format(Globals.esEssTag, self.__class__.__name__), int(remaining))
 
       except Exception as e:

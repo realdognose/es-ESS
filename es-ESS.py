@@ -57,8 +57,8 @@ class esESS:
         self._serviceMessageIndex: Dict[str, int] = {}
         self._dbusMonitor: DbusMonitor = None
         
-        i(self, "Initializing thread pool with a size of {0}".format(self.config["DEFAULT"]["NumberOfThreads"]))
-        self.threadPool = ThreadPoolExecutor(int(self.config["DEFAULT"]["NumberOfThreads"]))
+        i(self, "Initializing thread pool with a size of {0}".format(self.config["Default"]["NumberOfThreads"]))
+        self.threadPool = ThreadPoolExecutor(int(self.config["Default"]["NumberOfThreads"]), "TPt")
 
         if (self.mqttThrottlePeriod > 0):
            self._mainMqttThrottleDictLock = threading.Lock()
@@ -417,12 +417,12 @@ class esESS:
         else:
            self._serviceMessageIndex[key] +=1
         
-        if (self._serviceMessageIndex[key] > int(self.config["DEFAULT"]["ServiceMessageCount"]) + 1):
+        if (self._serviceMessageIndex[key] > int(self.config["Default"]["ServiceMessageCount"]) + 1):
            self._serviceMessageIndex[key] = 1
 
         self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=self._serviceMessageIndex[key]), "{0} | {1}".format(str(datetime.datetime.now()), message) , 0, True, True)
         nextOne = self._serviceMessageIndex[key] +1
-        if (nextOne > int(self.config["DEFAULT"]["ServiceMessageCount"]) + 1):
+        if (nextOne > int(self.config["Default"]["ServiceMessageCount"]) + 1):
             nextOne = 1
         
         self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=nextOne), "{0} | {1}".format(str(datetime.datetime.now()), "-------------------------") , 0, True, True)
@@ -489,10 +489,10 @@ def configureLogging(config):
   logging.trace = trace
   logging.Logger.trace = trace
 
-  logLevelString = config["DEFAULT"]['LogLevel']
+  logLevelString = config["Default"]['LogLevel']
   logLevel = logging.getLevelName(logLevelString)
 
-  logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+  logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)s %(message)s',
                       datefmt='%Y-%m-%d %H:%M:%S',
                       level=logLevel,
                       handlers=[
