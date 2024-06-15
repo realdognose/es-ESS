@@ -209,6 +209,11 @@ The wattpilot app is reporting the time since the car has been plugged in. Espec
 
 Wattpilot itself supports the feature to charge when energy prices are low. This works perfectly, doesn't make sence to reproduce. Hence, you can use the builtin feature as you are used to. es-ESS will detect when wattpilot is charging due to low energy costs and not take over control.
 
+> Sometimes VRM is displaying `Stop charging`, `Start charging` or `Switching phasemode` for a long time? 
+
+Whenever one of the preconfigured Start/Stop- or Phaseswitchtimes are exhausted, es-ESS will display the status until the cooldown is passed, or conditions change again. 
+So, whenever a sun shortage requires to stop charging, but you have 250s left on the on/off cooldown, VRM will display `Stop charging` for 250s. This is, so you are aware that - even if there is grid-pull happening - wattpilot is about to stop as soon as conditions allow for it. 
+
 # MqttToEVSoc
 TODO
 
