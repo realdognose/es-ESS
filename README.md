@@ -155,7 +155,7 @@ Therefore, a complete integration of Wattpilot has been implemented:
 | Communication is bidirectional between VRM <-> Wattpilot app for both, auto and manual mode. |
 </div>
 
-# Installation
+### Installation
 Despite the installation of es-ESS, an additional python module *websocket-client* is required to communicate with Wattpilot. 
 The installation is a *one-liner* through *pythons pip* - which in turn might need to be installed first. 
 If you have already installed *python pip* on your system, can skip this.
@@ -172,7 +172,7 @@ Install *websocket-client*:
 python -m pip install websocket-client
 ```
 
-# Configuration
+### Configuration
 
 > :information_source: Configure Wattpilot in ECO-Mode and a PV-Overhead-Minimum-Startpower of 99kW or something. es-ESS will handle that and start/stop Wattpilot according to available solar overhead. Setting this high start value ensures Wattpilot is not messing with control as well.
 
@@ -194,10 +194,18 @@ FroniusWattpilot requires a few variables to be set in `/data/es-ESS/config.ini`
 | [FroniusWattpilot]  | Password | Password of Wattpilot | String  | Secret123! |
 | [FroniusWattpilot]  | HibernateMode | When the car is disconnected, es-ESS will switch into idle mode, stop doing heavy lifting. Connection to wattpilot remains established and VRM control enabled. <br /><br />With hibernate enabled, wattpilot will also be disconnected, and connected every 5 minutes for a car-state-check. This greatly reduces the number of incoming socket messages from wattpilot by about 95% per day, but causes an delay of upto 5 minutes when the car is connected.<br /><br />You can force a wakeup by switching to *Scheduled charging* in VRM at any time. | Boolean  | true |
 
-# Credits
+### Credits
 Wattpilot control functionality has been taken from https://github.com/joscha82/wattpilot and modified to extract all variables required for full integration.
 All buggy overhead (Home-Assistant / Mqtt) has been removed and some bug fixes have been applied to achieve a stable running Wattpilot-Core. (It seems to be unmaintained
 since 2 years, lot of pull-requests are not accepted.)
+
+### F.A.Q.
+
+> The wattpilot app is reporting a different charge time than displayed in VRM?
+The wattpilot app is reporting the time since the car has been plugged in. Especially with solar overhead charging, that includes a lot of idle time. es-ESS is tracking only the time the car is actually charging and displaying this time in VRM.
+
+> Can I use low energy price charging with es-ESS?
+Wattpilot itself supports the feature to charge when energy prices are low. This works perfectly, doesn't make sence to reproduce. Hence, you can use the builtin feature as you are used to. es-ESS will detect when wattpilot is charging due to low energy costs and not take over control.
 
 # MqttToEVSoc
 TODO
@@ -437,7 +445,9 @@ es-ESS also publishes Operational-Messages as well as Errors, Warnings and Criti
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/ServiceMessages.png" /> |
 </div>
 
+
 # F.A.Q.
 
-TODO
+See also the service-specific F.A.Q. at the end of each service-description.
+
 

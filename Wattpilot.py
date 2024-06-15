@@ -306,6 +306,30 @@ class Wattpilot(object):
     def mode(self):
         return self._mode
     
+    # NotChargingBecauseNoChargeCtrlData=0, 
+    # NotChargingBecauseOvertemperature=1, 
+    # NotChargingBecauseAccessControlWait=2, 
+    # ChargingBecauseForceStateOn=3, 
+    # NotChargingBecauseForceStateOff=4, 
+    # NotChargingBecauseScheduler=5, 
+    # NotChargingBecauseEnergyLimit=6,
+    # ChargingBecauseAwattarPriceLow=7, 
+    # ChargingBecauseAutomaticStopTestLadung=8, 
+    # ChargingBecauseAutomaticStopNotEnoughTime=9, 
+    # ChargingBecauseAutomaticStop=10, 
+    # ChargingBecauseAutomaticStopNoClock=11, 
+    # ChargingBecausePvSurplus=12, 
+    # ChargingBecauseFallbackGoEDefault=13, 
+    # ChargingBecauseFallbackGoEScheduler=14, 
+    # ChargingBecauseFallbackDefault=15, 
+    # NotChargingBecauseFallbackGoEAwattar=16, 
+    # NotChargingBecauseFallbackAwattar=17, 
+    # NotChargingBecauseFallbackAutomaticStop=18, 
+    # ChargingBecauseCarCompatibilityKeepAlive=19, 
+    # ChargingBecauseChargePauseNotAllowed=20, 
+    # NotChargingBecauseSimulateUnplugging=22, 
+    # NotChargingBecausePhaseSwitch=23, 
+    # NotChargingBecauseMinPauseDuration=24)
     @property
     def modelStatus(self):
         return self._modelStatus

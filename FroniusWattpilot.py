@@ -306,19 +306,27 @@ class FroniusWattpilot (esESSService):
                     else:
                         if (self.wattpilot.power):
                             i(self, "NO Allowance, stopping charging.")
-                            self.publishServiceMessage(self, "Stopping to charge.")
-                            onOffCooldownSeconds = self.getOnOffCooldownSeconds()
-                            if (onOffCooldownSeconds <= 0):
-                                #stop charging
-                                i(self, "STOP send!")
-                                self.wattpilot.set_start_stop(1)
-                                self.lastOnOffTime = time.time()
-                                self.dbusService["/StartStop"] = 0
-                                self.tempStatusOverride = 24
+
+                            #if the modelStatus is ChargingBecauseAwattarPriceLow=7, we are not taking control.
+                            #if the modelStatus is NotChargingBecausePhaseSwitch=23, we are not taking control.
+                            if (self.wattpilot.modelStatus != 7 and self.wattpilot.modelStatus != 23):
+                                self.publishServiceMessage(self, "Stopping to charge.")
+                                onOffCooldownSeconds = self.getOnOffCooldownSeconds()
+                                if (onOffCooldownSeconds <= 0):
+                                    #stop charging
+                                    i(self, "STOP send!")
+                                    self.wattpilot.set_start_stop(1)
+                                    self.lastOnOffTime = time.time()
+                                    self.dbusService["/StartStop"] = 0
+                                    self.tempStatusOverride = 24
+                                else:
+                                    i(self, "Stop-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
+                                    self.publishServiceMessage(self, "Stop-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
+                                    self.tempStatusOverride = 24
                             else:
-                                i(self, "Stop-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
-                                self.publishServiceMessage(self, "Stop-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
-                                self.tempStatusOverride = 24
+                                #TODO: We need to ensure, that wattpilot is in auto-phase-mode, when we don't take control.
+                                #      This should be done upon charge-stops and whenever phases are detected during startup.
+                                self.publishServiceMessage(self, "Charging due to low energy prices. Not messing with control. ;)")
 
                 #update UI anyway
                 self.dumpEvChargerInfo()            
