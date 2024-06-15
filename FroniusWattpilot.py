@@ -179,16 +179,27 @@ class FroniusWattpilot (esESSService):
     def switchMode(self, fromMode, toMode):
         d("FroniusWattpilot", "Switching Mode from {0} to {1}.".format(fromMode, toMode))
         self.publishServiceMessage(self, "Switching Mode from {0} to {1}.".format(fromMode, toMode))
-        self.mode = toMode
-        self.dbusService["/Mode"] = toMode
-        if (fromMode == 0 and toMode == 1):
-            self.autostart = 1
-            self.wattpilot.set_mode(4) #eco
+        if (toMode == 0 or toMode == 1):
+            self.mode = toMode
+            self.dbusService["/Mode"] = toMode
+            if (fromMode == 0 and toMode == 1):
+                self.autostart = 1
+                self.wattpilot.set_mode(4) #eco
 
-        elif (fromMode == 1 and toMode == 0):
-            self.autostart = 0
-            self.wattpilot.set_mode(3) #normal
+            elif (fromMode == 1 and toMode == 0):
+                self.autostart = 0
+                self.wattpilot.set_mode(3) #normal
+        elif (toMode == 2):
+            #Scheduled Charge - this is not used. We use this to temorary wakeup wattpilot, if in Hibernate mode. 
+            self.wakeUpWattpilot()
+            self.switchMode(2, fromMode)
          
+    def wakeUpWattpilot(self):
+        self.publishServiceMessage(self, "Connecting to wattpilot to verify car status.")
+        self.wattpilot._auto_reconnect=True
+        self.wattpilot.connect()
+        self.isIdleMode=False
+
     def _update(self):
         #if the car is not connected, we can greatly reduce system load.
         #just dump values every 5 minutes then. If car is connected, we need
@@ -211,10 +222,7 @@ class FroniusWattpilot (esESSService):
                     if (self.wattpilot.connected and self.wattpilot.carConnected):
                         self.publishServiceMessage(self, "Car connected. Switching to Operation-Mode.")
                     elif (not self.wattpilot.connected):
-                        self.publishServiceMessage(self, "Connecting to wattpilot to verify car status.")
-                        self.wattpilot._auto_reconnect=True
-                        self.wattpilot.connect()
-                        self.isIdleMode=False
+                        self.wakeUpWattpilot()
                         skipIdleCheck=True
 
                         if (Helper.waitTimeout(lambda: self.wattpilot.carStateReady, 30)):

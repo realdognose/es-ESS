@@ -159,108 +159,92 @@ class esESS:
            self.publishMainMqtt("{0}/$SYS/MqttThrottle/Status", "Disabled")
 
     def _initializeServices(self):
-      try:
-        #Create Classes, if enabled.
-        self.publishServiceMessage(self, "Initializing Services.")
+        try:
+            #Create Classes, if enabled.
+            self.publishServiceMessage(self, "Initializing Services.")
 
-        self._checkAndEnable("SolarOverheadDistributor")
-        self._checkAndEnable("TimeToGoCalculator")
-        self._checkAndEnable("MqttExporter")
-        self._checkAndEnable("FroniusWattpilot")
+            self._checkAndEnable("SolarOverheadDistributor")
+            self._checkAndEnable("TimeToGoCalculator")
+            self._checkAndEnable("MqttExporter")
+            self._checkAndEnable("FroniusWattpilot")
+            self._checkAndEnable("ChargeCurrentReducer")
         
-        #Init DbusSubscriptions
-        dbusSubStructure = {}
-        dummy = {'code': None, 'whenToLog': 'configChange', 'accessLevel': None}
-        for (name, service) in self._services.items():
-            self.publishServiceMessage(service, "Initializing Dbus-Subscriptions.")
-            i(self, "Initializing Dbus-Subscriptions for Service {0}".format(name))
-            service.initDbusSubscriptions()
+            #Init DbusSubscriptions
+            dbusSubStructure = {}
+            dummy = {'code': None, 'whenToLog': 'configChange', 'accessLevel': None}
+            for (name, service) in self._services.items():
+                self.publishServiceMessage(service, "Initializing Dbus-Subscriptions.")
+                i(self, "Initializing Dbus-Subscriptions for Service {0}".format(name))
+                service.initDbusSubscriptions()
 
-        #Translate subscriptions to dbus sub format.
-        for (key, sublist) in self._dbusSubscriptions.items():
-            for sub in sublist:
-                d(self, "Creating Dbus-Subscriptions for Service {0} on {1} with callback: {2}".format(sub.requestingService.__class__.__name__, sub.valueKey, Helper.formatCallback(sub.callback)))
+            #Translate subscriptions to dbus sub format.
+            for (key, sublist) in self._dbusSubscriptions.items():
+                for sub in sublist:
+                    (self, "Creating Dbus-Subscriptions for Service {0} on {1} with callback: {2}".format(sub.requestingService.__class__.__name__, sub.valueKey, Helper.formatCallback(sub.callback)))
                 
-                if (sub.commonServiceName not in dbusSubStructure):
-                    dbusSubStructure[sub.commonServiceName] = {}
+                    if (sub.commonServiceName not in dbusSubStructure):
+                        dbusSubStructure[sub.commonServiceName] = {}
 
-                if (sub.dbusPath not in dbusSubStructure[sub.commonServiceName]):
-                    dbusSubStructure[sub.commonServiceName][sub.dbusPath] = dummy
+                    if (sub.dbusPath not in dbusSubStructure[sub.commonServiceName]):
+                        dbusSubStructure[sub.commonServiceName][sub.dbusPath] = dummy
         
-        #Ignore our own services, we don't need them to be scanned. 
-        #ignoreServices is no longer available at the moment.
-        ignoreServices=["com.victronenergy.battery.esESS", "com.victronenergy.settings.esESS"]
+            #Ignore our own services, we don't need them to be scanned. 
+            #ignoreServices is no longer available at the moment.
+            ignoreServices=["com.victronenergy.battery.esESS", "com.victronenergy.settings.esESS"]
         
-        #Initialize dbus on a seperate thred, so our services currently initializing can
-        #respond to service calls during monitoring.
-        self._dbusMonitor = DbusMonitor(dbusSubStructure, self._dbusValueChanged, ignoreServices=ignoreServices)
+            #Initialize dbus on a seperate thred, so our services currently initializing can
+            #respond to service calls during monitoring.
+            self._dbusMonitor = DbusMonitor(dbusSubStructure, self._dbusValueChanged, ignoreServices=ignoreServices)
     
-        #now, that we have subscribed with some generic subscriptions, 
-        #we need to elevate these subscriptions to device specific ones,
-        #so the get_value command can be used with success.
-        for (sn, instance) in self._dbusMonitor.get_service_list().items():
-          for (key, sublist) in self._dbusSubscriptions.items():
-            for sub in sublist:
-               if (sn.startswith(sub.serviceName) and sn != sub.serviceName):
-                  d(self, "Elevating {0} of Service {1} to {2}".format(sub.serviceName, sub.requestingService.__class__.__name__, sn))
-                  sub.serviceName = sn
+            #now, that we have subscribed with some generic subscriptions, 
+            #we need to elevate these subscriptions to device specific ones,
+            #so the get_value command can be used with success.
+            for (sn, instance) in self._dbusMonitor.get_service_list().items():
+                for (key, sublist) in self._dbusSubscriptions.items():
+                    for sub in sublist:
+                        if (sn.startswith(sub.serviceName) and sn != sub.serviceName):
+                            d(self, "Elevating {0} of Service {1} to {2}".format(sub.serviceName, sub.requestingService.__class__.__name__, sn))
+                            sub.serviceName = sn
       
-        #manualy fetch variables one time, then on change is sufficent.
-        d(self, "Initializing dbus values for first-use.")
-        for (key, sublist) in self._dbusSubscriptions.items():
-            for sub in sublist:
-              v = self._dbusMonitor.get_value(sub.serviceName, sub.dbusPath, 0)
-              sub.value = v
-              d(self, "{0}{1}: Value is: {2}".format(sub.serviceName, sub.dbusPath, v))
+            #manualy fetch variables one time, then on change is sufficent.
+            d(self, "Initializing dbus values for first-use.")
+            for (key, sublist) in self._dbusSubscriptions.items():
+                for sub in sublist:
+                    v = self._dbusMonitor.get_value(sub.serviceName, sub.dbusPath, 0)
+                    sub.value = v
+                    d(self, "{0}{1}: Value is: {2}".format(sub.serviceName, sub.dbusPath, v))
               
-              #process callbacks, if any.
-              if (sub.callback is not None):
-                  sub.callback(sub)
+                    #process callbacks, if any.
+                    if (sub.callback is not None):
+                        sub.callback(sub)
         
-        d(self, "Dbusmonitor initalized.")
+            d(self, "Dbusmonitor initalized.")
 
-        #Init DbusServices of each Service.
-        for (name, service) in self._services.items():
-            i(self, "Initializing Dbus-Service for Service {0}".format(name))
-            self.publishServiceMessage(service, "Initializing Dbus-Service.")
-            service.initDbusService()
+            #Init DbusServices of each Service.
+            for (name, service) in self._services.items():
+                i(self, "Initializing Dbus-Service for Service {0}".format(name))
+                self.publishServiceMessage(service, "Initializing Dbus-Service.")
+                service.initDbusService()
 
-        for (name, service) in self._services.items():
-            i(self, "Initializing Mqtt-Subscriptions for Service {0}".format(name))
-            self.publishServiceMessage(service, "Initializing Mqtt-Subscriptions.")
-            service.initMqttSubscriptions()
+            for (name, service) in self._services.items():
+                i(self, "Initializing Mqtt-Subscriptions for Service {0}".format(name))
+                self.publishServiceMessage(service, "Initializing Mqtt-Subscriptions.")
+                service.initMqttSubscriptions()               
 
-        for (topic, sublist) in self._mqttSubscriptions.items():
-                #TODO: If subList cotanins multiple subscriptions
-                #      from different Services, the message_callback_add will fail. 
-                #      We then need a wrapper-method, that acts as callback and will 
-                #      forward the arrived messages to two or more services. 
-            if (len(sublist) > 1):
-                e(self, "Multiple subscriptions for topic: {0} - this is currently unsupported.".format(topic))
-
-            for sub in sublist:
-                d(self, "Creating Mqtt-Subscriptions for Service {0} on {1} with callback: {2}".format(sub.requestingService.__class__.__name__, sub.topic, Helper.formatCallback(sub.callback)))
-                if (sub.type == MqttSubscriptionType.Main):
-                    self.mainMqttClient.subscribe(sub.topic, sub.qos)
-                    self.mainMqttClient.message_callback_add(sub.topic, sub.callback)
-                elif (sub.type == MqttSubscriptionType.Local):
-                    self.localMqttClient.subscribe(sub.topic, sub.qos)
-                    self.localMqttClient.message_callback_add(sub.topic, sub.callback)
-
-        for (name, service) in self._services.items():
-           service.initWorkerThreads()             
+            for (name, service) in self._services.items():
+                service.initWorkerThreads()             
       
-        #Last round for every service to do some stuff :0)
-        for (name, service) in self._services.items():
-           d(self, "Finalizing service {0}".format(name))
-           self.publishServiceMessage(service, "Initializing finished.")
-           service.initFinalize()
+            #Last round for every service to do some stuff :0)
+            for (name, service) in self._services.items():
+                d(self, "Finalizing service {0}".format(name))
+                self.publishServiceMessage(service, "Initializing finished.")
+                service.initFinalize()
 
-        i(Globals.esEssTag, "Initialization completed. " + Globals.esEssTag + " (" + Globals.currentVersionString + ") is up and running.")
-        self.publishServiceMessage(self, "Initializing finished.")
+            i(Globals.esEssTag, "Initialization completed. " + Globals.esEssTag + " (" + Globals.currentVersionString + ") is up and running.")
+            self.publishServiceMessage(self, "Initializing finished.")
 
-      except Exception as ex:
-        c(self, "Exception", exc_info=ex)
+        except Exception as ex:
+            c(self, "Exception", exc_info=ex)
     
     def _dbusValueChanged(self, dbusServiceName, dbusPath, dict, changes, deviceInstance):
         try:
@@ -308,10 +292,18 @@ class esESS:
        self._dbusSubscriptions[sub.valueKey].append(sub)
     
     def registerMqttSubscription(self, sub):
-       if (sub.valueKey not in self._mqttSubscriptions):
-          self._mqttSubscriptions[sub.valueKey] = []
+        if (sub.valueKey not in self._mqttSubscriptions):
+            self._mqttSubscriptions[sub.valueKey] = []
        
-       self._mqttSubscriptions[sub.valueKey].append(sub)
+        self._mqttSubscriptions[sub.valueKey].append(sub)
+
+        d(self, "Creating Mqtt-Subscriptions for Service {0} on {1} with callback: {2}".format(sub.requestingService.__class__.__name__, sub.topic, Helper.formatCallback(sub.callback)))
+        if (sub.type == MqttSubscriptionType.Main):
+            self.mainMqttClient.subscribe(sub.topic, sub.qos)
+            self.mainMqttClient.message_callback_add(sub.topic, sub.callback)
+        elif (sub.type == MqttSubscriptionType.Local):
+            self.localMqttClient.subscribe(sub.topic, sub.qos)
+            self.localMqttClient.message_callback_add(sub.topic, sub.callback)
 
     def registerWorkerThread(self, t):
         i(self, "Scheduling Workerthread {0}".format(Helper.formatCallback(t.thread)))

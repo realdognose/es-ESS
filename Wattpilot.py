@@ -592,7 +592,7 @@ class Wattpilot(object):
         self.__call_event_handler(Event.WP_FULL_STATUS, message)
         self._allPropsInitialized = not message.partial
         if message.partial == False:
-            d("Full Status update completed.")
+            d(self, "Full Status Update Completed.")
             self.__call_event_handler(Event.WP_FULL_STATUS_FINISHED, message)
 
     def __on_AuthError(self,message):
@@ -637,7 +637,7 @@ class Wattpilot(object):
 
     def __on_message(self, wsapp, message):
         ## called whenever a message through websocket is received
-        msg=json.loads(message, object_hook=lambda d: SimpleNamespace(**d))
+        msg=json.loads(message, object_hook=lambda di: SimpleNamespace(**di))
         self.__call_event_handler(Event.WS_MESSAGE, message)
         if (msg.type == 'hello'):  # Hello Message -> Received upon connection before auth
             self.__on_hello(msg)

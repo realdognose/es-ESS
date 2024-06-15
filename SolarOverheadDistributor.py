@@ -503,6 +503,7 @@ class SolarOverheadDistributor(esESSService):
    
    def handleSigterm(self):
        self.publishServiceMessage(self, "SIGTERM received, revoking allowance for every consumer and stopping Http/Mqtt consumers.")
+      
        for (key, consumer) in self._knownSolarOverheadConsumers.items():
           consumer.allowance=0
           consumer.reportAllowance(self)
