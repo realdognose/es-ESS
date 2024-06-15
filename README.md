@@ -202,9 +202,11 @@ since 2 years, lot of pull-requests are not accepted.)
 ### F.A.Q.
 
 > The wattpilot app is reporting a different charge time than displayed in VRM?
+
 The wattpilot app is reporting the time since the car has been plugged in. Especially with solar overhead charging, that includes a lot of idle time. es-ESS is tracking only the time the car is actually charging and displaying this time in VRM.
 
 > Can I use low energy price charging with es-ESS?
+
 Wattpilot itself supports the feature to charge when energy prices are low. This works perfectly, doesn't make sence to reproduce. Hence, you can use the builtin feature as you are used to. es-ESS will detect when wattpilot is charging due to low energy costs and not take over control.
 
 # MqttToEVSoc
