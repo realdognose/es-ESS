@@ -61,17 +61,17 @@ class esESS:
         self.threadPool = ThreadPoolExecutor(int(self.config["Default"]["NumberOfThreads"]), "TPt")
 
         if (self.mqttThrottlePeriod > 0):
-           self._mainMqttThrottleDictLock = threading.Lock()
-           self._mainMqttThrottleDict = { }
-           self._localMqttThrottleDictLock = threading.Lock()
-           self._localMqttThrottleDict = { }
-           self._lastThrottleLog = 0
-           self._messageCount = 0
-           self._sendCount = 0
-           self._lastLocalThrottleLog = 0
-           self._localMessageCount = 0
-           self._localSendCount = 0
-           i(self, "Mqtt-Throttling is enabled to {0}ms".format(self.mqttThrottlePeriod))   
+            self._mainMqttThrottleDictLock = threading.Lock()
+            self._mainMqttThrottleDict = { }
+            self._localMqttThrottleDictLock = threading.Lock()
+            self._localMqttThrottleDict = { }
+            self._lastThrottleLog = 0
+            self._messageCount = 0
+            self._sendCount = 0
+            self._lastLocalThrottleLog = 0
+            self._localMessageCount = 0
+            self._localSendCount = 0
+            i(self, "Mqtt-Throttling is enabled to {0}ms".format(self.mqttThrottlePeriod))   
 
     def configureMqtt(self):
         self.mainMqttClient = mqtt.Client("es-ESS-MQTT-Client")
@@ -153,7 +153,7 @@ class esESS:
 
        #Finally, do some mqtt reports. 
        if (self.mqttThrottlePeriod > 0):
-           self.publishMainMqtt("{0}/$SYS/MqttThrottle/Status", "Enabled")
+           self.publishMainMqtt("{0}/$SYS/MqttThrottle/Status".format(Globals.esEssTag), "Enabled")
            self.publishServiceMessage(self, "Enabling Mqtt-Throttling.")
        else:
            self.publishMainMqtt("{0}/$SYS/MqttThrottle/Status", "Disabled")
@@ -248,48 +248,48 @@ class esESS:
     
     def _dbusValueChanged(self, dbusServiceName, dbusPath, dict, changes, deviceInstance):
         try:
-          key = DbusSubscription.buildValueKey(dbusServiceName, dbusPath)
-          t(self, "Change on dbus for {0} (new value: {1})".format(key, changes['Value'])) 
+            key = DbusSubscription.buildValueKey(dbusServiceName, dbusPath)
+            t(self, "Change on dbus for {0} (new value: {1})".format(key, changes['Value'])) 
 
-          for sub in self._dbusSubscriptions[key]:
-            #verify serviceinstance. if the subscription is to the more global
-            #servicename, we are fine with it.
-            if (dbusServiceName.startswith(sub.serviceName)):
-              sub.value = changes["Value"]
+            for sub in self._dbusSubscriptions[key]:
+                #verify serviceinstance. if the subscription is to the more global
+                #servicename, we are fine with it.
+                if (dbusServiceName.startswith(sub.serviceName)):
+                    sub.value = changes["Value"]
 
-              if (sub.callback is not None):
-                 self.threadPool.submit(sub.callback(sub))
+                if (sub.callback is not None):
+                    self.threadPool.submit(sub.callback(sub))
 
         except Exception as ex:
-          c(self, "Exception", exc_info=ex)
+            c(self, "Exception", exc_info=ex)
 
     def publishDbusValue(self, sub, value):
-       d(self, "Exporting dbus value: {0}{1} => {2}".format(sub.serviceName, sub.dbusPath, value))
-       self._dbusMonitor.set_value(sub.serviceName, sub.dbusPath, value)
+        d(self, "Exporting dbus value: {0}{1} => {2}".format(sub.serviceName, sub.dbusPath, value))
+        self._dbusMonitor.set_value(sub.serviceName, sub.dbusPath, value)
     
     def _runThread(self, workerThread: WorkerThread):
-       if (self._sigTermInvoked):
+        if (self._sigTermInvoked):
             return False
        
-       t(self, "Running thread: {0}".format(Helper.formatCallback(workerThread.thread)))
-       if (workerThread.future is None or workerThread.future.done()):
+        t(self, "Running thread: {0}".format(Helper.formatCallback(workerThread.thread)))
+        if (workerThread.future is None or workerThread.future.done()):
             self._threadExecutionsMinute+=1
             self.threadPool.submit(workerThread.thread)
-       else:
+        else:
             w(self, "Thread {0} from {1} is scheduled to run every {2}ms - Future not done, skipping call attempt.".format(workerThread.service.__class__.__name__, workerThread.thread.__name__, workerThread.interval))
        
-       return True
+        return True
     
     def _signOfLive(self):
-       self.publishServiceMessage(self, "Executed {0} threads in the past minute.".format(self._threadExecutionsMinute))
-       self._threadExecutionsMinute = 0
-       return True
+        self.publishServiceMessage(self, "Executed {0} threads in the past minute.".format(self._threadExecutionsMinute))
+        self._threadExecutionsMinute = 0
+        return True
 
     def registerDbusSubscription(self, sub):
-       if (sub.valueKey not in self._dbusSubscriptions):
-          self._dbusSubscriptions[sub.valueKey] = []
+        if (sub.valueKey not in self._dbusSubscriptions):
+            self._dbusSubscriptions[sub.valueKey] = []
        
-       self._dbusSubscriptions[sub.valueKey].append(sub)
+        self._dbusSubscriptions[sub.valueKey].append(sub)
     
     def registerMqttSubscription(self, sub):
         if (sub.valueKey not in self._mqttSubscriptions):
@@ -411,6 +411,9 @@ class esESS:
         
         if (self._serviceMessageIndex[key] > int(self.config["Default"]["ServiceMessageCount"]) + 1):
            self._serviceMessageIndex[key] = 1
+
+        if (type == Globals.ServiceMessageType.Operational):
+            i(self, "ServiceMessage: {0}".format(message))
 
         self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=self._serviceMessageIndex[key]), "{0} | {1}".format(str(datetime.datetime.now()), message) , 0, True, True)
         nextOne = self._serviceMessageIndex[key] +1

@@ -225,7 +225,7 @@ class SolarOverheadDistributor(esESSService):
 
                if (consumer.isInitialized):
                   
-                  if (consumer.isHTTPConsumer):
+                  if (consumer.isHttpConsumer):
                      consumer.validateHttpStatus(None)
                      consumer.httpControl()
                   
@@ -344,7 +344,7 @@ class SolarOverheadDistributor(esESSService):
                consumer.reportAllowance(self)
                overheadAssigned += consumer.allowance
                overhead -= consumer.allowance
-               self.publishServiceMessage(self, "Assigned {0}W to {1} ({2})".format(consumer.allowance, consumer.customName, consumerKey))
+               self.publishServiceMessage(self, "Assigned {0}W to {1} ({2}, {3})".format(consumer.allowance, consumer.customName, consumer.priority, consumerKey))
             elif (not consumer.isInitialized):
                self.publishServiceMessage(self, "{0} ({1}) is not yet initialized.".format(consumer.customName, consumerKey), Globals.ServiceMessageType.Warning)
             elif (not consumer.isAutomatic):
