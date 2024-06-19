@@ -293,7 +293,8 @@ class FroniusWattpilot (esESSService):
                     self.autostart = 0
                     self.mode = VrmEvChargerControlMode.Manual
 
-                if (self.wattpilot.modelStatus == WattpilotModelStatus.NotChargingBecauseNoChargeCtrlData):
+                if (self.wattpilot.modelStatus == WattpilotModelStatus.NotChargingBecauseNoChargeCtrlData or not self.wattpilot.carConnected):
+                    #Disconnected wins over any state reported by wattpilot.
                     #EV Disconnected. Nothing to do here, but report data and a 0 watt request and none-automatic mode. 
                     self.reportVRMStatus(VrmEvChargerStatus.Disconnected) #disconnected
 
@@ -335,7 +336,8 @@ class FroniusWattpilot (esESSService):
                                 self.currentPhaseMode = 0
                                 self.wattpilot.set_phases(0)
                             else:
-                                self.publishServiceMessage(self, "Stop-Charge delayed due to on/off cooldown: {0}s".format(onOffCooldownSeconds))
+                                self.publishServiceMessage(self, "Stop-Charge delayed due to on/off cooldown: {0}s. Using 6A to reduce impact.".format(onOffCooldownSeconds))
+                                self.wattpilot.set_power(6) #go for minimum amps, as long as we can't stop. 
                     else:
                         #charging, but not in auto mode - so, charging is all that's left to say. 
                         d(self, "Charging in manual mode.")
@@ -353,7 +355,7 @@ class FroniusWattpilot (esESSService):
                         if (self.allowance >= self.wattpilot.voltage1 * 6):
                             self.publishServiceMessage(self, "Starting to charge.")
                             onOffCooldownSeconds = self.getOnOffCooldownSeconds()
-                            self.reportVRMStatus(VrmEvChargerStatus.Charging) #start charging
+                            self.reportVRMStatus(VrmEvChargerStatus.StartCharging) #start charging
 
                             if (onOffCooldownSeconds <= 0):
                                 i(self, "START send!")
@@ -419,8 +421,6 @@ class FroniusWattpilot (esESSService):
         self.Publish("/StatusLiteral", status.name)
 
     def reportBaseRequest(self):
-
-        self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/StepSize", int(floor(self.wattpilot.voltage1))) #assuming all phases are about equal and stepSize is 1 amp.
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Minimum", int(floor(self.wattpilot.voltage1 * 6)))
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IgnoreBatReservation", "false")
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/VRMInstanceID", self.config["FroniusWattpilot"]["VRMInstanceID_OverheadRequest"])
@@ -428,15 +428,20 @@ class FroniusWattpilot (esESSService):
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/CustomName", "Fronius Wattpilot")
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Priority", self.config["FroniusWattpilot"]["OverheadPriority"])
         
-        if (self.mode == VrmEvChargerControlMode.Auto):
+        #StepSize depends on Current Phasemode. 
+        if (self.currentPhaseMode == 2):
+            self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/StepSize", int(floor(self.wattpilot.voltage1 + self.wattpilot.voltage2 + self.wattpilot.voltage3)))
+        else:
+            self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/StepSize", int(floor(self.wattpilot.voltage1)))
+
+        #request overall depends on wheter car is connected and mode is auto or not. 
+        if (self.mode == VrmEvChargerControlMode.Auto and self.wattpilot.carConnected):
             self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Request", 
                                  floor(self.wattpilot.ampLimit * (self.wattpilot.voltage1 + self.wattpilot.voltage2 + self.wattpilot.voltage3))) 
             self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IsAutomatic", "true")
         else:
             self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Request", 0) 
             self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IsAutomatic", "false")
-            
-        
 
     def reportConsumption(self):
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Consumption", self.wattpilot.power * 1000)
@@ -470,10 +475,11 @@ class FroniusWattpilot (esESSService):
         desiredPhaseMode = 2 if targetAmps > self.wattpilot.ampLimit else 1
         enteringPhaseMode = self.currentPhaseMode
 
-        d(self, "Desired PhaseMode: {0}".format(desiredPhaseMode))
+        d(self, "Current PhaseMode vs desired Phasemode: {0}/{1}".format(enteringPhaseMode, desiredPhaseMode))
         
         if (self.currentPhaseMode == desiredPhaseMode):
-            targetAmps = int(floor(targetAmps / self.currentPhaseMode))
+            divider = 1 if self.currentPhaseMode == 1 else 3
+            targetAmps = int(floor(targetAmps / divider))
             #Just adjust, no phasemode change required. 
             i(self, "Adjusting charge current to: {0}A".format(targetAmps))
             self.wattpilot.set_power(targetAmps)

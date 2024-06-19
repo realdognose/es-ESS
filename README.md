@@ -222,7 +222,28 @@ TODO
 TODO
 
 # MqttTemperatures
-TODO
+> :white_check_mark: Production Ready
+
+### Overview
+MqttTemperatures is a streight-forward feature: It allows you to read temperature sensors from your mqtt server and injects them as temperaturesensors in dbus/vrm. 
+
+| Example View |
+|:-------------------------:|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttTemperature.png"> |
+
+### Configuration
+MqttTemperatures requires a few variables to be set in `/data/es-ESS/config.ini`: 
+
+
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [Services]    | MqttTemperatures | Flag, if the module should be enabled or not | Boolean | true |
+| [MqttTemperatures:XYZ]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
+| [MqttTemperatures:XYZ]  | CustomName |  Custom name to be used for this sensor | String  | MPPT2 Wiring |
+| [MqttTemperatures:XYZ]  | Topic |  Topic on Mqtt, delivering the measurement value. | String  | Devices/d1busBar/Sensors/MPPT2_CABLE_TEMP/Value |
+
+Note: You can create as many `[MqttTemperature:XYZ]` sections as you need, just take care to ensure unique names and VRM-Ids.
 
 # SolarOverheadDistributor
 

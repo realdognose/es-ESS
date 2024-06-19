@@ -195,6 +195,7 @@ class esESS:
             self._checkAndEnable("MqttExporter")
             self._checkAndEnable("FroniusWattpilot")
             self._checkAndEnable("ChargeCurrentReducer")
+            self._checkAndEnable("MqttTemperature")
         
             #Init DbusSubscriptions
             dbusSubStructure = {}
@@ -217,7 +218,7 @@ class esESS:
         
             #Ignore our own services, we don't need them to be scanned. 
             #ignoreServices is no longer available at the moment.
-            ignoreServices=["com.victronenergy.battery.esESS", "com.victronenergy.settings.esESS"]
+            ignoreServices=["com.victronenergy.battery.esESS", "com.victronenergy.settings.esESS", "com.victronenergy.temperature.esESS"]
         
             #Initialize dbus on a seperate thred, so our services currently initializing can
             #respond to service calls during monitoring.
