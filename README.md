@@ -446,12 +446,11 @@ TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.in
 es-ESS can log a lot of information helpfull to debug things. For this, the loglevel in the configuration can be adjusted and several (recurring) Log Messages can be surpressed
 The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day at midnight. A total of 14 log files is kept, then recycled.
 
-> :warning: Having es-ESS running at log level `DEBUG` for a long time will produce huge log files and negatively impact system performance. Especially with MQTT-Logs enabled.
+> :warning: Having es-ESS running at log level `TRACE` for a long time will produce huge log files and negatively impact system performance. This will log all incoming and outgoing values, we are talking about thausands of lines of log per minute here.
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [DEFAULT]    | LogLevel |  Options: DEBUG, INFO, WARNING, ERROR, CRITICAL | String | INFO |
-| [LogDetails]    | DontLogDebug | Blacklist for method calls that shouldn't even be logged in DEBUG Mode.  | String | es-ESS.onLocalMqttMessage, esESS._dbusValueChanged|
+| [DEFAULT]    | LogLevel |  Options: TRACE, DEBUG, APP_DEBUG, INFO, WARNING, ERROR, CRITICAL | String | INFO |
 
 <div align="center">
 
@@ -459,6 +458,8 @@ The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day 
 |:-----------:|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/logrotate.png" /> |
 </div>
+
+### More Configx
 
 Additionally there are the following configuration options available: 
 
