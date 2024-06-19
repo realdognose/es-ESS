@@ -114,6 +114,14 @@ class esESS:
         if rc == 0:
             i(self, "Connected to MQTT broker!")
             self.mainMqttClientConnected = True
+
+            #Check, if we need to subscribe again.
+            for (key, sublist) in self._mqttSubscriptions.items():
+                for sub in sublist:
+                    d(self, "Creating Mqtt-Subscriptions for Service {0} on {1} with callback: {2}".format(sub.requestingService.__class__.__name__, sub.topic, Helper.formatCallback(sub.callback)))
+                    if (sub.type == MqttSubscriptionType.Main):
+                        self.mainMqttClient.subscribe(sub.topic, sub.qos)
+                        self.mainMqttClient.message_callback_add(sub.topic, sub.callback)
         else:
             e(self, "Failed to connect, return code %d\n", rc)
     
@@ -121,14 +129,33 @@ class esESS:
         if rc == 0:
             i(self, "Connected to MQTT broker!")
             self.localMqttClientConnected = True
+            
+            #Check, if we need to subscribe again.
+            for (key, sublist) in self._mqttSubscriptions.items():
+                for sub in sublist:
+                    d(self, "Creating Mqtt-Subscriptions for Service {0} on {1} with callback: {2}".format(sub.requestingService.__class__.__name__, sub.topic, Helper.formatCallback(sub.callback)))
+                    if (sub.type == MqttSubscriptionType.Local):
+                        self.mainMqttClient.subscribe(sub.topic, sub.qos)
+                        self.mainMqttClient.message_callback_add(sub.topic, sub.callback)
         else:
             e(self, "Failed to connect, return code %d\n", rc)
 
     def onMainMqttDisconnect(self, client, userdata, rc):
-        c(self, "Mqtt Disconnect. Reconnect not yet implemented ;)")
+        w(self, "Mqtt Disconnect.")
+
+        if (self.mainMqttClient.reconnect):
+            i(self, "Waiting for automatic reconnect.")
+        else:
+            w(self, "Automatic reconnect is disabled.")
 
     def onLocalMqttDisconnect(self, client, userdata, rc):
-        c(self, "Mqtt Disconnect. Reconnect not yet implemented ;)")
+        w(self, "Mqtt Disconnect.")
+
+        if (self.localMqttClient.reconnect):
+            i(self, "Waiting for automatic reconnect.")
+        else:
+            w(self, "Automatic reconnect is disabled.")
+
     
     def _checkAndEnable(self, clazz):
        if (self.config["Services"][clazz].lower()=="true"):
@@ -495,6 +522,7 @@ def configureLogging(config):
                         logging.StreamHandler()
                       ])
   
+
   import Helper
   #persist some log flags.
   

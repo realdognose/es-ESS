@@ -20,6 +20,7 @@ Services are marked according to their current development state:
 - [FroniusWattpilot](#FroniusWattpilot) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
 - [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt source and insert a FAKE-BMS on cerbo / VRM for display purpose.
 - [NoBatToEV](#nobattoev) - Avoid discharge of your home-battery when charging your ev with an `ac-out` connected wallbox.
+- [MqttTemperatures](#mqtttemperatures) - Display various temperature sensors you have on mqtt in VRM.
 - [SolarOverheadDistributor](#solaroverheaddistributor) - Utility to manage and distribute available solar overhead between various consumers.
   - [Scripted-SolarOverheadConsumer](#scripted-solaroverheadconsumer) - Consumers managed by external scripts can to be more complex and join the solar overhead pool.
   - [NPC-SolarOverheadConsumer](#npc-solaroverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead. No programming required.
@@ -218,6 +219,9 @@ So, whenever a sun shortage requires to stop charging, but you have 250s left on
 TODO
 
 # NoBatToEV
+TODO
+
+# MqttTemperatures
 TODO
 
 # SolarOverheadDistributor

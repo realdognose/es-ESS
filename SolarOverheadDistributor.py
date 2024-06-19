@@ -235,6 +235,8 @@ class SolarOverheadDistributor(esESSService):
             except Exception as ex:
                e(self, "Error validating consumer {0}".format(consumerKey), exc_info = ex)
 
+      #dump values for update on status (if any)
+      self.dumpConsumerBms()
       return True
 
    def _persistEnergyStats(self):
@@ -730,7 +732,7 @@ class SolarOverheadConsumer:
 
   def dumpFakeBMS(self):
      try:
-         if (self.dbusService is None):
+         if (self.dbusService is None or not self.isInitialized):
             return
          
          self.dbusService["/Dc/0/Power"] = self.consumption
@@ -754,6 +756,7 @@ class SolarOverheadConsumer:
             self.dbusService["/Soc"] = self.consumption / self.request * 100.0
          else:
             self.dbusService["/Soc"] = 0
+
      except Exception as ex:
          e(self, "Exception", exc_info=ex)
 

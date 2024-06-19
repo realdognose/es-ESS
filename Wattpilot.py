@@ -27,6 +27,7 @@ from types import SimpleNamespace
 
 import Helper
 from Helper import i, c, d, w, e, d, t
+from enums import WattpilotModelStatus, WattpilotStartStop, WattpilotControlMode
 
 class LoadMode():
     """Wrapper Class to represent the Load Mode of the Wattpilot"""
@@ -306,30 +307,30 @@ class Wattpilot(object):
     def mode(self):
         return self._mode
     
-    # NotChargingBecauseNoChargeCtrlData=0, 
-    # NotChargingBecauseOvertemperature=1, 
-    # NotChargingBecauseAccessControlWait=2, 
-    # ChargingBecauseForceStateOn=3, 
-    # NotChargingBecauseForceStateOff=4, 
-    # NotChargingBecauseScheduler=5, 
-    # NotChargingBecauseEnergyLimit=6,
-    # ChargingBecauseAwattarPriceLow=7, 
-    # ChargingBecauseAutomaticStopTestLadung=8, 
-    # ChargingBecauseAutomaticStopNotEnoughTime=9, 
-    # ChargingBecauseAutomaticStop=10, 
-    # ChargingBecauseAutomaticStopNoClock=11, 
-    # ChargingBecausePvSurplus=12, 
-    # ChargingBecauseFallbackGoEDefault=13, 
-    # ChargingBecauseFallbackGoEScheduler=14, 
-    # ChargingBecauseFallbackDefault=15, 
-    # NotChargingBecauseFallbackGoEAwattar=16, 
-    # NotChargingBecauseFallbackAwattar=17, 
-    # NotChargingBecauseFallbackAutomaticStop=18, 
-    # ChargingBecauseCarCompatibilityKeepAlive=19, 
-    # ChargingBecauseChargePauseNotAllowed=20, 
-    # NotChargingBecauseSimulateUnplugging=22, 
-    # NotChargingBecausePhaseSwitch=23, 
-    # NotChargingBecauseMinPauseDuration=24)
+        # NotChargingBecauseNoChargeCtrlData=0, 
+        # NotChargingBecauseOvertemperature=1, 
+        # NotChargingBecauseAccessControlWait=2, 
+        # ChargingBecauseForceStateOn=3, 
+        # NotChargingBecauseForceStateOff=4, 
+        # NotChargingBecauseScheduler=5, 
+        # NotChargingBecauseEnergyLimit=6,
+        # ChargingBecauseAwattarPriceLow=7, 
+        # ChargingBecauseAutomaticStopTestLadung=8, 
+        # ChargingBecauseAutomaticStopNotEnoughTime=9, 
+        # ChargingBecauseAutomaticStop=10, 
+        # ChargingBecauseAutomaticStopNoClock=11, 
+        # ChargingBecausePvSurplus=12, 
+        # ChargingBecauseFallbackGoEDefault=13, 
+        # ChargingBecauseFallbackGoEScheduler=14, 
+        # ChargingBecauseFallbackDefault=15, 
+        # NotChargingBecauseFallbackGoEAwattar=16, 
+        # NotChargingBecauseFallbackAwattar=17, 
+        # NotChargingBecauseFallbackAutomaticStop=18, 
+        # ChargingBecauseCarCompatibilityKeepAlive=19, 
+        # ChargingBecauseChargePauseNotAllowed=20, 
+        # NotChargingBecauseSimulateUnplugging=22, 
+        # NotChargingBecausePhaseSwitch=23, 
+        # NotChargingBecauseMinPauseDuration=24)
     @property
     def modelStatus(self):
         return self._modelStatus
@@ -412,8 +413,9 @@ class Wattpilot(object):
     def set_power(self,power):
         self.send_update("amp",power)
 
-    def set_start_stop(self, v):
-        self.send_update("frc", v)
+    def set_start_stop(self, v:WattpilotStartStop):
+        d(self, "Start/Stop to send: frc={0}:{1}".format(v, v.value))
+        self.send_update("frc", v.value)
 
     def set_phases(self, v):
         if (v==3):
@@ -421,8 +423,9 @@ class Wattpilot(object):
 
         self.send_update("psm", v)
 
-    def set_mode(self,mode):
-        self.send_update("lmo",mode)
+    def set_mode(self, mode:WattpilotControlMode):
+        d(self, "Sending Conrol Mode {0}:{1} to Wattpilot.".format(mode, mode.value))
+        self.send_update("lmo", mode.value)
 
     def send_update(self,name,value):
         message = {}
@@ -518,9 +521,9 @@ class Wattpilot(object):
         elif name=="cak":
             self._cak = value
         elif name=="modelStatus":
-            self._modelStatus = value
+            self._modelStatus = WattpilotModelStatus(value)
         elif name=="lmo":
-            self._mode = Wattpilot.lmoValues[value]
+            self._mode = WattpilotControlMode(value)
         elif name=="car":
             self._carConnected = (Wattpilot.carValues[value] != "no car")
             self._carStateReady = True
