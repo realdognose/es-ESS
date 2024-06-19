@@ -41,7 +41,7 @@ Your system needs to match the following requirements in order to use es-ESS:
 ### Overview
 Victrons Venus OS / Cerbo Devices have a builtin Mqtt-Server. However, there are some flaws with that: You have to constantly post a Keep-Alive message, in order to keep values beeing published. VRM uses this in order to receive data. On one hand, it is a unnecessary performance-penalty to keep thausands of values up-to-date, just because you want to use 10-12 of them for display purpose. 
 
-Second issue is - according to the forums: while Keep-Alive is enabled, topics are continiously forwarded to the cloud, causing bandwith usage, which is bad on metered connections or at least general bandwith pollution. 
+Second issue is - according to the forums: while Keep-Alive is enabled, topics are continiously forwarded to the upstream-server, causing bandwith usage, which is bad on metered connections or at least general bandwith pollution. 
 
 So, the MqttExporter has been created. With a quite easy notation you can define which values should be tracked on dbus, and then be forwarded to your desired mqtt server.
 
@@ -51,7 +51,7 @@ MqttExporter requires a few variables to be set in `/data/es-ESS/config.ini`:
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [Services]    | MqttExporter | Flag, if the module should be enabled or not | Boolean | true |
+| [Services]    | MqttExporter | Flag, if the service should be enabled or not | Boolean | true |
 | [MqttExporter]  | Export_{whatever}_{x} |  Export definition, see details bellow | String  | com.victronenergy.grid.http_40, /Ac/Power, CerboValues/Grid/Power |
 
 To export values from DBus to your mqtt server, you need to specify 3 variables per value.
@@ -126,7 +126,7 @@ ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
 | [DEFAULT]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
-| [Services]    | ChargeCurrentReducer | Flag, if the module should be enabled or not | Boolean | true |
+| [Services]    | ChargeCurrentReducer | Flag, if the service should be enabled or not | Boolean | true |
 | [ChargeCurrentReducer]  | DesiredChargeAmps |  Desired Charge Current in Amps. Your *feel-well-value*.<br /><br />Beside a fixed value, you can use a equation based on SoC as well. The example will reduce the charge current desired by 1A per SoC-Percent, but minimum 30A<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | max(100 - SOC, 30) |
 
 # FroniusWattpilot
@@ -183,7 +183,7 @@ FroniusWattpilot requires a few variables to be set in `/data/es-ESS/config.ini`
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [Services]    | FroniusWattpilot | Flag, if the module should be enabled or not | Boolean | true |
+| [Services]    | FroniusWattpilot | Flag, if the service should be enabled or not | Boolean | true |
 | [FroniusWattpilot]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1001 |
 | [FroniusWattpilot]  | VRMInstanceID_OverheadRequest |  VRMInstanceId to be used on dbus for the FAKE-BMS | Integer  | 1002 |
 | [FroniusWattpilot]  | MinPhaseSwitchSeconds  | Seconds between Phase-Switching  | Integer| 300 |
@@ -237,7 +237,7 @@ MqttTemperatures requires a few variables to be set in `/data/es-ESS/config.ini`
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [Services]    | MqttTemperatures | Flag, if the module should be enabled or not | Boolean | true |
+| [Services]    | MqttTemperatures | Flag, if the service should be enabled or not | Boolean | true |
 | [MqttTemperature:XYZ]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
 | [MqttTemperature:XYZ]  | CustomName |  Custom name to be used for this sensor | String  | MPPT2 Wiring |
 | [MqttTemperature:XYZ]  | Topic |  Topic on Mqtt, delivering the measurement value. | String  | Devices/d1busBar/Sensors/MPPT2_CABLE_TEMP/Value |
@@ -252,7 +252,7 @@ Note: You can create as many `[MqttTemperature:XYZ]` sections as you need, just 
 > :large_orange_diamond: Release-Candiate-Version
 
 #### Overview
-Sometimes you need to manage multiple consumers based on solar overhead available. If every consumer is deciding on it's own, it can 
+Sometimes you wish to manage multiple consumers based on solar overhead available. If every consumer is deciding on it's own, it can 
 lead to a continious up and down on available energy, causing consumers to turn on/off in a uncontrolled, frequent fashion. 
 
 To overcome this problem, the SolarOverheadDistributor has been created. Each consumer can register itself, send a request containing certain parameters - and
@@ -275,13 +275,13 @@ Also, when consumption changes, the whole ESS itself needs to adapt, adjust batt
 during ongoing calculations. So we decided to go with a fixed value of 1 minute, which is fast enough to adapt quickly but not causing any issues with consumers going on/off due to delays in processing.
 
 ### Usage
-Each consumer is creating a SolarOverhead-Request, which then will be accepted or not by the SolarOverheadDistributor based on various parameters. The overall request has to be send to the venus mqtt inside the `W` Topic, 
-where es-ESS will read the request and publish the processing result in it's own topic. 
+Each consumer is creating a SolarOverhead-Request, which then will be accepted or not by the SolarOverheadDistributor based on various parameters. The overall request has to be send to the mqtt topic `es-ESS/SolarOverheadDistributor/Requests` where es-ESS will catch up the request
+and add the `allowance` property to the request.
 
 A request is made out of the following values, where some are mandatory, some optional, some to be not filled out by the consumer: 
 
-*In this table, a consumerKey of `consumer1` has been used. Replace that with an unique identifier for your consumer*
-each key has to be published in the topic `W/{VRMPortalID}/esEss/SolarOverheadDistributor/requests/consumer1`
+each key has to be published in the topic `es-ESS/SolarOverheadDistributor/Requests/{consumerIdentifier}/`
+
 | Mqtt-Key             | To be set by Consumer |  Descripion                                                             | Type          | Example Value| Required |
 | -------------------- | ----------------------|------------------------------------------------------------------------ | ------------- |--------------| ---------|
 |IsAutomatic             | yes                   | Flag, indicating if the consumer is currently in automatic mode         | Boolean       | true         | yes      |
@@ -295,10 +295,10 @@ each key has to be published in the topic `W/{VRMPortalID}/esEss/SolarOverheadDi
 |VRMInstanceID         | yes                   | The ID the battery monitor should use in VRM                            | Integer       | 1008          | yes     |
 |Allowance             | no                    | Allowance in Watts, calculated by SolarOverheadDistributor                 | Double        | 768.0         | n/a     |
 
-SolarOverheadDistributor will process these requests and finally publish the result within it's own topic, under: `N/{VRMPortalID/settings/{vRMInstanceIdOfSolarOverheadDistributor}/requests`
+SolarOverheadDistributor will process these requests and finally publish the result under: `es-ESS/SolarOverheadDistributor/Requests/{consumerIdentifier}/allowance`
 
-- It is important to report back consumption by the consumer. Only then the calculated values are correct.
-- Only consumers reporting as automatic will be considered. (So maintain this, when implementing manual overrides)
+- It is important to report back consumption by the consumer. Only then the calculated values are correct, because the consumption of every controlled consumer is *available Budget*.
+- Only consumers reporting as automatic will be considered. (So maintain this, when implementing manual overrides, i.e. an unplugged EV should not request overhead-share)
 
 ### Scripted-SolarOverheadConsumer
 A Scripted-SolarOverheadConsumer is an external script (Powershell, bash, arduino, php, ...) you are using to control a consumer. This allows the requests to be more precice and granular
@@ -384,7 +384,7 @@ SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/con
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
 | [DEFAULT]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
-| [Services]    | SolarOverheadDistributor | Flag, if the module should be enabled or not | Boolean | true |
+| [Services]    | SolarOverheadDistributor | Flag, if the service should be enabled or not | Boolean | true |
 | [SolarOverheadDistributor]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
 | [SolarOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
 | [SolarOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />*You can use any complex arithmetic you like, see example graphs bellow for 3 typical curves* | String  | 5000 - 40 * SOC |
@@ -437,7 +437,7 @@ TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.in
 | ---------- | ---------|---- | ------------- |--|
 | [DEFAULT]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [DEFAULT]  | BatteryCapacityInWh  | Your batteries capacity in Wh.  | Integer| 28000 |
-| [Services]    | TimeToGoCalculator | Flag, if the module should be enabled or not | Boolean | true |
+| [Services]    | TimeToGoCalculator | Flag, if the service should be enabled or not | Boolean | true |
 | [TimeToGoCalculator]  | UpdateInterval |  Time in milliseconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
 
 # This and that
