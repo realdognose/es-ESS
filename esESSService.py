@@ -60,6 +60,12 @@ class esESSService(ABC):
     def publishServiceMessage(self, service, message, type=Globals.ServiceMessageType.Operational):
         Globals.esESS.publishServiceMessage(service, message, type)
 
+    def registerGridSetPointRequest(self, request:float):
+        Globals.esESS.registerGridSetPointRequest(self, request)
+    
+    def revokeGridSetPointRequest(self):
+        Globals.esESS.registerGridSetPointRequest(self, None)
+
 class WorkerThread:
     def __init__(self, service, thread, interval):
         self.thread = thread

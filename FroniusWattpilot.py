@@ -293,6 +293,9 @@ class FroniusWattpilot (esESSService):
                     self.autostart = 0
                     self.mode = VrmEvChargerControlMode.Manual
 
+                #keep the Start-Stop State in line anytime, no matter if auto or manual mode.
+                self.reportStartStopValue(VrmEvChargerStartStop.Start if self.wattpilot.power != 0 else VrmEvChargerStartStop.Stop)
+
                 if (self.wattpilot.modelStatus == WattpilotModelStatus.NotChargingBecauseNoChargeCtrlData or not self.wattpilot.carConnected):
                     #Disconnected wins over any state reported by wattpilot.
                     #EV Disconnected. Nothing to do here, but report data and a 0 watt request and none-automatic mode. 
@@ -389,7 +392,7 @@ class FroniusWattpilot (esESSService):
 
                 elif (self.wattpilot.modelStatus in[WattpilotModelStatus.ChargingBecauseAwattarPriceLow, WattpilotModelStatus.NotChargingBecauseFallbackAwattar, WattpilotModelStatus.ChargingBecauseFallbackDefault ]) :
                     self.chargingTime += 5
-                    self.reportVRMStatus(VrmEvChargerStatus.ChargingLimit) #charging limit, no dedicated VRM State available. Maybe #20, "charging limit"?
+                    self.reportVRMStatus(VrmEvChargerStatus.Charging) 
                     self.reportConsumption()
 
                     #TODO: In external charging mode, phases may be switched by wattpilot. have to validate our status on every cycle and update VRM if needed. 
@@ -417,8 +420,8 @@ class FroniusWattpilot (esESSService):
             c(self, "Exception during duty-cycle.", exc_info=ex)
 
     def reportVRMStatus(self, status:VrmEvChargerStatus):
-        self.Publish("/Status", status.value)
-        self.Publish("/StatusLiteral", status.name)
+        self.publish("/Status", status.value)
+        self.publish("/StatusLiteral", status.name)
 
     def reportBaseRequest(self):
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Minimum", int(floor(self.wattpilot.voltage1 * 6)))
@@ -434,17 +437,25 @@ class FroniusWattpilot (esESSService):
         else:
             self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/StepSize", int(floor(self.wattpilot.voltage1)))
 
-        #request overall depends on wheter car is connected and mode is auto or not. 
+        #request overall depends on wheter car is connected and operation mode.
         if (self.mode == VrmEvChargerControlMode.Auto and self.wattpilot.carConnected):
             self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Request", 
                                  floor(self.wattpilot.ampLimit * (self.wattpilot.voltage1 + self.wattpilot.voltage2 + self.wattpilot.voltage3))) 
-            self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IsAutomatic", "true")
         else:
             self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Request", 0) 
+            
+        #auto or manual?
+        if (self.mode == VrmEvChargerControlMode.Auto):
+            self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IsAutomatic", "true")
+        else:
             self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IsAutomatic", "false")
 
     def reportConsumption(self):
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Consumption", self.wattpilot.power * 1000)
+
+    def reportStartStopValue(self, v:VrmEvChargerStartStop):
+        self.publish("/StartStop", v.value)
+        self.publish("/StartStopLiteral", v.name)
 
     def reportPhaseMode(self):
         #pvoverhead request
@@ -515,58 +526,60 @@ class FroniusWattpilot (esESSService):
     def dumpEvChargerInfo(self):
         #method is called, whenever new information arrive through mqtt. 
         #just dump the information we have.
-        self.Publish("/Ac/L1/Power", self.wattpilot.power1 * 1000 if (self.wattpilot.power1 is not None) else 0)
-        self.Publish("/Ac/L2/Power", self.wattpilot.power2 * 1000 if (self.wattpilot.power2 is not None) else 0)
-        self.Publish("/Ac/L3/Power", self.wattpilot.power3 * 1000 if (self.wattpilot.power3 is not None) else 0)
-        self.Publish("/Ac/L1/Voltage", self.wattpilot.voltage1  if (self.wattpilot.voltage1 is not None) else 0)
-        self.Publish("/Ac/L2/Voltage", self.wattpilot.voltage2  if (self.wattpilot.voltage2 is not None) else 0)
-        self.Publish("/Ac/L3/Voltage", self.wattpilot.voltage3  if (self.wattpilot.voltage3 is not None) else 0)
-        self.Publish("/Ac/L1/Current", self.wattpilot.amps1  if (self.wattpilot.amps1 is not None and self.wattpilot.power>0) else 0)
-        self.Publish("/Ac/L2/Current", self.wattpilot.amps2  if (self.wattpilot.amps2 is not None and self.wattpilot.power>0) else 0)
-        self.Publish("/Ac/L3/Current", self.wattpilot.amps3  if (self.wattpilot.amps3 is not None and self.wattpilot.power>0) else 0)
-        self.Publish("/Ac/L1/PowerFactor", self.wattpilot.powerFactor1  if (self.wattpilot.powerFactor1 is not None and self.wattpilot.power>0) else 0)
-        self.Publish("/Ac/L2/PowerFactor", self.wattpilot.powerFactor2  if (self.wattpilot.powerFactor2 is not None and self.wattpilot.power>0) else 0)
-        self.Publish("/Ac/L3/PowerFactor", self.wattpilot.powerFactor3  if (self.wattpilot.powerFactor3 is not None and self.wattpilot.power>0) else 0)
-        self.Publish("/Ac/Power", self.wattpilot.power * 1000 if (self.wattpilot.power is not None) else 0)
-        self.Publish("/Ac/PowerPercent", (self.wattpilot.power * 1000) / (3 * self.wattpilot.ampLimit * self.wattpilot.voltage1) if (self.wattpilot.power is not None) else 0)
-        self.Publish("/Ac/PowerMax", (3 * self.wattpilot.ampLimit * self.wattpilot.voltage1))
-        self.Publish("/Current", (self.wattpilot.amps1 + self.wattpilot.amps2 + self.wattpilot.amps3) if (self.wattpilot.amp is not None and self.wattpilot.power>0) else 0)
-        self.Publish("/Mode", self.mode.value)
-        self.Publish("/ModeLiteral", self.mode.name)
+        self.publish("/Ac/L1/Power", self.wattpilot.power1 * 1000 if (self.wattpilot.power1 is not None) else 0)
+        self.publish("/Ac/L2/Power", self.wattpilot.power2 * 1000 if (self.wattpilot.power2 is not None) else 0)
+        self.publish("/Ac/L3/Power", self.wattpilot.power3 * 1000 if (self.wattpilot.power3 is not None) else 0)
+        self.publish("/Ac/L1/Voltage", self.wattpilot.voltage1  if (self.wattpilot.voltage1 is not None) else 0)
+        self.publish("/Ac/L2/Voltage", self.wattpilot.voltage2  if (self.wattpilot.voltage2 is not None) else 0)
+        self.publish("/Ac/L3/Voltage", self.wattpilot.voltage3  if (self.wattpilot.voltage3 is not None) else 0)
+        self.publish("/Ac/L1/Current", self.wattpilot.amps1  if (self.wattpilot.amps1 is not None and self.wattpilot.power>0) else 0)
+        self.publish("/Ac/L2/Current", self.wattpilot.amps2  if (self.wattpilot.amps2 is not None and self.wattpilot.power>0) else 0)
+        self.publish("/Ac/L3/Current", self.wattpilot.amps3  if (self.wattpilot.amps3 is not None and self.wattpilot.power>0) else 0)
+        self.publish("/Ac/L1/PowerFactor", self.wattpilot.powerFactor1  if (self.wattpilot.powerFactor1 is not None and self.wattpilot.power>0) else 0)
+        self.publish("/Ac/L2/PowerFactor", self.wattpilot.powerFactor2  if (self.wattpilot.powerFactor2 is not None and self.wattpilot.power>0) else 0)
+        self.publish("/Ac/L3/PowerFactor", self.wattpilot.powerFactor3  if (self.wattpilot.powerFactor3 is not None and self.wattpilot.power>0) else 0)
+        self.publish("/Ac/Power", self.wattpilot.power * 1000 if (self.wattpilot.power is not None) else 0)
+        self.publish("/Ac/PowerPercent", (self.wattpilot.power * 1000) / (3 * self.wattpilot.ampLimit * self.wattpilot.voltage1) if (self.wattpilot.power is not None) else 0)
+        self.publish("/Ac/PowerMax", (3 * self.wattpilot.ampLimit * self.wattpilot.voltage1))
+        self.publish("/Current", (self.wattpilot.amps1 + self.wattpilot.amps2 + self.wattpilot.amps3) if (self.wattpilot.amp is not None and self.wattpilot.power>0) else 0)
+        self.publish("/Mode", self.mode.value)
+        self.publish("/ModeLiteral", self.mode.name)
 
         #Also write total power back to SolarOverheadDistributor 
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Consumption", self.wattpilot.power * 1000)
 
         if (self.wattpilot.energyCounterSinceStart is not None and self.wattpilot.carConnected):
-            self.Publish("/Ac/Energy/Forward", self.wattpilot.energyCounterSinceStart / 1000)
+            self.publish("/Ac/Energy/Forward", self.wattpilot.energyCounterSinceStart / 1000)
         
         elif (self.wattpilot.energyCounterSinceStart is not None and not self.wattpilot.carConnected and self.config["FroniusWattpilot"]["ResetChargedEnergyCounter"].lower() == "onconnect"):
-            self.Publish("/Ac/Energy/Forward", self.wattpilot.energyCounterSinceStart / 1000)
+            self.publish("/Ac/Energy/Forward", self.wattpilot.energyCounterSinceStart / 1000)
 
         else:
-            self.Publish("/Ac/Energy/Forward", 0.0)
+            self.publish("/Ac/Energy/Forward", 0.0)
             self.chargingTime = 0
         
-        self.Publish("/AutoStart", self.autostart)
+        self.publish("/AutoStart", self.autostart)
 
-        self.Publish("/ChargingTime", self.chargingTime)
-        self.Publish("/CarState", self.wattpilot.carConnected)
+        self.publish("/ChargingTime", self.chargingTime)
+        self.publish("/CarState", self.wattpilot.carConnected)
 
-        self.Publish("/PhaseMode", self.currentPhaseMode)
+        self.publish("/PhaseMode", self.currentPhaseMode)
         if (self.currentPhaseMode == 2):
-            self.Publish("/SetCurrent", self.wattpilot.amp * 3)
-            self.Publish("/MaxCurrent", self.wattpilot.ampLimit * 3)
+            self.publish("/SetCurrent", self.wattpilot.amp * 3)
+            self.publish("/MaxCurrent", self.wattpilot.ampLimit * 3)
         else:
-            self.Publish("/SetCurrent", self.wattpilot.amp)
-            self.Publish("/MaxCurrent", self.wattpilot.ampLimit )
+            self.publish("/SetCurrent", self.wattpilot.amp)
+            self.publish("/MaxCurrent", self.wattpilot.ampLimit )
 
-    def Publish(self, path, value):
+    def publish(self, path, value):
         self.dbusService[path] = value
         self.publishMainMqtt("es-ESS/FroniusWattpilot{0}".format(path), value, 0)
 
     def handleSigterm(self):
-       self.publishServiceMessage(self, "SIGTERM received, sending STOP-command to wattpilot, despite any state.")
-       if (self.wattpilot is not None and self.wattpilot.connected):
+       self.publishServiceMessage(self, "SIGTERM received, sending STOP-command to wattpilot, if in auto mode.")
+       
+       if (self.wattpilot is not None and self.wattpilot.connected and self.mode == VrmEvChargerControlMode.Auto):
             self.wattpilot.set_start_stop(WattpilotStartStop.Off)
-            self.wattpilot._auto_reconnect = False
-            self.wattpilot.disconnect()
+       
+       self.wattpilot._auto_reconnect = False
+       self.wattpilot.disconnect()

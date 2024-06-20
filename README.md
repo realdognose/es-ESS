@@ -125,7 +125,7 @@ ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [DEFAULT]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [Services]    | ChargeCurrentReducer | Flag, if the service should be enabled or not | Boolean | true |
 | [ChargeCurrentReducer]  | DesiredChargeAmps |  Desired Charge Current in Amps. Your *feel-well-value*.<br /><br />Beside a fixed value, you can use a equation based on SoC as well. The example will reduce the charge current desired by 1A per SoC-Percent, but minimum 30A<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | max(100 - SOC, 30) |
 
@@ -219,7 +219,27 @@ So, whenever a sun shortage requires to stop charging, but you have 250s left on
 TODO
 
 # NoBatToEV
-TODO
+> :white_check_mark: Production Ready
+
+### Overview
+
+If you have your wallbox connected to the AC-OUT (because you like to be able to charge in emergencies) but generally don't want to discharge your home batteries, *NoBatToEV* is what you need. The service monitors
+your ev charge, consumption and available solar - and offloads any overhead-ev-charge that is not covered by solar to the grid. 
+
+| Example |
+|:-------------------------:|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/nobattoev.png"> |
+| With 0 Solar available, basically the whole ev-charge is offloaded to the grid, while the battery only powers the remaining loads.|
+
+### Configuration
+NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`: 
+
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [Services]    | NoBatToEV   | Flag, if the service should be enabled or not | Boolean | true |
+| [Default]     | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [Default]     | DefaultPowerSetPoint |  Default Power SetPoint, so it can be restored after ev charge finished. | double | -10 |
 
 # MqttTemperatures
 > :white_check_mark: Production Ready

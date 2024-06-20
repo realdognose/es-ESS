@@ -34,8 +34,6 @@ class SolarOverheadDistributor(esESSService):
       self._knownSolarOverheadConsumers: dict[str, SolarOverheadConsumer] = { }
       self._knownSolarOverheadConsumersLock = threading.Lock()
 
-      #TODO: We need a schedule to transfer todays energy to yesterday.
-
    def initDbusService(self):
       self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
       self.dbusBmsService = VeDbusService(self.bmsServiceName, bus=dbusConnection())
@@ -188,13 +186,15 @@ class SolarOverheadDistributor(esESSService):
 
    def _moveEnergyData(self):
        #reschedule in 24h.
+       i(self, "Moving energy stats to yesterday.")
        self.registerWorkerThread(self._moveEnergyData, 86400)
 
        with self._knownSolarOverheadConsumersLock:
          for consumerKey in self._knownSolarOverheadConsumers:
             consumer = self._knownSolarOverheadConsumers[consumerKey]
                
-            if (not consumer.isInitialized):
+            if (consumer.isInitialized):
+               i(self, "Moving energy stats to yesterday for {0}.".format(consumer.consumerKey))
                consumer._moveEnergyData()
 
        #unschedule current timer.
@@ -600,21 +600,29 @@ class SolarOverheadConsumer:
      
      return float(self.runtimeData["Energy"][key])
      
+  def getRequestPath(self):
+     return "{0}/SolarOverheadDistributor/Requests/{1}".format(Globals.esEssTag, self.consumerKey)
+
   def setValue(self, key, value):
      key = key.replace('{0}/SolarOverheadDistributor/Requests/{1}/'.format(Globals.esEssTag, self.consumerKey), "")
      
      t(self, "Setting value '{0}' to '{1}'".format(key, value))
 
+     #values incoming here arrive from mqtt. Some have to be forwarded to Dbus-FakeBMS.
      if (key == "Minimum"):
         self.minimum = float(value)
      elif (key == "Request"):
         self.request = float(value)
+        self.dbusReportConsumerName()
+        self.dbusReportConsumption()
      elif (key == "StepSize"):
         self.stepSize = float(value)
      elif (key == "Consumption"):
         self.consumption = float(value)
+        self.dbusReportConsumption()
      elif (key == "IsAutomatic"):
         self.isAutomatic = value.lower() == "true"
+        self.dbusReportConsumerName()
      elif (key == "VRMInstanceID"):
         self.vrmInstanceID = int(value)
      elif (key == "Priority"):
@@ -628,6 +636,7 @@ class SolarOverheadConsumer:
         self.allowance = float(value)
      elif (key == "CustomName"):
         self.customName = value
+        self.dbusReportConsumerName()
      elif (key == "IsHttpConsumer"):
         self.isHttpConsumer = value.lower() == "true"
      elif (key == "IsMqttConsumer"):
@@ -646,8 +655,36 @@ class SolarOverheadConsumer:
         self.onKeywordRegex = value
 
      #TODO: Delta publishing of only changed value.
-     self.dumpFakeBMS()
+     #self.dumpFakeBMS()
     
+  def dbusReportConsumerName(self):
+      if (self.dbusService is None):
+         return
+      
+      customName = "Solar Overhead Consumer"
+      if (self.customName is not None):
+            customName = self.customName
+
+      if (self.isAutomatic):
+         customName += " ☼"
+      else:
+         customName += " ◌"
+         
+      if (self.request is not None and self.isAutomatic):
+         customName += " @ {0}W".format(self.request)
+
+      self.dbusService["/CustomName"] = customName
+
+  def dbusReportConsumption(self):
+      if (self.dbusService is None):
+         return
+      
+      self.dbusService["/Dc/0/Power"] = self.consumption if self.consumption is not None else 0
+      if (self.request > 0 and self.request is not None and self.consumption is not None):
+         self.dbusService["/Soc"] = self.consumption / self.request * 100.0
+      else:
+         self.dbusService["/Soc"] = 0
+
   def checkFinalInit(self, sod:SolarOverheadDistributor):
       #to create the final instance on DBUS and finally init everything, we need different sets of variables.
       #all consumers need the vrmInstanceId.
@@ -732,35 +769,14 @@ class SolarOverheadConsumer:
 
   def dumpFakeBMS(self):
      try:
-         if (self.dbusService is None or not self.isInitialized):
-            return
-         
-         self.dbusService["/Dc/0/Power"] = self.consumption
-
-         customName = "Solar Overhead Consumer"
-         if (self.customName is not None):
-               customName = self.customName
-
-         if (self.isAutomatic):
-            customName += " ☼"
-         else:
-            customName += " ◌"
-            
-         
-         if (self.request is not None and self.isAutomatic):
-            customName += " @ {0}W".format(self.request)
-
-         self.dbusService["/CustomName"] = customName
-         
-         if (self.request > 0):
-            self.dbusService["/Soc"] = self.consumption / self.request * 100.0
-         else:
-            self.dbusService["/Soc"] = 0
+         self.dbusReportConsumerName()
+         self.dbusReportConsumption();
 
      except Exception as ex:
          e(self, "Exception", exc_info=ex)
 
   def reportAllowance(self, sod):
+     sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}".format(Globals.esEssTag, self.consumerKey), Globals.getUserTime())
      sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Allowance".format(Globals.esEssTag, self.consumerKey), self.allowance, 1)
      
      #calculate current consumption, before dumping new/changed allowance.
@@ -771,10 +787,12 @@ class SolarOverheadConsumer:
      if (self.isHttpConsumer):
         self.httpControl()
         sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Consumption".format(Globals.esEssTag, self.consumerKey), self.consumption, 1)
+        self.dbusReportConsumption()
      
      if (self.isMqttConsumer):
         self.mqttControl()
         sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Consumption".format(Globals.esEssTag, self.consumerKey), self.consumption, 1)
+        self.dbusReportConsumption()
       
      #report Energy values.
      sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Energy/runtimeToday".format(Globals.esEssTag, self.consumerKey), self.runtimeToday, 1, True)

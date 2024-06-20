@@ -38,7 +38,7 @@ class MqttExporter(esESSService):
         pass
 
     def initDbusSubscriptions(self):
-        for (key, topicExport) in self.topicExports.items():
+        for topicExport in self.topicExports.values():
             self.registerDbusSubscription(topicExport.service, topicExport.source, self._dbusValueChanged)
         
     def initWorkerThreads(self):

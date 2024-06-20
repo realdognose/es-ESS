@@ -46,8 +46,7 @@ class esESS:
         self.mainMqttClientConnected = False
         self.localMqttClientConnected = False
         self.mqttThrottlePeriod = int(self.config["Mqtt"]["ThrottlePeriod"])
-        self._threadExecutionsMinute = 0
-                
+        
         i(self, "Initializing " + Globals.esEssTag + " (" + Globals.currentVersionString + ")")
 
         #init core values
@@ -56,6 +55,9 @@ class esESS:
         self._mqttSubscriptions: Dict[str, list[MqttSubscription]] = {}
         self._serviceMessageIndex: Dict[str, int] = {}
         self._dbusMonitor: DbusMonitor = None
+        self._gridSetPointRequests: Dict[str, float] = {}
+        self._gridSetPointDefault = float(self.config["Default"]["DefaultPowerSetPoint"])
+        self._threadExecutionsMinute = 0
         
         i(self, "Initializing thread pool with a size of {0}".format(self.config["Default"]["NumberOfThreads"]))
         self.threadPool = ThreadPoolExecutor(int(self.config["Default"]["NumberOfThreads"]), "TPt")
@@ -196,6 +198,7 @@ class esESS:
             self._checkAndEnable("FroniusWattpilot")
             self._checkAndEnable("ChargeCurrentReducer")
             self._checkAndEnable("MqttTemperature")
+            self._checkAndEnable("NoBatToEV")
         
             #Init DbusSubscriptions
             dbusSubStructure = {}
@@ -204,6 +207,10 @@ class esESS:
                 self.publishServiceMessage(service, "Initializing Dbus-Subscriptions.")
                 i(self, "Initializing Dbus-Subscriptions for Service {0}".format(name))
                 service.initDbusSubscriptions()
+
+            #Init own subscriptions. 
+            self.timezoneDbus = DbusSubscription(self, "com.victronenergy.settings", "/Settings/System/TimeZone", self._timeZoneChanged)
+            self.registerDbusSubscription(self.timezoneDbus)
 
             #Translate subscriptions to dbus sub format.
             for (key, sublist) in self._dbusSubscriptions.items():
@@ -261,6 +268,9 @@ class esESS:
 
             for (name, service) in self._services.items():
                 service.initWorkerThreads()             
+
+            #own worker threads.
+            self.registerWorkerThread(WorkerThread(self, self._manageGridSetPoint, 5000))
       
             #Last round for every service to do some stuff :0)
             for (name, service) in self._services.items():
@@ -274,6 +284,10 @@ class esESS:
         except Exception as ex:
             c(self, "Exception", exc_info=ex)
     
+    def _timeZoneChanged(self, sub):
+        self.publishServiceMessage(self, "Timezone detected as '{0}'".format(sub.value))
+        Globals.userTimezone = sub.value
+
     def _dbusValueChanged(self, dbusServiceName, dbusPath, dict, changes, deviceInstance):
         try:
             key = DbusSubscription.buildValueKey(dbusServiceName, dbusPath)
@@ -291,7 +305,7 @@ class esESS:
         except Exception as ex:
             c(self, "Exception", exc_info=ex)
 
-    def publishDbusValue(self, sub, value):
+    def publishDbusValue(self, sub:DbusSubscription, value):
         d(self, "Exporting dbus value: {0}{1} => {2}".format(sub.serviceName, sub.dbusPath, value))
         self._dbusMonitor.set_value(sub.serviceName, sub.dbusPath, value)
     
@@ -312,14 +326,36 @@ class esESS:
         self.publishServiceMessage(self, "Executed {0} threads in the past minute.".format(self._threadExecutionsMinute))
         self._threadExecutionsMinute = 0
         return True
+    
+    def _manageGridSetPoint(self):
+        try:
+            gsp = self._gridSetPointDefault
 
-    def registerDbusSubscription(self, sub):
+            for (k,v) in self._gridSetPointRequests.items():
+                if (v is not None):
+                    d(self, "Grid Set Point request of {0} is {1}".format(k,v))
+                    gsp += v
+
+            
+            d(self, "final gsp is: {0}".format(gsp))
+            self.publishLocalMqtt("W/{0}/settings/0/Settings/CGwacs/AcPowerSetPoint".format(self.config["Default"]["VRMPortalID"]), "{\"value\": " + str(gsp) + "}", 1 ,False)
+        except Exception as ex:
+            c(self, "Exception in grid set point control.", exc_info=ex)
+
+
+    def registerDbusSubscription(self, sub:DbusSubscription):
         if (sub.valueKey not in self._dbusSubscriptions):
             self._dbusSubscriptions[sub.valueKey] = []
        
         self._dbusSubscriptions[sub.valueKey].append(sub)
+
+    def registerGridSetPointRequest(self, service:esESSService, request:float):
+        self._gridSetPointRequests[service.__class__.__name__] = request
     
-    def registerMqttSubscription(self, sub):
+    def revokeGridSetPointRequest(self, service:esESSService):
+        self.registerGridSetPointRequest(service, None)
+    
+    def registerMqttSubscription(self, sub:MqttSubscription):
         if (sub.valueKey not in self._mqttSubscriptions):
             self._mqttSubscriptions[sub.valueKey] = []
        
@@ -333,7 +369,7 @@ class esESS:
             self.localMqttClient.subscribe(sub.topic, sub.qos)
             self.localMqttClient.message_callback_add(sub.topic, sub.callback)
 
-    def registerWorkerThread(self, t):
+    def registerWorkerThread(self, t:WorkerThread):
         i(self, "Scheduling Workerthread {0}".format(Helper.formatCallback(t.thread)))
         self.publishServiceMessage(t.service, "Initializing Worker Thread: {0}".format(Helper.formatCallback(t.thread)))
         gobject.timeout_add(t.interval, self._runThread, t)
@@ -443,12 +479,12 @@ class esESS:
         if (type == Globals.ServiceMessageType.Operational):
             i(self, "ServiceMessage: {0}".format(message))
 
-        self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=self._serviceMessageIndex[key]), "{0} | {1}".format(str(datetime.datetime.now()), message) , 0, True, True)
+        self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=self._serviceMessageIndex[key]), "{0} | {1}".format(Globals.getUserTime(), message) , 0, True, True)
         nextOne = self._serviceMessageIndex[key] +1
         if (nextOne > int(self.config["Default"]["ServiceMessageCount"]) + 1):
             nextOne = 1
         
-        self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=nextOne), "{0} | {1}".format(str(datetime.datetime.now()), "-------------------------") , 0, True, True)
+        self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=nextOne), "{0} | {1}".format(Globals.getUserTime(), "-------------------------") , 0, True, True)
 
     def handleSigterm(self, signum, frame):
         self.publishServiceMessage(self, "SIGTERM received. Shuting down services gracefully.")
@@ -456,8 +492,12 @@ class esESS:
         #set flag, so dbus handler stops forwarding new messages, threads are no longer started, etc.
         self._sigTermInvoked=True
 
+        #restore default grid set point
+        i(self, "Restoring default power set point of {0}W due to SIGTERM received.".format(self._gridSetPointDefault))
+        self.publishLocalMqtt("W/{0}/settings/0/Settings/CGwacs/AcPowerSetPoint".format(self.config["Default"]["VRMPortalID"]), "{\"value\": " + str(self._gridSetPointDefault) + "}", 1 ,False)
+
         #unsubscribe any mqtt sub, so we no longer receive new messages. 
-        for (topic, sublist) in self._mqttSubscriptions.items():
+        for sublist in self._mqttSubscriptions.values():
             for sub in sublist:
                 d(self, "Unsubscribing from Mqtt-Subscriptions for Service {0} on {1} with callback: {2}".format(sub.requestingService.__class__.__name__, sub.topic, Helper.formatCallback(sub.callback)))
                 if (sub.type == MqttSubscriptionType.Main):
@@ -468,22 +508,19 @@ class esESS:
         #dbusmonitor has no disconnect method, so we just stop forwarding the messages in the global handler. 
 
         #tell each service to clean up as well.
-        for (key, service) in self._services.items():
+        for service in self._services.values():
            service.handleSigterm()
            i(self, "Service {0} is in safe exit state.".format(service.__class__.__name__))
 
         #finally, clean up internally.
-        self._handleSigterm()
+        #disconnect from mqtts
+        self.mainMqttClient.reconnect = False
+        self.localMqttClient.reconnect = False
+        self.mainMqttClient.disconnect()
+        self.localMqttClient.disconnect()   
 
-        i(self, "Bye.")
-        sys.exit(0)
-        
-    def _handleSigterm(self):
-       #disconnect from mqtts
-       self.mainMqttClient.reconnect = False
-       self.localMqttClient.reconnect = False
-       self.mainMqttClient.disconnect()
-       self.localMqttClient.disconnect()           
+        i(self, "Cleaned up. Bye.")
+        sys.exit(0)       
 
 def configureLogging(config):
 
