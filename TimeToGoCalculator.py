@@ -1,7 +1,7 @@
 
 #esEss imports
 import Globals
-from Helper import i, c, d, w, e
+from Helper import i, c, d, w, e, t
 from esESSService import esESSService
 
 class TimeToGoCalculator(esESSService):
@@ -16,8 +16,6 @@ class TimeToGoCalculator(esESSService):
         self.powerDbus      = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Power")
         self.socDbus        = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Soc")
         self.socLimitDbus   = self.registerDbusSubscription("com.victronenergy.system", "/Control/ActiveSocLimit")
-        #self.activeBMSDbus  = self.registerDbusSubscription("com.victronenergy.system", "/ActiveBmsService", self.activeBMSChanged)
-        #self.timeToGoDbus   = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/TimeToGo")
 
     def initMqttSubscriptions(self):
         pass
@@ -28,12 +26,6 @@ class TimeToGoCalculator(esESSService):
     def initFinalize(self):
         pass
 
-    def activeBMSChanged(self, sub):
-       #Modify our subscriptions to the precice service instance we need.
-       d(self, "Setting active BMS service to {0}".format(sub.value)) 
-       self.powerDbus.serviceName = sub.value   
-       self.socDbus.serviceName = sub.value
-
     def updateTimeToGo(self):
       try:
         
@@ -41,7 +33,7 @@ class TimeToGoCalculator(esESSService):
         soc       = self.socDbus.value
         socLimit  = self.socLimitDbus.value
         
-        #d(self, "{0} / {1} / {2}".format(power, soc, socLimit))
+        t(self, "{0} / {1} / {2}".format(power, soc, socLimit))
 
         if (soc == 0):
           w(self, "SoC value of 0 reported. Can't compute time2go.")
@@ -52,7 +44,7 @@ class TimeToGoCalculator(esESSService):
         currentCapacity = (soc/100.0) * self.capacity
         usableCapacity = currentCapacity - remainingCapacity
         
-        #d(self, "Capacity: {0}, RemCap: {1}, MisCap: {2}, CurCap: {3}, UsCap: {4}".format(self.capacity, remainingCapacity, missingCapacity, currentCapacity, usableCapacity))
+        t(self, "Capacity: {0}, RemCap: {1}, MisCap: {2}, CurCap: {3}, UsCap: {4}".format(self.capacity, remainingCapacity, missingCapacity, currentCapacity, usableCapacity))
 
         remaining = None
         if (power < 0):
