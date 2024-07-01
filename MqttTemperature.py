@@ -102,7 +102,7 @@ class TemperatureSensor:
         self.dbusService.add_path('/Connected', 1)
         self.dbusService.add_path('/Serial', "1337")
         
-        self.dbusService.add_path('/Temperature', 0)
+        self.dbusService.add_path('/Temperature', None)
         self.dbusService.add_path('/TemperatureType', 2) #Generic
         self.dbusService.add_path('/CustomName', self.customName)
 

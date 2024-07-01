@@ -424,8 +424,11 @@ class FroniusWattpilot (esESSService):
         self.publish("/StatusLiteral", status.name)
 
     def reportBaseRequest(self):
-        self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Minimum", int(floor(self.wattpilot.voltage1 * 6)))
-        self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IgnoreBatReservation", "false")
+        #if voltage is unknown, we cannot request a proper minimum. leave it unset, or at currenet state, happens rarely. :( 
+        if (self.wattpilot.voltage1 is not None):
+            self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Minimum", int(floor(self.wattpilot.voltage1 * 6)))
+
+        self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IgnoreBatReservation", "f  alse")
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/VRMInstanceID", self.config["FroniusWattpilot"]["VRMInstanceID_OverheadRequest"])
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/IsScriptedConsumer", "true")
         self.publishMainMqtt("es-ESS/SolarOverheadDistributor/Requests/Wattpilot/CustomName", "Fronius Wattpilot")
