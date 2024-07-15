@@ -413,35 +413,7 @@ SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/con
 
 In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> System Setup -> Battery Measurement* and set the ones you'd like to see to *Visible*:
 
-### Priority Shifting ###
-Priority shifting is a powerfull feature to allows you to control your consumers. SolarOverheadDistributor will always give away `StepSize` Watts to a single consumer.
-Once an assignment has been done, and priority shifting is enabled for this consumer, it's priority for the next round is lowered by the given value. 
 
-i.e.: My EV could consume upto 11.000 Watts, leaving nothing for other consumers. I have a 3*1000 Watt electric heater that should have kinda lower priority, but 
-also be considered with energy. 
-
-So, I configured the following Values: 
-
-- EV: Priority `35`, PriorityShift `1`, StepSize: `250`
-- Heater: Priority `40`, PriorityShift `5`, StepSize: `1000`
-
-Now, SolarOverheadDistributor will give away available Energy in the following pattern. 
-
-1) EV +250 due to priority 35
-2) EV +250 due to priority 36
-3) EV +250 due to priority 37
-4) EV +250 due to priority 38
-5) EV +250 due to priority 39
-6) EV +250 due to priority 40
-7) PV Heater +1000 due to priority 40
-8) EV +250 due to priority 41
-9) EV +250 due to priority 42
-10) EV +250 due to priority 43
-11) EV +250 due to priority 44
-12) EV +250 due to priority 45
-13) PV Heater +1000 due to priority 45
-14) EV +250 due to priority 46
-....
 
 <div align="center">
 
@@ -459,6 +431,37 @@ Now, SolarOverheadDistributor will give away available Energy in the following p
 | Red := Just enforce at very low SoC, but 1500W minimum: `(1/(SOC/8)*5000)+1000`|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/socFormula.png"> |
 </div>
+
+### Priority Shifting ###
+Priority shifting is a powerfull feature allowing you to control your consumers in a sophisticated way. SolarOverheadDistributor will always give away `StepSize` Watts to a single consumer.
+Once an assignment has been done, and priority shifting is enabled for this consumer, it's priority for the next distribution round is lowered by the given `PriorityShift` value. (defaults to 0,
+if not provided)
+
+i.e.: My EV could consume upto 11.000 Watts, leaving nothing for other consumers. I have a 3*1000 Watt electric heater that should have kinda lower priority, but 
+also be considered with energy. 
+
+So, I configured the following Values: 
+
+- EV: Priority `35`, PriorityShift `1`, StepSize: `250`, Minimum: `1365`
+- Heater: Priority `40`, PriorityShift `5`, StepSize: `1000`
+
+Now, SolarOverheadDistributor will give away available Energy in the following pattern. 
+
+1) EV +1365 due to priority 35 and minimum start power.
+2) EV +250 due to priority 36
+3) EV +250 due to priority 37
+4) EV +250 due to priority 38
+5) EV +250 due to priority 39
+6) EV +250 due to priority 40
+7) PV Heater +1000 due to priority 40
+8) EV +250 due to priority 41
+9) EV +250 due to priority 42
+10) EV +250 due to priority 43
+11) EV +250 due to priority 44
+12) EV +250 due to priority 45
+13) PV Heater +1000 due to priority 45
+14) EV +250 due to priority 46
+....
 
 # TimeToGoCalculator 
 
