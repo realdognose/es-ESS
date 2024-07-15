@@ -447,20 +447,24 @@ So, I configured the following Values:
 
 Now, SolarOverheadDistributor will give away available Energy in the following pattern. 
 
+> :info: es-ESS will also add another `0.0001` with every shift performed. This ensures that once two consumers hit the same priority, the priority stays predictable: 
+> The consumer received lesser assignments so far will have the higher priority, as illustrated bellow. If you are using the same `Priority` and `PriorityShift` value for all consumers,
+> you'll effectively achieve a round-robin distribution.
+
 1) EV +1365 due to priority 35 and minimum start power.
-2) EV +250 due to priority 36
-3) EV +250 due to priority 37
-4) EV +250 due to priority 38
-5) EV +250 due to priority 39
-6) EV +250 due to priority 40
-7) PV Heater +1000 due to priority 40
-8) EV +250 due to priority 41
-9) EV +250 due to priority 42
-10) EV +250 due to priority 43
-11) EV +250 due to priority 44
-12) EV +250 due to priority 45
-13) PV Heater +1000 due to priority 45
-14) EV +250 due to priority 46
+2) EV +250 due to priority 36.0001
+3) EV +250 due to priority 37.0002
+4) EV +250 due to priority 38.0003
+5) EV +250 due to priority 39.0004
+6) PV Heater +1000 due to priority 40
+7) EV +250 due to priority 40.0005
+8) EV +250 due to priority 41.0006
+9) EV +250 due to priority 42.0007
+10) EV +250 due to priority 43.0008
+11) EV +250 due to priority 44.0009
+12) PV Heater +1000 due to priority 45.0001
+13) EV +250 due to priority 45.0010
+14) EV +250 due to priority 46.0011
 ....
 
 # TimeToGoCalculator 
