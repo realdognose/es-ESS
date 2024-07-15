@@ -447,7 +447,7 @@ So, I configured the following Values:
 
 Now, SolarOverheadDistributor will give away available Energy in the following pattern. 
 
-> :info: es-ESS will also add another `0.0001` with every shift performed. This ensures that once two consumers hit the same priority, the priority stays predictable: 
+> :information: es-ESS will also add another `0.0001` with every shift performed. This ensures that once two consumers hit the same priority, the priority stays predictable: 
 > The consumer received lesser assignments so far will have the higher priority, as illustrated bellow. If you are using the same `Priority` and `PriorityShift` value for all consumers,
 > you'll effectively achieve a round-robin distribution.
 
