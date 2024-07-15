@@ -312,6 +312,7 @@ each key has to be published in the topic `es-ESS/SolarOverheadDistributor/Reque
 |StepSize              | yes                   | StepSize in which the allowance should be generated, until the total requests value is reached. | Double       | 123.0         | yes      |
 |Minimum               | yes                   | A miminum power that needs to be assigned as step1. Usefull for EVs.    | Double        | 512.0         | no      |
 |Priority               | yes                   | Priority compared to other Consumers. defaults to 100    | Integer        | 56         | no      |
+|PriorityShift          | yes                   | Priority decrease after an assignment    | Integer        | 1         | no      |
 |VRMInstanceID         | yes                   | The ID the battery monitor should use in VRM                            | Integer       | 1008          | yes     |
 |Allowance             | no                    | Allowance in Watts, calculated by SolarOverheadDistributor                 | Double        | 768.0         | n/a     |
 
@@ -408,10 +409,39 @@ SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/con
 | [SolarOverheadDistributor]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
 | [SolarOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
 | [SolarOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />*You can use any complex arithmetic you like, see example graphs bellow for 3 typical curves* | String  | 5000 - 40 * SOC |
-| [SolarOverheadDistributor]  | Strategy |  Strategy to assign overhead.<br /><br/>**RoundRobin**: available overhead is distributed among every consumer in {StepSize} pieces.<br />**TryFullfill**: Available overhead is assigned based on Priority and only moved to the next consumer if the consumer with the lower priority is running at 100% or can't be assigned more anymore. | String  | TryFullfill |
 | [SolarOverheadDistributor]  | UpdateInterval |  Time in milliseconds, how often the overhead should be redistributed. CAUTION: Do not use to small values. Theres a lot in the system happening that needs to catch up. Too small values will lead to imprecise readings of various meter values and lead to wrong calculations. I recommend 60s (60000ms), more frequent distribution doesn't yield better results.  | Integer  | 60000 |
 
 In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> System Setup -> Battery Measurement* and set the ones you'd like to see to *Visible*:
+
+### Priority Shifting ###
+Priority shifting is a powerfull feature to allows you to control your consumers. SolarOverheadDistributor will always give away `StepSize` Watts to a single consumer.
+Once an assignment has been done, and priority shifting is enabled for this consumer, it's priority for the next round is lowered by the given value. 
+
+i.e.: My EV could consume upto 11.000 Watts, leaving nothing for other consumers. I have a 3*1000 Watt electric heater that should have kinda lower priority, but 
+also be considered with energy. 
+
+So, I configured the following Values: 
+
+- EV: Priority `35`, PriorityShift `1`, StepSize: `250`
+- Heater: Priority `40`, PriorityShift `5`, StepSize: `1000`
+
+Now, SolarOverheadDistributor will give away available Energy in the following pattern. 
+
+1) EV +250 due to priority 35
+2) EV +250 due to priority 36
+3) EV +250 due to priority 37
+4) EV +250 due to priority 38
+5) EV +250 due to priority 39
+6) EV +250 due to priority 40
+7) PV Heater +1000 due to priority 40
+8) EV +250 due to priority 41
+9) EV +250 due to priority 42
+10) EV +250 due to priority 43
+11) EV +250 due to priority 44
+12) EV +250 due to priority 45
+13) PV Heater +1000 due to priority 45
+14) EV +250 due to priority 46
+....
 
 <div align="center">
 
