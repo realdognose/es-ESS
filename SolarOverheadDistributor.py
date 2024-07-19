@@ -439,7 +439,9 @@ class SolarOverheadDistributor(esESSService):
                      if (canConsume > 0):
                         d("SolarOverheadDistributor", "Assigning " + str(canConsume) + "W to " + consumerKey + " (" + str(consumer.effectivePriority) + ") because: " + canConsumeReason) 
                         overheadDistribution[consumerKey] += canConsume
-                        self._knownSolarOverheadConsumers[consumerKey].effectivePriority += self._knownSolarOverheadConsumers[consumerKey].priorityShift
+                        if (self._knownSolarOverheadConsumers[consumerKey].priorityShift > 0):
+                           self._knownSolarOverheadConsumers[consumerKey].effectivePriority += self._knownSolarOverheadConsumers[consumerKey].priorityShift + 0.0001
+
                         overhead -= canConsume
                         overheadAssigned += canConsume
 

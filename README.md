@@ -2,16 +2,16 @@
 es-ESS (equinox solutions Energy Storage Systems) is an extension for Victrons VenusOS running on GX-Devices.
 es-ESS brings various functions starting with tiny helpers, but also including major functionalities.
 
-es-ESS is structered into individual services and every service can be enabled or disabled seperate. So, only certain
+es-ESS is structered into individual services and every service can be enabled or disabled. So, only certain
 features can be enabled, based on your needs.
 
 Services are marked according to their current development state: 
 
 > :white_check_mark: Production Ready: Feature is finished, tested and fully operable.
 
-> :large_orange_diamond: Release-Candiate-Version: FEature is still undergoing development, but current version is already satisfying.
+> :large_orange_diamond: Release-Candiate-Version: Feature is still undergoing development, but current version is already satisfying.
 
-> :red_circle: Work-in-progress, beta: Feature is a beta, may have bugs or not work at all.
+> :red_circle: Work-in-progress, beta: Feature is a beta, may have bugs or not work at all. Only use if you are a dev and want to contribute.
 
 ### Table of Contents
 - [Setup](#setup) - General setup process and requirements for es-ESS.
@@ -33,6 +33,8 @@ Your system needs to match the following requirements in order to use es-ESS:
 - Be an ESS
 - Have a mqtt server (or the use builtin one, to minimize system load an external mqtt is recommended)
 - Have shell access enabled and know how to use it. (See: https://www.victronenergy.com/live/ccgx:root_access)
+
+TODO: Setup Discription, Install Script.
 
 # MqttExporter
 
@@ -63,10 +65,10 @@ if you wanat to export from a certain service (like bms) you can use dbus-spy in
 
 **Note that dbus-paths start with a "/" and MQTT paths don't.**
 
-All whitespaces will be trimmed, you can indent values to see any typos easily. 
-use dbus-spy on ssh to identify the service name. (right-arrow on selection to dig into available keys.)
+All whitespaces will be trimmed, you can indent values to your personal favour. 
+Use dbus-spy on ssh to identify the service name. (right-arrow on selection to dig into available keys.)
 
-Example relation between dbus-spy, config and MQTT: 
+# Example relation between dbus-spy, config and MQTT #
 
 <div align="center">
 
@@ -95,6 +97,11 @@ Example relation between dbus-spy, config and MQTT:
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter4.png" />|
 </div>
+
+### Mqtt-Throttling ###
+Please see [MqttThrottling](#more-configx) as well. Dbus is firing a lot of value changes, slower mqtt-servers (or the receivers of subscriptions) may
+face issues with several hundred values per second. With Mqtt-Throttling you can limit the number of messages per topic to a value suitable for your
+eco system.
 
 # ChargeCurrentReducer
 
@@ -349,7 +356,7 @@ takes various environment conditions into account before creating a request:
 After evaluating and creating the proper request, the current allowance is processed, consumer is adjusted based on allowance, and actual consumption is reported back.
 
 > :warning: NOTE: es-ESS will set the allowance for every consumer to 0, when the service is receiving proper shutdown signals (aka SIGTERM) - However, in case of unexpected
-> powerlosses of your GX-device, complete Hardware-failure or networking-issues that may not be the case.
+> powerlosses of your GX-device, complete Hardware-failure, networking-issues or usage of the `reboot` command on the cerbo that may not be the case.
 > To ensure your scripted consumers don't run for an indefinite amount of time, you should not only validate the `allowance` as outlined above, but also the topic
 > `es-ESS/$SYS/Status`. This is set to `Online` at startup and set to `Offline` per last-will. So, if your consumers note that es-ESS is going offline - it is
 > up to you if they should keep running or stop as well.
