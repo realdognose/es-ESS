@@ -32,7 +32,10 @@ class MqttTemperature(esESSService):
                 if (k.startswith("MqttTemperature:")):
                     parts = k.split(':')
                     key = parts[1].strip()
-                    self.temperatureSensors[key] = TemperatureSensor(self, key, self.config[k]["CustomName"], self.config[k]["Topic"], int(self.config[k]["VRMInstanceID"]))
+                    valueTopic = self.config[k]["Topic"]
+                    humidityTopic = self.config[k]["TopicHumidity"] if "TopicHumidity" in self.config[k] else None
+                    pressureTopic = self.config[k]["TopicPressure"] if "TopicPressure" in self.config[k] else None
+                    self.temperatureSensors[key] = TemperatureSensor(self, key, self.config[k]["CustomName"], valueTopic, humidityTopic, pressureTopic, int(self.config[k]["VRMInstanceID"]))
 
             i(self, "Found {0} TemperatureSensors.".format(len(self.temperatureSensors)))
             
@@ -53,6 +56,12 @@ class MqttTemperature(esESSService):
         for sensor in self.temperatureSensors.values():
             self.registerMqttSubscription(sensor.valueTopic, callback=sensor.onMqttMessage)
 
+            if (sensor.humidityTopic is not None):
+                self.registerMqttSubscription(sensor.humidityTopic, callback=sensor.onMqttMessage)
+
+            if (sensor.pressureTopic is not None):
+                self.registerMqttSubscription(sensor.pressureTopic, callback=sensor.onMqttMessage)
+
     def initFinalize(self):
         pass
     
@@ -60,26 +69,44 @@ class MqttTemperature(esESSService):
        pass
 
 class TemperatureSensor:
-    def __init__(self, rootService, key, customName, valueTopic, vrmInstanceID):
+    def __init__(self, rootService, key, customName, valueTopic, humidityTopic, pressureTopic, vrmInstanceID):
         self.key = key
         self.customName = customName
         self.valueTopic = valueTopic
+        self.humidityTopic = humidityTopic
+        self.pressureTopic = pressureTopic
         self.value = 0.0
+        self.humidity = 0.0
+        self.pressure = 0.0
         self.dbusService = None
         self.vrmInstanceID = vrmInstanceID
         self.rootService = rootService
     
     def onMqttMessage(self, client, userdata, msg):
-      message = str(msg.payload)[2:-1]
+      try:
+        messagePlain = str(msg.payload)[2:-1]
 
-      if (message == ""):
-         d(self, "Empty message on topic {0}. Ignoring.".format(msg.topic))
-         return
+        if (messagePlain == ""):
+            d(self, "Empty message on topic {0}. Ignoring.".format(msg.topic))
+            return
 
-      self.value = float(message)      
-      self.rootService.publishServiceMessage(self.rootService, "New Temperature Value {0} on Sensor {1}".format(self.value, self.key))
-      
-      self.publishOnDbus()
+        d(self, "Received message on: " + msg.topic)
+
+        if (msg.topic == self.valueTopic):
+            self.value = float(messagePlain)      
+            self.rootService.publishServiceMessage(self.rootService, "New Temperature Value {0} on Sensor {1}".format(self.value, self.key))
+        
+        if (msg.topic == self.humidityTopic):
+            self.humidity = float(messagePlain)      
+            self.rootService.publishServiceMessage(self.rootService, "New Humidity Value {0} on Sensor {1}".format(self.humidity, self.key))
+
+        if (msg.topic == self.pressureTopic):
+            self.pressure = float(messagePlain)      
+            self.rootService.publishServiceMessage(self.rootService, "New Pressure Value {0} on Sensor {1}".format(self.pressure, self.key))
+        
+        self.publishOnDbus()
+      except Exception as ex:
+            c(self, "Exception", exc_info=ex)
 
     def initDbusService(self):
         self.rootService.publishServiceMessage(self.rootService, "Initializing dbus-service for sensor: {0}".format(self.key))
@@ -103,6 +130,8 @@ class TemperatureSensor:
         self.dbusService.add_path('/Serial', "1337")
         
         self.dbusService.add_path('/Temperature', None)
+        self.dbusService.add_path('/Humidity', None)
+        self.dbusService.add_path('/Pressure', None)
         self.dbusService.add_path('/TemperatureType', 2) #Generic
         self.dbusService.add_path('/CustomName', self.customName)
 
@@ -110,3 +139,10 @@ class TemperatureSensor:
         if (self.dbusService is not None):
             self.dbusService["/Temperature"] = self.value
             self.dbusService["/CustomName"] = self.customName
+        
+        if (self.humidityTopic is not None):
+            self.dbusService["/Humidity"] = self.humidity
+        
+        if (self.pressureTopic is not None):
+            self.dbusService["/Pressure"] = self.pressure
+

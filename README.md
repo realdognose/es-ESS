@@ -18,7 +18,6 @@ Services are marked according to their current development state:
 - [MqttExporter](#mqttexporter) - Export selected values form dbus to your MQTT-Server.
 - [ChargeCurrentReducer](#chargecurrentreducer) - Reduce the battery charge current to your *feel-well-value* without the need to disable DC-Feedin.
 - [FroniusWattpilot](#FroniusWattpilot) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
-- [MqttToEVSoc](#mqtttoevsoc) - Tiny helper to read your EV SoC from any mqtt source and insert a FAKE-BMS on cerbo / VRM for display purpose.
 - [NoBatToEV](#nobattoev) - Avoid discharge of your home-battery when charging your ev with an `ac-out` connected wallbox.
 - [MqttTemperatures](#mqtttemperatures) - Display various temperature sensors you have on mqtt in VRM.
 - [SolarOverheadDistributor](#solaroverheaddistributor) - Utility to manage and distribute available solar overhead between various consumers.
@@ -105,7 +104,7 @@ eco system.
 
 # ChargeCurrentReducer
 
-> :red_circle: Work-in-progress, beta!
+> :red_circle: Work-in-progress, beta: Feature is a beta, may have bugs or not work at all. Only use if you are a dev and want to contribute.
 
 #### Overview
 When you are using DC-Coupled Solar-Chargers, DVCC can be used to limit the charge-current of the batteries. If you however
@@ -138,7 +137,8 @@ ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.
 
 # FroniusWattpilot
 
-> :white_check_mark: Production Ready
+> :white_check_mark: Production Ready. 
+> Known Issue: When no EV is connected AND Hibernate Mode is enabled, control through VRM doesn't work. Waking up Wattpilot through the "scheduled charge" option isn't helping, wattpilot will immediately go into hibernation again. 
 
 ### Overview
 
@@ -222,11 +222,8 @@ Wattpilot itself supports the feature to charge when energy prices are low. This
 Whenever one of the preconfigured Start/Stop- or Phaseswitchtimes are exhausted, es-ESS will display the status until the cooldown is passed, or conditions change again. 
 So, whenever a sun shortage requires to stop charging, but you have 250s left on the on/off cooldown, VRM will display `Stop charging` for 250s. This is, so you are aware that - even if there is grid-pull happening - wattpilot is about to stop as soon as conditions allow for it. For more details about the current state, you can review the respective service messages topic on mqtt: `es-ESS/$SYS/ServiceMessages/FroniusWattpilot/ServiceMessageType.Operational`
 
-# MqttToEVSoc
-TODO
-
 # NoBatToEV
-> :white_check_mark: Production Ready
+> :large_orange_diamond: Release-Candiate-Version: Feature is still undergoing development, but current version is already satisfying.
 
 ### Overview
 
@@ -267,7 +264,9 @@ MqttTemperatures requires a few variables to be set in `/data/es-ESS/config.ini`
 | [Services]    | MqttTemperatures | Flag, if the service should be enabled or not | Boolean | true |
 | [MqttTemperature:XYZ]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
 | [MqttTemperature:XYZ]  | CustomName |  Custom name to be used for this sensor | String  | MPPT2 Wiring |
-| [MqttTemperature:XYZ]  | Topic |  Topic on Mqtt, delivering the measurement value. | String  | Devices/d1busBar/Sensors/MPPT2_CABLE_TEMP/Value |
+| [MqttTemperature:XYZ]  | Topic |  Topic on Mqtt, delivering the measurement value. | String  | Devices/d1Garden/Sensors/TEMP/Value |
+| [MqttTemperature:XYZ]  | TopicHumidity |  Topic on Mqtt, delivering the measurement value for humidity (optional). | String  | Devices/d1Garden/Sensors/HUM/Value |
+| [MqttTemperature:XYZ]  | TopicPressure |  Topic on Mqtt, delivering the measurement value for pressure (optional). | String  | Devices/d1Garden/Sensors/PRESSURE/Value |
 
 Note: You can create as many `[MqttTemperature:XYZ]` sections as you need, just take care to ensure unique names and VRM-Ids.
 
