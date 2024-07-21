@@ -398,15 +398,15 @@ If the NPC is mqtt controlled, you need to provide the Topics, instead of the UR
 | [MqttConsumer:poolHeater]    | OffTopic              | MqttTopic to deactive the consumer                                                                            | String        | Devices/shellyPro2PMPoolControl/IO/Heater/Set     | 
 | [MqttConsumer:poolHeater]    | OffValue              | MqttValue to publish on `OffTopic` to deactive the consumer                                                     | String        | false      | 
 | [MqttConsumer:poolHeater]    | StatusTopic           | MqttTopic to determine the current operation state of the consumer                                             | String        | Devices/shellyPro2PMPoolControl/IO/Heater/State       | 
-| [MqttConsumer:poolHeater]    | IsOnKeywordRegex      | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the Messages on StatusTopic)                            | String        | `(T|t)rue`          | 
+| [MqttConsumer:poolHeater]    | IsOnKeywordRegex      | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the Messages on StatusTopic)                            | String / Regex        | true         | 
 | [MqttConsumer:poolHeater]    | PowerTopic            | MqttTopic to determine the current consumption state of the consumer. If left empty, es-ESS will assume `Consumption=Request` while the consumer is switched on.                            | String        | Devices/shellyPro2PMPoolControl/IO/Heater/Power       | 
-| [MqttConsumer:poolHeater]    | PowerExtractRegex     | Regex to extract the consumption. Has to have a SINGLE matchgroup. (evaluated against the Messages on PowerTopic). Using `(.*)` because it's a well-formated decimal value here.            | String        | (.*)      | 
+| [MqttConsumer:poolHeater]    | PowerExtractRegex     | Regex to extract the consumption. Has to have a SINGLE matchgroup. (evaluated against the Messages on PowerTopic). Using `(.*)` because it's a well-formated decimal value here.            | String / Regex        | (.*)      | 
 
 Example (Screenshots)
 
 Pool-Filter (via a Shelly Pro2 PM) as http-consumer:
 
-<img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/poolFilterAsHttp.png">
+<img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/poolFilterAsHTTP.png">
 
 Pool-Heater (via s Shally Pro2 PM) as mqtt-consumer. (Got my own mqtt/rpc infrastructure, tho)
 
