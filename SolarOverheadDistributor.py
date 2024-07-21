@@ -96,22 +96,41 @@ class SolarOverheadDistributor(esESSService):
       self.batterySoc      = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Soc")
      
    def initMqttSubscriptions(self):
+      #basic props
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsAutomatic', callback=self.onMqttMessage)
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Consumption', callback=self.onMqttMessage)
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/CustomName', callback=self.onMqttMessage)
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IgnoreBatReservation', callback=self.onMqttMessage)
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnKeywordRegex', callback=self.onMqttMessage)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Minimum', callback=self.onMqttMessage)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnUrl', callback=self.onMqttMessage)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OffUrl', callback=self.onMqttMessage)
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Priority', callback=self.onMqttMessage)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsHttpConsumer', callback=self.onMqttMessage)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsMqttConsumer', callback=self.onMqttMessage)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsScriptedConsumer', callback=self.onMqttMessage)
-      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StatusUrl', callback=self.onMqttMessage)
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StepSize', callback=self.onMqttMessage)
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/PriorityShift', callback=self.onMqttMessage)
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Request', callback=self.onMqttMessage)
+      
+      #Scripted Consumer specific
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsScriptedConsumer', callback=self.onMqttMessage)
+      
+      #NPC Consumer Common
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnKeywordRegex', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/PowerExtractRegex', callback=self.onMqttMessage)
+      
+      #HTTP Consumer specific
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsHttpConsumer', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OffUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StatusUrl', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/PowerUrl', callback=self.onMqttMessage)
+      
+      #MQTT Consumer specific
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsMqttConsumer', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnTopic', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OffTopic', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OnValue', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/OffValue', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StatusTopic', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/PowerTopic', callback=self.onMqttMessage)
+      
+      #VRM ID last, so init is completed. 
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/VRMInstanceID', callback=self.onMqttMessage)
 
    def initWorkerThreads(self):
@@ -123,49 +142,51 @@ class SolarOverheadDistributor(esESSService):
 
    def initFinalize(self):
       #Service is operable already. Need to parse Http/Mqtt consumer and throw them over to mqtt-based processing. 
-   
-      #TODO: When a consumer is in NON-Auto mode, PVOverhead Distributer does not correctly relay mqtt values
-      #      It's the missing date-time value on the main topic, it seems?
-      
       for s in self.config.sections():
          if (s.startswith("HttpConsumer:")):
             i(self, "Found HttpConsumer: " + s)
-            try:
-               #Consumer found. Create Request.
-               consumerKey = s.replace("HttpConsumer:", "")
-               self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/IsHttpConsumer".format(Globals.esEssTag, consumerKey), "true",1)
-               self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/IsAutomatic".format(Globals.esEssTag, consumerKey), "true",1)
-
-               for (k, v) in self.config.items(s):
-                  #Http Consumers always have StepSize = request.
-                  if (k != "StepSize"):
-                     self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/{2}".format(Globals.esEssTag, consumerKey,k), v, 1)
-
-                  if (k == "Request"):
-                     self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/StepSize".format(Globals.esEssTag, consumerKey), v,1)
-
-            except Exception as ex:
-               e(self, "Error parsing HttpConsumer: {0}. Please validate outlined requirements.".format(consumerKey))
-
+            self.parseAndPubHttpConsumer(s)
+            
          if (s.startswith("MqttConsumer:")):
             i(self, "Found MqttConsumer: " + s)
-            try:
-               #Consumer found. Create Request.
-               consumerKey = s.replace("MqttConsumer:", "")
-               self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/IsMqttConsumer".format(Globals.esEssTag, consumerKey), "true",1)
-               self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/IsAutomatic".format(Globals.esEssTag, consumerKey), "true",1)
+            self.parseAndPubMqttConsumer(s)
+            
+   def parseAndPubHttpConsumer(self, section):
+      try:
+         #Consumer found. Create Request.
+         consumerKey = section.replace("HttpConsumer:", "")
+         self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/IsHttpConsumer".format(Globals.esEssTag, consumerKey), "true",1)
+         self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/IsAutomatic".format(Globals.esEssTag, consumerKey), "true",1)
 
-               for (k, v) in self.config.items(s):
-                  if (k != "StepSize"):
-                     self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/{2}".format(Globals.esEssTag, consumerKey,k), v, 1)
+         for (k, v) in self.config.items(section):
+            #Http Consumers always have StepSize = request.
+            if (k != "StepSize"):
+               self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/{2}".format(Globals.esEssTag, consumerKey,k), v, 1)
 
-                  #Mqtt Consumers always have StepSize = request.
-                  if (k == "Request"):
-                     self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/StepSize".format(Globals.esEssTag, consumerKey), v,1)
+            if (k == "Request"):
+               self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/StepSize".format(Globals.esEssTag, consumerKey), v,1)
 
-            except Exception as ex:
-               e(self, "Error parsing MqttConsumer: {0}. Please validate outlined requirements.".format(consumerKey))
-  
+      except Exception as ex:
+         e(self, "Error parsing HttpConsumer: {0}. Please validate outlined requirements.".format(consumerKey))
+
+   def parseAndPubMqttConsumer(self, section):
+      try:
+         #Consumer found. Create Request.
+         consumerKey = section.replace("MqttConsumer:", "")
+         self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/IsMqttConsumer".format(Globals.esEssTag, consumerKey), "true",1)
+         self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/IsAutomatic".format(Globals.esEssTag, consumerKey), "true",1)
+
+         for (k, v) in self.config.items(section):
+            if (k != "StepSize"):
+               self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/{2}".format(Globals.esEssTag, consumerKey,k), v, 1)
+
+            #Mqtt Consumers always have StepSize = request.
+            if (k == "Request"):
+               self.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/StepSize".format(Globals.esEssTag, consumerKey), v,1)
+
+      except Exception as ex:
+         e(self, "Error parsing MqttConsumer: {0}. Please validate outlined requirements.".format(consumerKey))
+
    def onMqttMessage(self, client, userdata, msg):
       message = str(msg.payload)[2:-1]
 
@@ -189,7 +210,7 @@ class SolarOverheadDistributor(esESSService):
          c(self, "Exception while receiving message '{0}' on topic '{1}'".format(message, msg.topic), exc_info=ex)
 
    def _moveEnergyData(self):
-       #reschedule in 24h.
+       #TODO: This is not yet working as expected.
        i(self, "Moving energy stats to yesterday.")
        self.registerWorkerThread(self._moveEnergyData, 86400)
 
@@ -205,6 +226,8 @@ class SolarOverheadDistributor(esESSService):
        return False
 
    def dumpConsumerBms(self):
+      """Instructs every consumer that is initialized to dump it's fake bms to dbus once.
+      Dump is repeated upon every assignment-cycle."""
       try:
          with self._knownSolarOverheadConsumersLock:
             for consumerKey in self._knownSolarOverheadConsumers:
@@ -344,14 +367,14 @@ class SolarOverheadDistributor(esESSService):
                if (Globals.esESS._sigTermInvoked == True):
                   return
                
-               consumer.allowance = overheadDistribution[consumerKey]
-               consumer.reportAllowance(self)
+               consumer.updateAllowance(overheadDistribution[consumerKey], self)
                overheadAssigned += consumer.allowance
                overhead -= consumer.allowance
                self.publishServiceMessage(self, "Assigned {0}W to {1} ({2}, {3})".format(consumer.allowance, consumer.customName, consumer.priority, consumerKey))
             elif (not consumer.isInitialized):
                self.publishServiceMessage(self, "{0} ({1}) is not yet initialized.".format(consumer.customName, consumerKey), Globals.ServiceMessageType.Warning)
             elif (not consumer.isAutomatic):
+               consumer.updateAllowance(0, self)
                self.publishServiceMessage(self, "{0} ({1}) is not in automatic mode.".format(consumer.customName, consumerKey))
          
          i(self, "New Overhead assigned: " + str(overheadAssigned) + "W")
@@ -369,8 +392,6 @@ class SolarOverheadDistributor(esESSService):
        c(self, "Exception", exc_info=ex)
        
     return True
- 
-   
   
    def doAssign(self, overhead, overheadDistribution, minBatCharge):
      try:
@@ -469,8 +490,7 @@ class SolarOverheadDistributor(esESSService):
        self.publishServiceMessage(self, "SIGTERM received, revoking allowance for every consumer and stopping Http/Mqtt consumers.")
       
        for (key, consumer) in self._knownSolarOverheadConsumers.items():
-          consumer.allowance=0
-          consumer.reportAllowance(self)
+          consumer.updateAllowance(0, self)
           consumer._persistEnergyStats()
           
           if (consumer.isHttpConsumer):
@@ -525,45 +545,14 @@ class SolarOverheadConsumer:
      #Mqtt specific
      self.isMqttConsumer = False
      self.onTopic = None
-     self.onTopicValue = None
+     self.onValue = None
      self.offTopic = None
-     self.offTopicValue = None
+     self.offValue = None
      self.powerTopic = None
      self.statusTopic = None
      
      i(self, "SolarOverheadConsumer created: " + consumerKey + ". Waiting for required values to arrive...")
 
-  def _persistEnergyStats(self):
-     try:
-         d(self, "Persisting runtime data for {0}".format(self.consumerKey))
-         
-         self.runtimeData.set("Energy","energyToday",str(self.energyToday))
-         self.runtimeData.set("Energy","energyYesterday",str(self.energyYesterday))
-         self.runtimeData.set("Energy","energyTotal",str(self.energyTotal))
-         self.runtimeData.set("Energy","runtimeToday",str(self.runtimeToday))
-         self.runtimeData.set("Energy","runtimeYesterday",str(self.runtimeYesterday))
-         self.runtimeData.set("Energy","runtimeTotal",str(self.runtimeTotal))
-
-         with open("{0}/runtimeData/energy_{1}.ini".format(os.path.dirname(os.path.realpath(__file__)), self.consumerKey), 'w+') as cfile:
-            t(self, "File open for w+: {0}/runtimeData/energy_{1}.ini".format(os.path.dirname(os.path.realpath(__file__)), self.consumerKey))
-            self.runtimeData.write(cfile)
-            cfile.flush()
-
-     except OSError as ex2:
-         e(self, "Exception while trying to persist runtime data: {0}".format(ex2))
-     except Exception as ex:
-         e(self, "Exception while trying to persist runtime data.", exc_info=ex)
-
-  def _initEnergyTracking(self, key, default):
-     if ("Energy" not in self.runtimeData.sections()):
-         self.runtimeData.add_section("Energy")
-         return default
-        
-     if (key not in self.runtimeData["Energy"]):
-        return default
-     
-     return float(self.runtimeData["Energy"][key])
-     
   def getRequestPath(self):
      return "{0}/SolarOverheadDistributor/Requests/{1}".format(Globals.esEssTag, self.consumerKey)
 
@@ -619,6 +608,20 @@ class SolarOverheadConsumer:
         self.statusUrl = value
      elif (key == "OnKeywordRegex"):
         self.onKeywordRegex = value
+     elif (key == "PowerExtractRegex"):
+        self.powerExtractRegex = value
+     elif (key == "OnTopic"):
+        self.onTopic = value
+     elif (key == "OnValue"):
+        self.onValue = value
+     elif (key == "OffTopic"):
+        self.offTopic = value
+     elif (key == "OffValue"):
+        self.offValue = value
+     elif (key == "PowerTopic"):
+        self.powerTopic = value
+     elif (key == "StatusTopic"):
+        self.statusTopic = value
 
      #TODO: Delta publishing of only changed value.
      #self.dumpFakeBMS()
@@ -668,9 +671,9 @@ class SolarOverheadConsumer:
 
       elif (self.isMqttConsumer):
          r &= self._checkAttrSet("onTopic", "OnTopic", sod)
-         r &= self._checkAttrSet("onTopicValue", "OnTopicValue", sod)
+         r &= self._checkAttrSet("onValue", "OnValue", sod)
          r &= self._checkAttrSet("offTopic", "OffTopic", sod)
-         r &= self._checkAttrSet("offTopicValue", "OffTopicValue", sod)
+         r &= self._checkAttrSet("offValue", "OffValue", sod)
          r &= self._checkAttrSet("statusTopic", "statusTopic", sod)
          r &= self._checkAttrSet("onKeywordRegex", "OnKeywordRegex", sod)
       
@@ -731,37 +734,75 @@ class SolarOverheadConsumer:
          self.validateHttpStatus(None)
 
      if (self.isMqttConsumer):
-         self.validateMqttStatus(None)
+         #MqttConsumer needs additional mqtt subscriptions and a handler for it.
+         sod.registerMqttSubscription(self.statusTopic, 1, callback=self.onMqttMessage)
+         sod.registerMqttSubscription(self.powerTopic, 1, callback=self.onMqttMessage)
+
+  def onMqttMessage(self, client, userdata, msg):   
+     message = str(msg.payload)[2:-1]
+
+     if (message == ""):
+        d(self, "Empty message on topic {0}. Ignoring.".format(msg.topic))
+        return
+     
+     if (msg.topic == self.powerTopic):
+        res = re.search(str(self.powerExtractRegex), message)
+        if res is not None:
+           d(self, "powerExtractRegex {0} did match for consumer {1}: {2}".format(self.powerExtractRegex, self.consumerKey, res.group(1)))
+           self.consumption = float(res.group(1))
+        else:
+            w(self, "powerExtractRegex {0} did not yield any result for consumer {1}".format(self.powerExtractRegex, self.consumerKey))
+
+     if (msg.topic == self.statusTopic):
+        res = re.search(str(self.onKeywordRegex), message)
+        if res is not None:
+           d(self, "onKeywordRegex {0} did match for consumer {1}: {2}".format(self.onKeywordRegex, self.consumerKey))
+           self.npcState = True
+        else:
+            d(self, "onKeywordRegex {0} did not yield any result for consumer {1}".format(self.onKeywordRegex, self.consumerKey))
+            self.npcState = False
+
+     i(self, "Consumer Mqtt arrived: " + msg.topic + ": " + message)
 
   def dumpFakeBMS(self):
      try:
          self.dbusReportConsumerName()
-         self.dbusReportConsumption();
+         self.dbusReportConsumption()
 
      except Exception as ex:
          e(self, "Exception", exc_info=ex)
 
-  def reportAllowance(self, sod):
+  def updateAllowance(self, allowance, sod:SolarOverheadDistributor):
+     """Once the allowance is updated by SolarOverhead Distributor,
+     we need to publish on the mqtt request topic.
+     
+     If this is a NPC Consumer, actions to enable / disable the consumer needs to be performed.
+     """
+     self.allowance = allowance
+
+     #Publish allowance is something that always hould happen.
+     d(self, "Consumer {0} reporting allowance of {1}W".format(self.consumerKey, self.allowance))
      sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}".format(Globals.esEssTag, self.consumerKey), Globals.getUserTime())
      sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Allowance".format(Globals.esEssTag, self.consumerKey), self.allowance, 1)
      
+     #for NPCs, republish the basic topics as well. simply instruct SOD to parse again will pub all initial values. 
      #calculate current consumption, before dumping new/changed allowance.
-     self.calculateEnergy(sod)
-
-     d(self, "Consumer {0} reporting allowance of {1}W".format(self.consumerKey, self.allowance))
-
-     #TODO: Control-Functionality should not be nested in reportAllowance-Method.
      if (self.isHttpConsumer):
-        self.httpControl()
+        if (self.isAutomatic):
+          self.httpControl()
+        sod.parseAndPubHttpConsumer("HttpConsumer:" + self.consumerKey)
         sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Consumption".format(Globals.esEssTag, self.consumerKey), self.consumption, 1)
         self.dbusReportConsumption()
      
      if (self.isMqttConsumer):
-        self.mqttControl()
+        if (self.isAutomatic):
+          self.mqttControl()
+        sod.parseAndPubMqttConsumer("MqttConsumer:" + self.consumerKey)
         sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Consumption".format(Globals.esEssTag, self.consumerKey), self.consumption, 1)
         self.dbusReportConsumption()
       
      #report Energy values.
+     self.calculateEnergy(sod)
      sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Energy/runtimeToday".format(Globals.esEssTag, self.consumerKey), self.runtimeToday, 1, True)
      sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Energy/runtimeYesterday".format(Globals.esEssTag, self.consumerKey), self.runtimeYesterday, 1, True)
      sod.publishMainMqtt("{0}/SolarOverheadDistributor/Requests/{1}/Energy/runtimeTotal".format(Globals.esEssTag, self.consumerKey), self.runtimeTotal, 1, True)
@@ -782,12 +823,27 @@ class SolarOverheadConsumer:
             requests.get(url=self.offUrl)
             d(self, "Turn off HttpConsumer required, calling: " + self.offUrl)
             self.validateHttpStatus(False)
+
+         #if state is own, fetch consumption. 
+         if (self.npcState and self.isHttpConsumer):
+            self.consumption = self.fetchNpcPower()
       except Exception as ex:
          c(self, "Exception", exc_info=ex)
 
   def mqttControl(self):
-      #TODO: Implement
-      pass
+      try:
+         #invoke http control! 
+         if (self.allowance >= self.request and not self.npcState):
+            #turn on!
+            d(self, "Turn on MqttConsumer required, setting: {0}={1}".format(self.onTopic, self.onValue))
+            Globals.esESS.publishMainMqtt(self.onTopic, self.onValue)
+         elif (self.allowance == 0 and self.npcState):
+            #turn off!
+            d(self, "Turn off MqttConsumer required, setting: {0}={1}".format(self.offTopic, self.offValue))
+            Globals.esESS.publishMainMqtt(self.offTopic, self.offValue)
+
+      except Exception as ex:
+         c(self, "Exception", exc_info=ex)
 
   def validateHttpStatus(self, should):
       try:
@@ -811,7 +867,13 @@ class SolarOverheadConsumer:
 
   def fetchNpcPower(self):
       if (self.isHttpConsumer and self.powerUrl is not None and self.powerExtractRegex is not None):
-         #TODO: fetch power
+         body = requests.get(url=self.powerUrl)
+         res = re.search(str(self.powerExtractRegex), body.text)
+         if res is not None:
+           d(self, "powerExtractRegex {0} did match for consumer {1}: {2}".format(self.powerExtractRegex, self.consumerKey, res.group(1)))
+           return float(res.group(1))
+         else:
+            w(self, "powerExtractRegex {0} did not yield any result for consumer {1}".format(self.powerExtractRegex, self.consumerKey))
          pass
 
       if (self.isMqttConsumer and self.powerTopic is not None and self.powerExtractRegex is not None):
@@ -841,5 +903,34 @@ class SolarOverheadConsumer:
 
      self._persistEnergyStats()
      
-   
+  def _persistEnergyStats(self):
+   try:
+      d(self, "Persisting runtime data for {0}".format(self.consumerKey))
+      
+      self.runtimeData.set("Energy","energyToday",str(self.energyToday))
+      self.runtimeData.set("Energy","energyYesterday",str(self.energyYesterday))
+      self.runtimeData.set("Energy","energyTotal",str(self.energyTotal))
+      self.runtimeData.set("Energy","runtimeToday",str(self.runtimeToday))
+      self.runtimeData.set("Energy","runtimeYesterday",str(self.runtimeYesterday))
+      self.runtimeData.set("Energy","runtimeTotal",str(self.runtimeTotal))
+
+      with open("{0}/runtimeData/energy_{1}.ini".format(os.path.dirname(os.path.realpath(__file__)), self.consumerKey), 'w+') as cfile:
+         t(self, "File open for w+: {0}/runtimeData/energy_{1}.ini".format(os.path.dirname(os.path.realpath(__file__)), self.consumerKey))
+         self.runtimeData.write(cfile)
+         cfile.flush()
+
+   except OSError as ex2:
+      e(self, "Exception while trying to persist runtime data: {0}".format(ex2))
+   except Exception as ex:
+      e(self, "Exception while trying to persist runtime data.", exc_info=ex)
+
+  def _initEnergyTracking(self, key, default):
+     if ("Energy" not in self.runtimeData.sections()):
+         self.runtimeData.add_section("Energy")
+         return default
+        
+     if (key not in self.runtimeData["Energy"]):
+        return default
+     
+     return float(self.runtimeData["Energy"][key])
   

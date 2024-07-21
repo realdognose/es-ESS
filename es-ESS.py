@@ -509,7 +509,10 @@ class esESS:
 
         #tell each service to clean up as well.
         for service in self._services.values():
-           service.handleSigterm()
+           try:
+               service.handleSigterm()
+           except Exception as ex:
+               c(self, "Exception during handleSigTerm on service {0}".format(service.__class__.__name__), exc_info=ex)
            i(self, "Service {0} is in safe exit state.".format(service.__class__.__name__))
 
         #finally, clean up internally.

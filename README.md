@@ -362,14 +362,14 @@ After evaluating and creating the proper request, the current allowance is proce
 
 ### NPC-SolarOverheadConsumer
 Some consumers are not controllable in steps, they are simple on/off consumers. Also measuring the actual consumption is not always possible or required, so a fixed known consumption can 
-work out as well. To eliminate the need to create multiple on/off-scripts for these consumers, the NPC-SolarOverheadConsumer has been introduced. 
+work out as well. To eliminate the need to create multiple on/off-scripts for these consumers, the NPC-SolarOverheadConsumer has been introduced. es-ESS can automatically control consumers that
+can be switched on/off through http or mqtt.
 
-It can be fully configured in `/data/es-ESS/config.ini` and will be orchestrated by the SolarOverhead-Distributer itself - as long as it is able to process http-remote-control requests.
-An example would be our *waterplay* in the front garden. It is connected through a shelly device, which is http-controllable - and I know it consumes roughly 120 Watts AND I want this
-to run as soon as PV-Overhead is available, despite any battery reservation. (Doesn't make sence to wait on this, until the battery reached 90% Soc or more)
+It can be fully configured in `/data/es-ESS/config.ini` and will be orchestrated by the SolarOverhead-Distributer itself. An example would be our *waterplay* in the front garden. It is connected through a shelly device, which is http-controllable - and I know it consumes roughly 120 Watts AND I want this
+to run as soon as Solar-Overhead is available, despite any battery reservation. (Doesn't make sence to wait on this, until the battery reached 90% Soc or more)
 
-The following lines inside `/data/es-ESS/config.ini` can be used to create such an NPC-SolarOverheadConsumer. A config section has to be created under `[SolarOverheadDistributor]`, containing
-the required request values plus some additional parameters for remote-control. Well, the secion has to be prefixed with `NPC:` to identify it correctly.
+The following lines inside `/data/es-ESS/config.ini` can be used to create such an NPC-SolarOverheadConsumer. A config section has to be created, containing
+the required request values plus some additional parameters for remote-control. Well, the secion has to be prefixed with `HttpConsumer:` or `MqttConsumer:` to identify it correctly.
 
 the example consumerKey is *waterplay* here.
 
@@ -377,25 +377,41 @@ the example consumerKey is *waterplay* here.
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ------------------ | ---------|---- | ------------- |--|
-| [NPC:waterplay]    | customName |  DisplayName on VRM   |String | Waterplay |
-| [NPC:waterplay]    | ignoreBatReservation             | Consumer shall be enabled despite active Battery Reservation            | Boolean       | true         |
-| [NPC:waterplay]    | vrmInstanceID                    | The ID the battery monitor should use in VRM                            | Integer       | 1008          | 
-| [NPC:waterplay]    | ~~minimum~~                       | obsolete for on/off NPC-consumers     | ~~Double~~        | ~~0~~|
-| [NPC:waterplay]    | ~~stepSize~~                         | obsolete for on/off NPC-consumers | ~~Double~~       | ~~120.0~~|
-| [NPC:waterplay]    | request                              | Total power this consumer would ever need.                              | Double        | 120.0       | 
-| [NPC:waterplay]    | onUrl                              | http(s) url to active the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=on'       | 
-| [NPC:waterplay]    | offUrl                              | http(s) url to deactive the consumer                               | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=off'      | 
-| [NPC:waterplay]    | statusUrl                              | http(s) url to determine the current operation state of the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/status'       | 
-| [NPC:waterplay]    | isOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | '"ison":\s*true'      | 
+| [HttpConsumer:waterplay]    | CustomName |  DisplayName on VRM   |String | Waterplay |
+| [HttpConsumer:waterplay]    | IgnoreBatReservation             | Consumer shall be enabled despite active Battery Reservation            | Boolean       | true         |
+| [HttpConsumer:waterplay]    | VRMInstanceID                    | The ID the battery monitor should use in VRM                            | Integer       | 1008          | 
+| [HttpConsumer:waterplay]    | ~~minimum~~                       | obsolete for on/off NPC-consumers     | ~~Double~~        | ~~0~~|
+| [HttpConsumer:waterplay]    | ~~stepSize~~                         | obsolete for on/off NPC-consumers | ~~Double~~       | ~~120.0~~|
+| [HttpConsumer:waterplay]    | Request                              | Total power this consumer would ever need.                              | Double        | 120.0       | 
+| [HttpConsumer:waterplay]    | OnUrl                              | http(s) url to active the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=on'       | 
+| [HttpConsumer:waterplay]    | OffUrl                              | http(s) url to deactive the consumer                               | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=off'      | 
+| [HttpConsumer:waterplay]    | StatusUrl                              | http(s) url to determine the current operation state of the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/status'       | 
+| [HttpConsumer:waterplay]    | IsOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | '"ison":\s*true'      | 
+| [HttpConsumer:waterplay]    | PowerUrl                              | http(s) url to determine the current consumption state of the consumer. If left empty, es-ESS will assume `Consumption=Request` while the consumer is switched on.                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/status'       | 
+| [HttpConsumer:waterplay]    | PowerExtractRegex     | Regex to extract the consumption. Has to have a SINGLE matchgroup.                            | String        | "apower":([^,]+),      | 
 
+If the NPC is mqtt controlled, you need to provide the Topics, instead of the URLs:
+| Section    | Value name |  Descripion | Type | Example Value|
+| ------------------ | ---------|---- | ------------- |--|
+| [MqttConsumer:poolHeater]    | OnTopic               | MqttTopic to active the consumer                                                                              | String        | Devices/shellyPro2PMPoolControl/IO/Heater/Set       | 
+| [MqttConsumer:poolHeater]    | OnValue               | MqttValue to publish on `OnTopic` to active the consumer                                                      | String        | true      | 
+| [MqttConsumer:poolHeater]    | OffTopic              | MqttTopic to deactive the consumer                                                                            | String        | Devices/shellyPro2PMPoolControl/IO/Heater/Set     | 
+| [MqttConsumer:poolHeater]    | OffValue              | MqttValue to publish on `OffTopic` to deactive the consumer                                                     | String        | false      | 
+| [MqttConsumer:poolHeater]    | StatusTopic           | MqttTopic to determine the current operation state of the consumer                                             | String        | Devices/shellyPro2PMPoolControl/IO/Heater/State       | 
+| [MqttConsumer:poolHeater]    | IsOnKeywordRegex      | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the Messages on StatusTopic)                            | String        | (T|t)rue          | 
+| [MqttConsumer:poolHeater]    | PowerTopic            | MqttTopic to determine the current consumption state of the consumer. If left empty, es-ESS will assume `Consumption=Request` while the consumer is switched on.                            | String        | Devices/shellyPro2PMPoolControl/IO/Heater/Power       | 
+| [MqttConsumer:poolHeater]    | PowerExtractRegex     | Regex to extract the consumption. Has to have a SINGLE matchgroup. (evaluated against the Messages on PowerTopic). Using `(.*)` because it's a well-formated decimal value here.            | String        | (.*)      | 
 
-#TODO: Update image bellow.
-<div align="center">
+Example (Screenshots)
 
-| Example of config section for NPC-SolarOverheadConsumer |
-|:-----------:|
-| <img src="https://github.com/realdognose/es-ESS/blob/main/img/visual_example_npc.png" /> | 
-</div>
+Pool-Filter (via a Shelly Pro2 PM) as http-consumer:
+
+<img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/poolFilterAsHttp.png">
+
+Pool-Heater (via s Shally Pro2 PM) as mqtt-consumer. (Got my own mqtt/rpc infrastructure, tho)
+
+<img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/poolHeaterAsMqtt.png">
+
 
 > :warning: NOTE: es-ESS will turn off every NPC-Consumer, when the service is receiving proper shutdown signals (aka SIGTERM) - However, in case of unexpected
 > powerlosses of your GX-device, complete Hardware-failure or networking-issues that may not be the case.
