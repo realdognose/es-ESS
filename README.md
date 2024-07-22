@@ -15,15 +15,15 @@ Services are marked according to their current development state:
 
 ### Table of Contents
 - [Setup](#setup) - General setup process and requirements for es-ESS.
+- [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.
+- [MqttTemperatures](#mqtttemperatures) - Display various temperature sensors you have on mqtt in VRM.
 - [MqttExporter](#mqttexporter) - Export selected values form dbus to your MQTT-Server.
-- [ChargeCurrentReducer](#chargecurrentreducer) - Reduce the battery charge current to your *feel-well-value* without the need to disable DC-Feedin.
 - [FroniusWattpilot](#FroniusWattpilot) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
 - [NoBatToEV](#nobattoev) - Avoid discharge of your home-battery when charging your ev with an `ac-out` connected wallbox.
-- [MqttTemperatures](#mqtttemperatures) - Display various temperature sensors you have on mqtt in VRM.
 - [SolarOverheadDistributor](#solaroverheaddistributor) - Utility to manage and distribute available solar overhead between various consumers.
   - [Scripted-SolarOverheadConsumer](#scripted-solaroverheadconsumer) - Consumers managed by external scripts can to be more complex and join the solar overhead pool.
   - [NPC-SolarOverheadConsumer](#npc-solaroverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead. No programming required.
-- [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.
+- [ChargeCurrentReducer](#chargecurrentreducer) - Reduce the battery charge current to your *feel-well-value* without the need to disable DC-Feedin.
 - [This and that](#this-and-that) - Various information that doesn't fit elsewhere.
 - [F.A.Q](#faq) - Frequently Asked Questions
 
@@ -34,6 +34,61 @@ Your system needs to match the following requirements in order to use es-ESS:
 - Have shell access enabled and know how to use it. (See: https://www.victronenergy.com/live/ccgx:root_access)
 
 TODO: Setup Discription, Install Script.
+
+# TimeToGoCalculator 
+
+> :white_check_mark: Production Ready
+
+<img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/TimeToGo.png" /> 
+
+#### Overview
+
+Some BMS - say the majority of them - don't provide values for the `Time to go`-Value visible in VRM. This is an important figure when looking at a dashboard. This helper script 
+fills that gap and calculates the time, when BMS don't. Calculation is done in both directions: 
+
+- **When discharging**: Time based on current discharge rate until the active SoC Limit is reached.
+- **When charging**: Time based on current charge rate until 100% SoC is reached. 
+
+#### Configuration
+
+TimeToGoCalculatore requires your local mqtt to be enabled, either in plain or ssl mode.<br />
+TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.ini`: 
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [DEFAULT]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [DEFAULT]  | BatteryCapacityInWh  | Your batteries capacity in Wh.  | Integer| 28000 |
+| [Services]    | TimeToGoCalculator | Flag, if the service should be enabled or not | Boolean | true |
+| [TimeToGoCalculator]  | UpdateInterval |  Time in milliseconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
+
+# MqttTemperatures
+> :white_check_mark: Production Ready
+
+### Overview
+MqttTemperatures is a streight-forward feature: It allows you to read temperature sensors from your mqtt server and injects them as temperaturesensors in dbus/vrm. 
+
+| Example View |
+|:-------------------------:|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttTemperature.png"> |
+
+### Configuration
+MqttTemperatures requires a few variables to be set in `/data/es-ESS/config.ini`: 
+
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [Services]    | MqttTemperatures | Flag, if the service should be enabled or not | Boolean | true |
+| [MqttTemperature:XYZ]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
+| [MqttTemperature:XYZ]  | CustomName |  Custom name to be used for this sensor | String  | MPPT2 Wiring |
+| [MqttTemperature:XYZ]  | Topic |  Topic on Mqtt, delivering the measurement value. | String  | Devices/d1Garden/Sensors/TEMP/Value |
+| [MqttTemperature:XYZ]  | TopicHumidity |  Topic on Mqtt, delivering the measurement value for humidity (optional). | String  | Devices/d1Garden/Sensors/HUM/Value |
+| [MqttTemperature:XYZ]  | TopicPressure |  Topic on Mqtt, delivering the measurement value for pressure (optional). | String  | Devices/d1Garden/Sensors/PRESSURE/Value |
+
+Note: You can create as many `[MqttTemperature:XYZ]` sections as you need, just take care to ensure unique names and VRM-Ids.
+
+| Example Config |
+|:-------------------------:|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttTemperatureExampleConf.png"> |
 
 # MqttExporter
 
@@ -102,38 +157,6 @@ Please see [MqttThrottling](#more-configx) as well. Dbus is firing a lot of valu
 face issues with several hundred values per second. With Mqtt-Throttling you can limit the number of messages per topic to a value suitable for your
 eco system.
 
-# ChargeCurrentReducer
-
-> :red_circle: Work-in-progress, beta: Feature is a beta, may have bugs or not work at all. Only use if you are a dev and want to contribute.
-
-#### Overview
-When you are using DC-Coupled Solar-Chargers, DVCC can be used to limit the charge-current of the batteries. If you however
-decide to enable Feed-In from DC-Chargers, that limit has no effect. Reason is, that the MPPTs ofc. won't obey the limit anymore, 
-because you opted to feed-in excess power, which in turn means the MPPTs have to produce at 100% whenever possible. 
-
-Before any feed-in is happening, the attached batteries will crank up their charge current to consume what's possible. 
-
-Therefore, we designed the ChargeCurrentReducer, which helps to reduce the battery charge current to your *feel-well-value*.
-This is achieved by observing the charge current and as soon as the desired charge current is exceeded, the multiplus will be instructed
-to start feed-in to the grid in order to reduce the available power on the dc-side and take load away from the batteries.
-
-When the charge current drops bellow the desired value, grid-feedin will be reduced again to leave more power to the batteries. 
-
-> :warning: I am using the wording "Reducer" on purpose. This is __NO__ Limiter. Your batteries, fusing and/or wiring should always be able to withstand
-any incoming current from the MPPTs upto their technical limit!
-
-The ChargeCurrentReducer __only__ works in positive directions. If your current solar production can't sustain a desired charge current of 50A, no additional
-power will be consumed from grid. The battery will then charge with what is available.
-
-#### Configuration
-
-ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.ini`: 
-
-| Section    | Value name |  Descripion | Type | Example Value|
-| ---------- | ---------|---- | ------------- |--|
-| [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
-| [Services]    | ChargeCurrentReducer | Flag, if the service should be enabled or not | Boolean | true |
-| [ChargeCurrentReducer]  | DesiredChargeAmps |  Desired Charge Current in Amps. Your *feel-well-value*.<br /><br />Beside a fixed value, you can use a equation based on SoC as well. The example will reduce the charge current desired by 1A per SoC-Percent, but minimum 30A<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | max(100 - SOC, 30) |
 
 # FroniusWattpilot
 
@@ -245,34 +268,6 @@ NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`:
 | [Default]     | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [Default]     | DefaultPowerSetPoint |  Default Power SetPoint, so it can be restored after ev charge finished. | double | -10 |
 
-# MqttTemperatures
-> :white_check_mark: Production Ready
-
-### Overview
-MqttTemperatures is a streight-forward feature: It allows you to read temperature sensors from your mqtt server and injects them as temperaturesensors in dbus/vrm. 
-
-| Example View |
-|:-------------------------:|
-|<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttTemperature.png"> |
-
-### Configuration
-MqttTemperatures requires a few variables to be set in `/data/es-ESS/config.ini`: 
-
-
-| Section    | Value name |  Descripion | Type | Example Value|
-| ---------- | ---------|---- | ------------- |--|
-| [Services]    | MqttTemperatures | Flag, if the service should be enabled or not | Boolean | true |
-| [MqttTemperature:XYZ]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
-| [MqttTemperature:XYZ]  | CustomName |  Custom name to be used for this sensor | String  | MPPT2 Wiring |
-| [MqttTemperature:XYZ]  | Topic |  Topic on Mqtt, delivering the measurement value. | String  | Devices/d1Garden/Sensors/TEMP/Value |
-| [MqttTemperature:XYZ]  | TopicHumidity |  Topic on Mqtt, delivering the measurement value for humidity (optional). | String  | Devices/d1Garden/Sensors/HUM/Value |
-| [MqttTemperature:XYZ]  | TopicPressure |  Topic on Mqtt, delivering the measurement value for pressure (optional). | String  | Devices/d1Garden/Sensors/PRESSURE/Value |
-
-Note: You can create as many `[MqttTemperature:XYZ]` sections as you need, just take care to ensure unique names and VRM-Ids.
-
-| Example Config |
-|:-------------------------:|
-|<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttTemperatureExampleConf.png"> |
 # SolarOverheadDistributor
 
 > :large_orange_diamond: Release-Candiate-Version
@@ -489,35 +484,39 @@ Now, SolarOverheadDistributor will give away available Energy in the following p
 14) EV +250 due to priority 46.0011
 ....
 
-# TimeToGoCalculator 
+# ChargeCurrentReducer
 
-> :white_check_mark: Production Ready
-
-<img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/TimeToGo.png" /> 
+> :red_circle: Work-in-progress, beta: Feature is a beta, may have bugs or not work at all. Only use if you are a dev and want to contribute.
 
 #### Overview
+When you are using DC-Coupled Solar-Chargers, DVCC can be used to limit the charge-current of the batteries. If you however
+decide to enable Feed-In from DC-Chargers, that limit has no effect. Reason is, that the MPPTs ofc. won't obey the limit anymore, 
+because you opted to feed-in excess power, which in turn means the MPPTs have to produce at 100% whenever possible. 
 
-Some BMS - say the majority of them - don't provide values for the `Time to go`-Value visible in VRM. This is an important figure when looking at a dashboard. This helper script 
-fills that gap and calculates the time, when BMS don't. Calculation is done in both directions: 
+Before any feed-in is happening, the attached batteries will crank up their charge current to consume what's possible. 
 
-- **When discharging**: Time based on current discharge rate until the active SoC Limit is reached.
-- **When charging**: Time based on current charge rate until 100% SoC is reached. 
+Therefore, we designed the ChargeCurrentReducer, which helps to reduce the battery charge current to your *feel-well-value*.
+This is achieved by observing the charge current and as soon as the desired charge current is exceeded, the multiplus will be instructed
+to start feed-in to the grid in order to reduce the available power on the dc-side and take load away from the batteries.
 
+When the charge current drops bellow the desired value, grid-feedin will be reduced again to leave more power to the batteries. 
 
+> :warning: I am using the wording "Reducer" on purpose. This is __NO__ Limiter. Your batteries, fusing and/or wiring should always be able to withstand
+any incoming current from the MPPTs upto their technical limit!
 
-
+The ChargeCurrentReducer __only__ works in positive directions. If your current solar production can't sustain a desired charge current of 50A, no additional
+power will be consumed from grid. The battery will then charge with what is available.
 
 #### Configuration
 
-TimeToGoCalculatore requires your local mqtt to be enabled, either in plain or ssl mode.<br />
-TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.ini`: 
+ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.ini`: 
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [DEFAULT]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
-| [DEFAULT]  | BatteryCapacityInWh  | Your batteries capacity in Wh.  | Integer| 28000 |
-| [Services]    | TimeToGoCalculator | Flag, if the service should be enabled or not | Boolean | true |
-| [TimeToGoCalculator]  | UpdateInterval |  Time in milliseconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
+| [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [Services]    | ChargeCurrentReducer | Flag, if the service should be enabled or not | Boolean | true |
+| [ChargeCurrentReducer]  | DesiredChargeAmps |  Desired Charge Current in Amps. Your *feel-well-value*.<br /><br />Beside a fixed value, you can use a equation based on SoC as well. The example will reduce the charge current desired by 1A per SoC-Percent, but minimum 30A<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | max(100 - SOC, 30) |
+
 
 # This and that
 
