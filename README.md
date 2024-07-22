@@ -35,6 +35,38 @@ Your system needs to match the following requirements in order to use es-ESS:
 
 TODO: Setup Discription, Install Script.
 
+#### Global Configuration
+Configuration of es-ESS is performed through the file `/data/es-ESS/config.ini`. Not all of the Global / Common Values are required, it depends on the combination 
+of services that should be active. However, it easiest to setup the common values for every usecase, so you don't have to mind adding / remove values as you enable
+or disable certain services. 
+
+| Section                  | Value name           |  Descripion                                                                                            | Type          | Example Value                |
+| ------------------------ | ---------------------|------------------------------------------------------------------------------------------------------- | ------------- |------------------------------|
+| [Common]                 | LogLevel             | LogLevel to use. See [Logging](#logging) use `INFO` if you are unsure.                                 | String        | INFO                         |  
+| [Common]                 | NumberOfThreads      | Number of Threads to use. 3-XX depending on enabled service count.                                     | Integer       | 5                            |
+| [Common]                 | ServiceMessageCount  | Number of ServiceMessages to publish on Mqtt. See [Service Messages](#service-messages)                | Integer       | 50                           |
+| [Common]                 | ConfigVersion        | Just don't touch this.                                                                                 | Integer       | 1                            |
+| [Common]                 | VRMPortalID          | Your VRMPortalID, required to publish/read some values of your local mqtt.                             | String        | VRM0815                      |
+| [Common]                 | BatteryCapacityInWh  | Your battery capacity in Watthours.                                                                    | Integer       | 28000                        |
+| [Common]                 | BatteryMaxChargeInW  | Your battery maximum charge power in W                                                                 | Integer       | 9000                         |
+| [Common]                 | DefaultPowerSetPoint | Default Power Setpoint (W), when using features that manipulte the set point programmatically.         | Integer       | -10                          |
+| [Mqtt]                   | Host                 | Hostname / IP of your main-mqtt to work with.                                                          | String        | mqtt.ad.equinox-solutions.de |
+| [Mqtt]                   | User                 | Username to connect to your main-mqtt.                                                                 | String        | user                         |
+| [Mqtt]                   | Password             | Password to connect to your main-mqtt.                                                                 | String        | secure123!                   |
+| [Mqtt]                   | Port                 | Port to connect to your main-mqtt.                                                                     | Integer       | 1833                         |
+| [Mqtt]                   | SslEnabled           | Flag, if your main-mqtt is ssl enabled. Note: We kindly ignore Certificate-Checks as of now.           | Boolean       | true                         |
+| [Mqtt]                   | ThrottlePeriod       | Minimum Time between two publishes on one topic. See [MqttThrottling](#more-configx)                   | Integer       | 1000                         |
+| [Mqtt]                   | LocalSslEnabled      | Flag, if your local / venus-Mqtt is SSL or plain.                                                      | Boolean       | true                         |
+| [Services]               | SolarOverheadDistributor  | Flag, if [SolarOverheadDistributor](#solaroverheaddistributor) is enabled.                        | Boolean       | true                         |
+| [Services]               | TimeToGoCalculator        | Flag, if [TimeToGoCalculator](#timetogocalculator) is enabled.                                    | Boolean       | true                         |
+| [Services]               | FroniusWattpilot          | Flag, if [FroniusWattpilot](#FroniusWattpilot) is enabled.                                        | Boolean       | true                         |
+| [Services]               | ChargeCurrentReducer      | Flag, if [ChargeCurrentReducer](#chargecurrentreducer) is enabled.                                | Boolean       | true                         |
+| [Services]               | MqttExporter              | Flag, if [MqttExporter](#mqttexporter) is enabled.                                                | Boolean       | true                         |
+| [Services]               | MqttTemperature           | Flag, if [MqttTemperatures](#mqtttemperatures) is enabled.                                        | Boolean       | true                         |
+| [Services]               | NoBatToEV                 | Flag, if [NoBatToEV](#nobattoev) is enabled.                                                      | Boolean       | true                         |
+
+> :warning: NOTE: I recommend to enable one service after each other and finalize configuration, before enabling another one. Else configuration may become a bit clumsy and error-prone.
+
 # TimeToGoCalculator 
 
 > :white_check_mark: Production Ready
@@ -58,6 +90,7 @@ TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.in
 | ---------- | ---------|---- | ------------- |--|
 | [DEFAULT]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [DEFAULT]  | BatteryCapacityInWh  | Your batteries capacity in Wh.  | Integer| 28000 |
+| [Mqtt]     | LocalSslEnabled | Flag, if local Mqtt is SSL or plain. | Boolean | true |
 | [Services]    | TimeToGoCalculator | Flag, if the service should be enabled or not | Boolean | true |
 | [TimeToGoCalculator]  | UpdateInterval |  Time in milliseconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
 

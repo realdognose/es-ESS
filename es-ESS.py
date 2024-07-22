@@ -13,6 +13,7 @@ import time
 from builtins import Exception, int, str
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict
+import ssl
 
 if sys.version_info.major == 2:
     import gobject # type: ignore
@@ -56,11 +57,11 @@ class esESS:
         self._serviceMessageIndex: Dict[str, int] = {}
         self._dbusMonitor: DbusMonitor = None
         self._gridSetPointRequests: Dict[str, float] = {}
-        self._gridSetPointDefault = float(self.config["Default"]["DefaultPowerSetPoint"])
+        self._gridSetPointDefault = float(self.config["Common"]["DefaultPowerSetPoint"])
         self._threadExecutionsMinute = 0
         
-        i(self, "Initializing thread pool with a size of {0}".format(self.config["Default"]["NumberOfThreads"]))
-        self.threadPool = ThreadPoolExecutor(int(self.config["Default"]["NumberOfThreads"]), "TPt")
+        i(self, "Initializing thread pool with a size of {0}".format(self.config["Common"]["NumberOfThreads"]))
+        self.threadPool = ThreadPoolExecutor(int(self.config["Common"]["NumberOfThreads"]), "TPt")
 
         if (self.mqttThrottlePeriod > 0):
             self._mainMqttThrottleDictLock = threading.Lock()
@@ -88,10 +89,21 @@ class esESS:
 
         self.mainMqttClient.will_set("es-ESS/$SYS/Status", "Offline", 2, True)
 
-        self.mainMqttClient.connect(
-            host=config["Mqtt"]["Host"],
-            port=int(config["Mqtt"]["Port"])
-        )
+        if (self.config["Mqtt"]["SslEnabled"].lower() == "true"):
+            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp-ssl", config["Mqtt"]["Host"], config["Mqtt"]["Port"]))
+            self.mainMqttClient.tls_set(cert_reqs=ssl.CERT_NONE)
+            self.mainMqttClient.tls_insecure_set(True)
+            self.mainMqttClient.connect(
+                host=config["Mqtt"]["Host"],
+                port=int(config["Mqtt"]["Port"])
+            )
+            
+        else:
+            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp", config["Mqtt"]["Host"], config["Mqtt"]["Port"]))
+            self.mainMqttClient.connect(
+                host=config["Mqtt"]["Host"],
+                port=int(config["Mqtt"]["Port"])
+            )
 
         self.mainMqttClient.loop_start()
         self.mainMqttClient.publish("es-ESS/$SYS/Status", "Online", 2, True)
@@ -101,14 +113,24 @@ class esESS:
         self.mainMqttClient.publish("es-ESS/$SYS/Github", "https://github.com/realdognose/es-ESS", 2, True)
 
         #local mqtt
-        i(self, "Connecting to broker: {0}".format("localhost"))
         self.localMqttClient.on_disconnect = self.onLocalMqttDisconnect
         self.localMqttClient.on_connect = self.onLocalMqttConnect
 
-        self.localMqttClient.connect(
-            host="localhost",
-            port=1883
-        )
+        if (self.config["Mqtt"]["LocalSslEnabled"].lower() == "true"):
+            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp-ssl", "localhost", 8883))
+            self.localMqttClient.tls_set(cert_reqs=ssl.CERT_NONE)
+            self.localMqttClient.tls_insecure_set(True)
+            self.localMqttClient.connect(
+                host="localhost",
+                port=8883
+            )
+            
+        else:
+            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp", "localhost", 1883))
+            self.localMqttClient.connect(
+                host="localhost",
+                port=1883
+            )
 
         self.localMqttClient.loop_start()
 
@@ -338,7 +360,7 @@ class esESS:
 
             
             d(self, "final gsp is: {0}".format(gsp))
-            self.publishLocalMqtt("W/{0}/settings/0/Settings/CGwacs/AcPowerSetPoint".format(self.config["Default"]["VRMPortalID"]), "{\"value\": " + str(gsp) + "}", 1 ,False)
+            self.publishLocalMqtt("W/{0}/settings/0/Settings/CGwacs/AcPowerSetPoint".format(self.config["Common"]["VRMPortalID"]), "{\"value\": " + str(gsp) + "}", 1 ,False)
         except Exception as ex:
             c(self, "Exception in grid set point control.", exc_info=ex)
 
@@ -473,7 +495,7 @@ class esESS:
         else:
            self._serviceMessageIndex[key] +=1
         
-        if (self._serviceMessageIndex[key] > int(self.config["Default"]["ServiceMessageCount"]) + 1):
+        if (self._serviceMessageIndex[key] > int(self.config["Common"]["ServiceMessageCount"]) + 1):
            self._serviceMessageIndex[key] = 1
 
         if (type == Globals.ServiceMessageType.Operational):
@@ -481,7 +503,7 @@ class esESS:
 
         self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=self._serviceMessageIndex[key]), "{0} | {1}".format(Globals.getUserTime(), message) , 0, True, True)
         nextOne = self._serviceMessageIndex[key] +1
-        if (nextOne > int(self.config["Default"]["ServiceMessageCount"]) + 1):
+        if (nextOne > int(self.config["Common"]["ServiceMessageCount"]) + 1):
             nextOne = 1
         
         self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=nextOne), "{0} | {1}".format(Globals.getUserTime(), "-------------------------") , 0, True, True)
@@ -494,7 +516,7 @@ class esESS:
 
         #restore default grid set point
         i(self, "Restoring default power set point of {0}W due to SIGTERM received.".format(self._gridSetPointDefault))
-        self.publishLocalMqtt("W/{0}/settings/0/Settings/CGwacs/AcPowerSetPoint".format(self.config["Default"]["VRMPortalID"]), "{\"value\": " + str(self._gridSetPointDefault) + "}", 1 ,False)
+        self.publishLocalMqtt("W/{0}/settings/0/Settings/CGwacs/AcPowerSetPoint".format(self.config["Common"]["VRMPortalID"]), "{\"value\": " + str(self._gridSetPointDefault) + "}", 1 ,False)
 
         #unsubscribe any mqtt sub, so we no longer receive new messages. 
         for sublist in self._mqttSubscriptions.values():
@@ -552,7 +574,7 @@ def configureLogging(config):
   logging.trace = trace
   logging.Logger.trace = trace
 
-  logLevelString = config["Default"]['LogLevel']
+  logLevelString = config["Common"]['LogLevel']
   logLevel = logging.getLevelName(logLevelString)
 
   logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)s %(message)s',
