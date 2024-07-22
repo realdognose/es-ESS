@@ -127,6 +127,10 @@ MqttTemperatures requires a few variables to be set in `/data/es-ESS/config.ini`
 |:-------------------------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttTemperatureExampleConf.png"> |
 
+
+# TODO | MAINTENANCE BELLOW REQUIRED | TODO
+
+
 # MqttExporter
 
 > :white_check_mark: Production Ready
