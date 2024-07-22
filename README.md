@@ -121,9 +121,9 @@ MqttTemperatures requires a few variables to be set in `/data/es-ESS/config.ini`
 | [MqttTemperature:XYZ]  | TopicHumidity |  Topic on Mqtt, delivering the measurement value for humidity (optional). | String  | Devices/d1Garden/Sensors/HUM/Value |
 | [MqttTemperature:XYZ]  | TopicPressure |  Topic on Mqtt, delivering the measurement value for pressure (optional). | String  | Devices/d1Garden/Sensors/PRESSURE/Value |
 
-Note: You can create as many `[MqttTemperature:XYZ]` sections as you need, just take care to ensure unique names and VRM-Ids.
+> :warning: You can create as many `[MqttTemperature:XYZ]` sections as you need, just take care to ensure unique names and VRM-Ids.
 
-| Example Config |
+| Example Config file with multiple sections added |
 |:-------------------------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttTemperatureExampleConf.png"> |
 
