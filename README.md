@@ -98,11 +98,15 @@ TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.in
 > :white_check_mark: Production Ready
 
 ### Overview
-MqttTemperatures is a streight-forward feature: It allows you to read temperature sensors from your mqtt server and injects them as temperaturesensors in dbus/vrm. 
+MqttTemperatures is a streight-forward feature: It allows you to read temperature sensors from your mqtt server and injects them as temperaturesensors in dbus/vrm. (Including the `Pressure` and `Humidity` Fields, if present.)
 
 | Example View |
 |:-------------------------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttTemperature.png"> |
+
+| Example View with Details |
+|:-------------------------:|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttTemperatureGarden.png"> |
 
 ### Configuration
 MqttTemperatures requires a few variables to be set in `/data/es-ESS/config.ini`: 
