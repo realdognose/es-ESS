@@ -631,10 +631,10 @@ ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.
 # This and that
 
 ### Logging
-es-ESS can log a lot of information helpfull to debug things. For this, the loglevel in the configuration can be adjusted and several (recurring) Log Messages can be surpressed
+es-ESS can log a lot of information helpfull to debug things. For this, the loglevel in the configuration can be adjusted.
 The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day at midnight. A total of 14 log files is kept, then recycled.
 
-> :warning: Having es-ESS running at log level `TRACE` for a long time will produce huge log files and negatively impact system performance. This will log all incoming and outgoing values, we are talking about thausands of lines of log per minute here.
+> :warning: Having es-ESS running at log level `TRACE` for a long time will produce huge log files and negatively impact system performance. This will log all incoming and outgoing values, we are talking about thausands of lines of log per minute here, depending on enabled services. Rather usefull for development purpose with single service(s) enabled. 
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
