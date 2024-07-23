@@ -640,6 +640,8 @@ The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day 
 | ---------- | ---------|---- | ------------- |--|
 | [DEFAULT]    | LogLevel |  Options: TRACE, DEBUG, APP_DEBUG, INFO, WARNING, ERROR, CRITICAL | String | INFO |
 
+`APP_DEBUG` is a level higher than regular `DEBUG`, so this will surpress Debug messages of third party modules as long as they obey the setup log level.
+
 <div align="center">
 
 | Logrotation to avoid filling up the disk |
