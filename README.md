@@ -13,13 +13,13 @@ Services are marked according to their current development state:
 
 > :red_circle: Work-in-progress, beta: Feature is a beta, may have bugs or not work at all. Only use if you are a dev and want to contribute.
 
-#About me
+# About me
 
 I'm a software engineer since about 20 years, pretty new to python, tho. es-ESS is provided free of charge and created during my spare-time after work. 
 Feel free to create issues for questions or bugs, but bear with me that i cannot provide a 24/7 support or guarantee some sort of 8h response time. 
 If you are a developer yourself and want to help to improve es-ESS, feel free to do so and create pull requests.
 
-#Almost there
+# Almost there
 
 equinox-solutions, es-ESS or me are in no way affiliated, sponsored or associaated with Victron Energy. Use es-ESS at your own risk, the software is provided
 "as is" and may stop working correctly due to system upgrades without notice.
