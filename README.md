@@ -79,7 +79,7 @@ Uninstall es-ESS (to whom it may concern)
 /data/es-ESS/uninstall.sh
 ```
 
-Tail current log file (log file rotated daily, 14 days kept, see [logging](#logging) for more details.): 
+Tail current log file (log file rotated daily, 14 days kept, see [logging](#logging) for more details): 
 ```
 tail -f -n 20 /data/log/es-ESS/current.log
 ```
@@ -590,9 +590,9 @@ of 200 Watts, ending at my 11kW EV-Charging station:
 | Not so sunny day, but consumers taking any chance. |
 |:-----------:|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/solarOverhead_Gaps.png" /> |
+
 </div>
 
-<div align="center">
 
 # ChargeCurrentReducer
 
@@ -645,6 +645,7 @@ The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day 
 | Logrotation to avoid filling up the disk |
 |:-----------:|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/logrotate.png" /> |
+
 </div>
 
 ### More Configx
