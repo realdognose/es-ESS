@@ -24,7 +24,7 @@ system for at least 10ish years, there will be plenty of updates and/or bugfixes
 
 # Almost there
 
-equinox-solutions, es-ESS or me are in no way affiliated, sponsored or associaated with Victron Energy. Use es-ESS at your own risk, the software is provided
+equinox-solutions, es-ESS or me are in no way affiliated, sponsored or associated with Victron Energy. Use es-ESS at your own risk, the software is provided
 "as is" and may stop working correctly due to system upgrades without notice.
 
 # Table of Contents
