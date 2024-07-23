@@ -249,10 +249,9 @@ python -m pip install websocket-client
 - If Wattpilot is set to `Manual Mode` through the Fronius App, es-ESS will detect this as manual mode, update VRM and don't mess with control at any time. 
 - To use Solar-Overhead charging, Wattpilot needs to be set into `ECO` Mode __AND__ The PV-Starting Power has to be set to something that never happens, like 99 kW. This ensures, that Wattpilot is NOT messing with 
 control while es-ESS is managing the solar overhead charging.
+- `Schduled Charging` in VRM is used to wake up wattpilot when hibernate is enabled (see Table bellow)
 
-
-
-Important: es-ESS will not change any settings done in Wattpilot and will use the limits that are configured in wattpilot.
+__Important:__ es-ESS will not change any settings done in Wattpilot and will use the limits that are configured in wattpilot.
 
 VRM Controls have no option to explicit select 1 or 3 phase charging, therefore the following logic will apply: 
 
@@ -311,6 +310,7 @@ your ev charge, consumption and available solar - and offloads any overhead-ev-c
 | With 0 Solar available, basically the whole ev-charge is offloaded to the grid, while the battery only powers the remaining loads.|
 
 ### Configuration
+NoBatToEV requires your gx-local mqtt-server to be enabled, either as plain or ssl.
 NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`: 
 
 
@@ -319,6 +319,12 @@ NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`:
 | [Services]    | NoBatToEV   | Flag, if the service should be enabled or not | Boolean | true |
 | [Default]     | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [Default]     | DefaultPowerSetPoint |  Default Power SetPoint, so it can be restored after ev charge finished. | double | -10 |
+
+> :warning: NOTE: this feature manipulates the grid set point in order to achieve proper offloading of your evs energy demand. Several precautions ensure that the configured default grid set point
+> is restored when the service is receiving proper shutdown signals (aka SIGTERM) or any kind of internal error appears. - However, in case of unexpected
+> powerlosses of your GX-device, complete Hardware-failure, networking-issues or usage of the `reboot` command on the cerbo that may not be the case.
+> I have never expierienced issues with that, hence I can't tell what the multiplus will do, if the cerbo `dies`, while the grid set point is -5000 Watt or something.
+> I assume, Worstcase, your multiplus will keep charging your houses battery until there is no more consumer for such a (stuck) grid request.
 
 # SolarOverheadDistributor
 
@@ -598,7 +604,7 @@ Additionally there are the following configuration options available:
 | [DEFAULT]    | NumberOfThreads |  Number of threads, es-ESS should use. | int | 5 |
 | [DEFAULT]    | ServiceMessageCount | Number of service messages published on mqtt | int | 50 |
 | [DEFAULT]    | ConfigVersion | Current Config Version. DO NOT TOUCH THIS, it is required to update configuration files on new releases. | int | 1 |
-| [Mqtt]    | ThrottlePeriod | Minimum time in ms between two messages on the same topic. Useful to reduce overall network traffic. Intelligent backlog tracking ensures that "the last message" emitted is always published after {ThrottlePeriod} milliseconds. | int | 2000 |
+| [Mqtt]       | ThrottlePeriod | Minimum time in ms between two messages on the same topic. Useful to reduce overall network traffic. Intelligent backlog tracking ensures that "the last message" emitted is always published after {ThrottlePeriod} milliseconds. | int | 2000 |
 
 ### Service Messages
 es-ESS also publishes Operational-Messages as well as Errors, Warnings and Critical failures under the `$SYS`-Topic of es-ESS. Check these from time to time to ensure proper functionality
