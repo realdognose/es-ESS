@@ -60,7 +60,7 @@ rm main.zip
 
 `es-ESS` will automatically start - with the default configuration with all services DISABLED. You can now start to modify the file `/data/es-ESS/config.ini` as required. 
 I recommend to complete configuration of a single service, then restart and validate functionality. If you rush through the (quite huge) configuration in a single go, and it
-is not working at end, it may become hard to find the error.
+is not working at the end, it may become hard to find the error without starting over.
 
 Handy commands to use during configuration and in generall: 
 
@@ -79,7 +79,7 @@ Uninstall es-ESS (to whom it may concern)
 /data/es-ESS/uninstall.sh
 ```
 
-Tail current log file: 
+Tail current log file (log file rotated daily, 14 days kept, see [logging](#logging) for more details.): 
 ```
 tail -f -n 20 /data/log/es-ESS/current.log
 ```
