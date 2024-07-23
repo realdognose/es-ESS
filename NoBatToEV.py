@@ -78,6 +78,7 @@ class NoBatToEV(esESSService):
                 d(self, "So, raw consumption is {0}W, remainingPV is {1}W, we therefore offload {2}W to the grid.".format(rawConsumption, remainingPv, delta))
 
                 self.registerGridSetPointRequest(delta)
-        
+            else:
+                self.revokeGridSetPointRequest()
         else:
             self.revokeGridSetPointRequest()

@@ -351,15 +351,17 @@ class esESS:
     
     def _manageGridSetPoint(self):
         try:
+            if (self._sigTermInvoked):
+                return
+            
             gsp = self._gridSetPointDefault
 
             for (k,v) in self._gridSetPointRequests.items():
                 if (v is not None):
                     d(self, "Grid Set Point request of {0} is {1}".format(k,v))
                     gsp += v
-
             
-            d(self, "final gsp is: {0}".format(gsp))
+            d(self, "Combined all GSP-Requests, new GSP is: {0}".format(gsp))
             self.publishLocalMqtt("W/{0}/settings/0/Settings/CGwacs/AcPowerSetPoint".format(self.config["Common"]["VRMPortalID"]), "{\"value\": " + str(gsp) + "}", 1 ,False)
         except Exception as ex:
             c(self, "Exception in grid set point control.", exc_info=ex)
