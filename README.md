@@ -137,8 +137,8 @@ TimeToGoCalculator requires a few variables to be set in `/data/es-ESS/config.in
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [DEFAULT]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
-| [DEFAULT]  | BatteryCapacityInWh  | Your batteries capacity in Wh.  | Integer| 28000 |
+| [Common]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [Common]  | BatteryCapacityInWh  | Your batteries capacity in Wh.  | Integer| 28000 |
 | [Mqtt]     | LocalSslEnabled | Flag, if local Mqtt is SSL or plain. | Boolean | true |
 | [Services]    | TimeToGoCalculator | Flag, if the service should be enabled or not | Boolean | true |
 | [TimeToGoCalculator]  | UpdateInterval |  Time in milliseconds for TimeToGo Calculations. Sometimes the BMS are sending `null` values, so a small value helps to reduce flickering on VRM. But don't exagerate for looking at the dashboard for 10 minutes a day ;-)| Integer  | 1000 |
@@ -623,7 +623,7 @@ ChargeCurrentReducer requires a few variables to be set in `/data/es-ESS/config.
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [Default]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [Common]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [Services]    | ChargeCurrentReducer | Flag, if the service should be enabled or not | Boolean | true |
 | [ChargeCurrentReducer]  | DesiredChargeAmps |  Desired Charge Current in Amps. Your *feel-well-value*.<br /><br />Beside a fixed value, you can use a equation based on SoC as well. The example will reduce the charge current desired by 1A per SoC-Percent, but minimum 30A<br /><br />*This equation is evaluated through pythons eval() function. You can use any complex arithmetic you like.* | String  | max(100 - SOC, 30) |
 
@@ -638,7 +638,7 @@ The log file is placed in `/data/logs/es-ESS/current.log` and rotated every day 
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [DEFAULT]    | LogLevel |  Options: TRACE, DEBUG, APP_DEBUG, INFO, WARNING, ERROR, CRITICAL | String | INFO |
+| [Common]    | LogLevel |  Options: TRACE, DEBUG, APP_DEBUG, INFO, WARNING, ERROR, CRITICAL | String | INFO |
 
 `APP_DEBUG` is a level higher than regular `DEBUG`, so this will surpress Debug messages of third party modules as long as they obey the setup log level.
 
@@ -656,9 +656,9 @@ Additionally there are the following configuration options available:
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [DEFAULT]    | NumberOfThreads |  Number of threads, es-ESS should use. | int | 5 |
-| [DEFAULT]    | ServiceMessageCount | Number of service messages published on mqtt | int | 50 |
-| [DEFAULT]    | ConfigVersion | Current Config Version. DO NOT TOUCH THIS, it is required to update configuration files on new releases. | int | 1 |
+| [Common]    | NumberOfThreads |  Number of threads, es-ESS should use. | int | 5 |
+| [Common]    | ServiceMessageCount | Number of service messages published on mqtt | int | 50 |
+| [Common]    | ConfigVersion | Current Config Version. DO NOT TOUCH THIS, it is required to update configuration files on new releases. | int | 1 |
 | [Mqtt]       | ThrottlePeriod | Minimum time in ms between two messages on the same topic. Useful to reduce overall network traffic. Intelligent backlog tracking ensures that "the last message" emitted is always published after {ThrottlePeriod} milliseconds. | int | 2000 |
 
 ### Service Messages
