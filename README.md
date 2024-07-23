@@ -19,6 +19,9 @@ I'm a software engineer since about 20 years, pretty new to python, tho. es-ESS 
 Feel free to create issues for questions or bugs, but bear with me that i cannot provide a 24/7 support or guarantee some sort of 8h response time. 
 If you are a developer yourself and want to help to improve es-ESS, feel free to do so and create pull requests.
 
+I've switched to a Victron-System 2 months ago, and immediately digged into customizing it. Lot has been done, Lot is still todo. Since I will run this 
+system for at least 10ish years, there will be plenty of updates and/or bugfixes in the future.
+
 # Almost there
 
 equinox-solutions, es-ESS or me are in no way affiliated, sponsored or associaated with Victron Energy. Use es-ESS at your own risk, the software is provided
