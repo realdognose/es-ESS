@@ -127,10 +127,6 @@ MqttTemperatures requires a few variables to be set in `/data/es-ESS/config.ini`
 |:-------------------------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttTemperatureExampleConf.png"> |
 
-
-# TODO | MAINTENANCE BELLOW REQUIRED | TODO
-
-
 # MqttExporter
 
 > :white_check_mark: Production Ready
@@ -140,7 +136,7 @@ Victrons Venus OS / Cerbo Devices have a builtin Mqtt-Server. However, there are
 
 Second issue is - according to the forums: while Keep-Alive is enabled, topics are continiously forwarded to the upstream-server, causing bandwith usage, which is bad on metered connections or at least general bandwith pollution. 
 
-So, the MqttExporter has been created. With a quite easy notation you can define which values should be tracked on dbus, and then be forwarded to your desired mqtt server.
+So, the MqttExporter has been created. With a quite easy notation you can define which values should be tracked on dbus, and then be forwarded to your mqtt server for further processing and/or display purpose.
 
 # Configuration
 
@@ -151,17 +147,16 @@ MqttExporter requires a few variables to be set in `/data/es-ESS/config.ini`:
 | [Services]    | MqttExporter | Flag, if the service should be enabled or not | Boolean | true |
 | [MqttExporter]  | Export_{whatever}_{x} |  Export definition, see details bellow | String  | com.victronenergy.grid.http_40, /Ac/Power, CerboValues/Grid/Power |
 
-To export values from DBus to your mqtt server, you need to specify 3 variables per value.
-You can create as many exports as you like, just increase the number of the keys.
-if you wanat to export from a certain service (like bms) you can use dbus-spy in ssh to figure out the service name. 
+To export values from DBus to your mqtt server, you need to specify 3 variables per export
+You can create as many exports as you like, just increase the number of the keys added to the `[MqttExporter]` Section.
+if you want to export from a certain service (like bms) you can use dbus-spy in ssh to figure out the service name to use. 
 - Each Key needs to be unique
-- Schema: {serviceName}, {DBusPath}, {MqttTarget}
-- use a * in the mqtt-path to append the original DBus-Path.
+- Schema: `{serviceName}`, `{DBusPath}`, `{MqttTarget}`
+- use a * at the end of the mqtt-path to append the original DBus-Path.
 
 **Note that dbus-paths start with a "/" and MQTT paths don't.**
 
 All whitespaces will be trimmed, you can indent values to your personal favour. 
-Use dbus-spy on ssh to identify the service name. (right-arrow on selection to dig into available keys.)
 
 # Example relation between dbus-spy, config and MQTT #
 
@@ -192,6 +187,10 @@ Use dbus-spy on ssh to identify the service name. (right-arrow on selection to d
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter4.png" />|
 </div>
+
+In the example config file, you can see that I used the trailing `*` on the Grid, Multiplus and Symo topics.
+
+Providing the export definition `Export_Fronius_1 = com.victronenergy.pvinverter.pv_233_2102530, /Ac/L1/Current, Energy/Symo*` will create the mqtt value `Energy/Symo/Ac/L1/Current` and so on.
 
 ### Mqtt-Throttling ###
 Please see [MqttThrottling](#more-configx) as well. Dbus is firing a lot of value changes, slower mqtt-servers (or the receivers of subscriptions) may
