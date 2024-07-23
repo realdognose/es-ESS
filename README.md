@@ -355,10 +355,9 @@ Also, when consumption changes, the whole ESS itself needs to adapt, adjust batt
 during ongoing calculations. So we decided to go with a fixed value of 1 minute, which is fast enough to adapt quickly but not causing any issues with consumers going on/off due to delays in processing.
 
 ### Usage
-Each consumer is creating a SolarOverhead-Request, which then will be accepted or not by the SolarOverheadDistributor based on various parameters. The overall request has to be send to the mqtt topic `es-ESS/SolarOverheadDistributor/Requests` where es-ESS will catch up the request
-and add the `allowance` property to the request.
+Each consumer can create a SolarOverhead-Request, which then will be accepted or not by the SolarOverheadDistributor based on various parameters. The overall request has to be send to the mqtt topic `es-ESS/SolarOverheadDistributor/Requests` where es-ESS will catch up the request, process it and add the `allowance` property to the request.
 
-A request is made out of the following values, where some are mandatory, some optional, some to be not filled out by the consumer: 
+A request is made out of the following values, where some are mandatory, some optional: 
 
 each key has to be published in the topic `es-ESS/SolarOverheadDistributor/Requests/{consumerIdentifier}/`
 
@@ -367,19 +366,19 @@ each key has to be published in the topic `es-ESS/SolarOverheadDistributor/Reque
 |IsAutomatic             | yes                   | Flag, indicating if the consumer is currently in automatic mode         | Boolean       | true         | yes      |
 |Consumption           | yes                   | Current consumption of the consumer                                     | Double        | 1234.0       | yes      |
 |CustomName            | yes                   | DisplayName on VRM                                                      | String        | My Consumer 1| yes      |
-|IgnoreBatReservation  | yes                   | Consumer shall be enabled despite active Battery Reservation            | Boolean       | true         | no       |
+|IgnoreBatReservation  | yes                   | Consumer shall be enabled when there is sufficent solar, despite active Battery Reservation            | Boolean       | true         | no       |
 |Request               | yes                   | Total power this consumer would ever need.                              | Double        | 8500.0       | yes      |
 |StepSize              | yes                   | StepSize in which the allowance should be generated, until the total requests value is reached. | Double       | 123.0         | yes      |
-|Minimum               | yes                   | A miminum power that needs to be assigned as step1. Usefull for EVs.    | Double        | 512.0         | no      |
+|Minimum               | yes                   | A miminum power that needs to be assigned as step1. Usefull for EVs that require a minimum start power.    | Double        | 512.0         | no      |
 |Priority               | yes                   | Priority compared to other Consumers. defaults to 100    | Integer        | 56         | no      |
-|PriorityShift          | yes                   | Priority decrease after an assignment    | Integer        | 1         | no      |
+|PriorityShift          | yes                   | Priority decrease after an assignment (See example bellow)    | Integer        | 1         | no      |
 |VRMInstanceID         | yes                   | The ID the battery monitor should use in VRM                            | Integer       | 1008          | yes     |
-|Allowance             | no                    | Allowance in Watts, calculated by SolarOverheadDistributor                 | Double        | 768.0         | n/a     |
+|Allowance             | no                    | Allowance in Watts, calculated by SolarOverheadDistributor. Has to be picked up by the consumer.                 | Double        | 768.0         | n/a     |
 
 SolarOverheadDistributor will process these requests and finally publish the result under: `es-ESS/SolarOverheadDistributor/Requests/{consumerIdentifier}/allowance`
 
 - It is important to report back consumption by the consumer. Only then the calculated values are correct, because the consumption of every controlled consumer is *available Budget*.
-- Only consumers reporting as automatic will be considered. (So maintain this, when implementing manual overrides, i.e. an unplugged EV should not request overhead-share)
+- Only consumers reporting as automatic will be considered. (So maintain this, when implementing manual overrides, i.e. an unplugged EV should not request overhead-share, else it will receive an allowance and block other consumers with lower priority)
 
 ### Scripted-SolarOverheadConsumer
 A Scripted-SolarOverheadConsumer is an external script (Powershell, bash, arduino, php, ...) you are using to control a consumer. This allows the requests to be more precice and granular
@@ -415,19 +414,15 @@ After evaluating and creating the proper request, the current allowance is proce
 > up to you if they should keep running or stop as well.
 
 ### NPC-SolarOverheadConsumer
-Some consumers are not controllable in steps, they are simple on/off consumers. Also measuring the actual consumption is not always possible or required, so a fixed known consumption can 
-work out as well. To eliminate the need to create multiple on/off-scripts for these consumers, the NPC-SolarOverheadConsumer has been introduced. es-ESS can automatically control consumers that
-can be switched on/off through http or mqtt.
+Some consumers are not controllable in steps or you simply don't want to write scripts for them. To eliminate the need to create multiple on/off-scripts for these consumers, 
+the NPC-SolarOverheadConsumer has been introduced. es-ESS can automatically control consumers that can be switched on/off through `http` or `mqtt`.
 
-It can be fully configured in `/data/es-ESS/config.ini` and will be orchestrated by the SolarOverhead-Distributer itself. An example would be our *waterplay* in the front garden. It is connected through a shelly device, which is http-controllable - and I know it consumes roughly 120 Watts AND I want this
-to run as soon as Solar-Overhead is available, despite any battery reservation. (Doesn't make sence to wait on this, until the battery reached 90% Soc or more)
+It can be fully configured in `/data/es-ESS/config.ini` and will be orchestrated by the SolarOverhead-Distributer itself. An example would be our *waterplay* in the front garden. It is connected through a (first-gen, dumb) shelly device, which is at least http-controllable - and I know it consumes roughly 120 Watts AND I want this to run as soon as Solar-Overhead is available, despite any battery reservation. (Doesn't make sence to wait, until the battery reached 90% Soc or more)
 
 The following lines inside `/data/es-ESS/config.ini` can be used to create such an NPC-SolarOverheadConsumer. A config section has to be created, containing
 the required request values plus some additional parameters for remote-control. Well, the secion has to be prefixed with `HttpConsumer:` or `MqttConsumer:` to identify it correctly.
 
 the example consumerKey is *waterplay* here.
-
-#TODO: Update table bellow.
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ------------------ | ---------|---- | ------------- |--|
@@ -437,20 +432,20 @@ the example consumerKey is *waterplay* here.
 | [HttpConsumer:waterplay]    | ~~minimum~~                       | obsolete for on/off NPC-consumers     | ~~Double~~        | ~~0~~|
 | [HttpConsumer:waterplay]    | ~~stepSize~~                         | obsolete for on/off NPC-consumers | ~~Double~~       | ~~120.0~~|
 | [HttpConsumer:waterplay]    | Request                              | Total power this consumer would ever need.                              | Double        | 120.0       | 
-| [HttpConsumer:waterplay]    | OnUrl                              | http(s) url to active the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=on'       | 
-| [HttpConsumer:waterplay]    | OffUrl                              | http(s) url to deactive the consumer                               | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=off'      | 
-| [HttpConsumer:waterplay]    | StatusUrl                              | http(s) url to determine the current operation state of the consumer                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/status'       | 
-| [HttpConsumer:waterplay]    | IsOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | '"ison":\s*true'      | 
+| [HttpConsumer:waterplay]    | OnUrl                              | http(s) url to active the consumer                            | String        | http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=on       | 
+| [HttpConsumer:waterplay]    | OffUrl                              | http(s) url to deactive the consumer                               | String        | http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/relay/0/?turn=off      | 
+| [HttpConsumer:waterplay]    | StatusUrl                              | http(s) url to determine the current operation state of the consumer                            | String        | http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/status       | 
+| [HttpConsumer:waterplay]    | IsOnKeywordRegex                              | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the result of statusUrl)                            | String        | "ison":\s*true      | 
 | [HttpConsumer:waterplay]    | PowerUrl                              | http(s) url to determine the current consumption state of the consumer. If left empty, es-ESS will assume `Consumption=Request` while the consumer is switched on.                            | String        | 'http://shellyOneWaterPlayFilter.ad.equinox-solutions.de/status'       | 
 | [HttpConsumer:waterplay]    | PowerExtractRegex     | Regex to extract the consumption. Has to have a SINGLE matchgroup.                            | String        | "apower":([^,]+),      | 
 
 If the NPC is mqtt controlled, you need to provide the Topics, instead of the URLs:
 | Section    | Value name |  Descripion | Type | Example Value|
 | ------------------ | ---------|---- | ------------- |--|
-| [MqttConsumer:poolHeater]    | OnTopic               | MqttTopic to active the consumer                                                                              | String        | Devices/shellyPro2PMPoolControl/IO/Heater/Set       | 
-| [MqttConsumer:poolHeater]    | OnValue               | MqttValue to publish on `OnTopic` to active the consumer                                                      | String        | true      | 
-| [MqttConsumer:poolHeater]    | OffTopic              | MqttTopic to deactive the consumer                                                                            | String        | Devices/shellyPro2PMPoolControl/IO/Heater/Set     | 
-| [MqttConsumer:poolHeater]    | OffValue              | MqttValue to publish on `OffTopic` to deactive the consumer                                                     | String        | false      | 
+| [MqttConsumer:poolHeater]    | OnTopic               | MqttTopic to activate the consumer                                                                              | String        | Devices/shellyPro2PMPoolControl/IO/Heater/Set       | 
+| [MqttConsumer:poolHeater]    | OnValue               | MqttValue to publish on `OnTopic` to activate the consumer                                                      | String        | true      | 
+| [MqttConsumer:poolHeater]    | OffTopic              | MqttTopic to deactivate the consumer                                                                            | String        | Devices/shellyPro2PMPoolControl/IO/Heater/Set     | 
+| [MqttConsumer:poolHeater]    | OffValue              | MqttValue to publish on `OffTopic` to deactivate the consumer                                                     | String        | false      | 
 | [MqttConsumer:poolHeater]    | StatusTopic           | MqttTopic to determine the current operation state of the consumer                                             | String        | Devices/shellyPro2PMPoolControl/IO/Heater/State       | 
 | [MqttConsumer:poolHeater]    | IsOnKeywordRegex      | If this Regex-Match is positive, the consumer is considered *On* (evaluated against the Messages on StatusTopic)                            | String / Regex        | true         | 
 | [MqttConsumer:poolHeater]    | PowerTopic            | MqttTopic to determine the current consumption state of the consumer. If left empty, es-ESS will assume `Consumption=Request` while the consumer is switched on.                            | String        | Devices/shellyPro2PMPoolControl/IO/Heater/Power       | 
@@ -466,13 +461,6 @@ Pool-Heater (via s Shally Pro2 PM) as mqtt-consumer. (Got my own mqtt/rpc infras
 
 <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/poolHeaterAsMqtt.png">
 
-
-> :warning: NOTE: es-ESS will turn off every NPC-Consumer, when the service is receiving proper shutdown signals (aka SIGTERM) - However, in case of unexpected
-> powerlosses of your GX-device, complete Hardware-failure or networking-issues that may not be the case.
-> To ensure your NPC consumers don't run for an indefinite amount of time, you should - if possible - limit the runtime to whatever should be the worst-case.
-> For instance, with shelly devices, I used the Auto-Turnoff Feature @ 1h or whatever is reasonable for the consumer in question.
-> While a NPC-Consumer should be active, es-ESS will check it's status every 15 minutes, and turn it on again, if it unexpectedly turned off.
-
 ### Configuration
 SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/config.ini`: 
 
@@ -480,12 +468,11 @@ SolarOverheadDistributer requires a few variables to be set in `/data/es-ESS/con
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [DEFAULT]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [Common]    | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [Services]    | SolarOverheadDistributor | Flag, if the service should be enabled or not | Boolean | true |
 | [SolarOverheadDistributor]  | VRMInstanceID |  VRMInstanceId to be used on dbus | Integer  | 1000 |
-| [SolarOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1000 |
+| [SolarOverheadDistributor]  | VRMInstanceID_ReservationMonitor |  VRMInstanceId to be used on dbus (for the injected Fake-BMS of the active battery reservation) | Integer  | 1001 |
 | [SolarOverheadDistributor]  | MinBatteryCharge |  Equation to determine the active battery reservation. Use SOC as keyword to adjust. <br /><br />*You can use any complex arithmetic you like, see example graphs bellow for 3 typical curves* | String  | 5000 - 40 * SOC |
-| [SolarOverheadDistributor]  | UpdateInterval |  Time in milliseconds, how often the overhead should be redistributed. CAUTION: Do not use to small values. Theres a lot in the system happening that needs to catch up. Too small values will lead to imprecise readings of various meter values and lead to wrong calculations. I recommend 60s (60000ms), more frequent distribution doesn't yield better results.  | Integer  | 60000 |
 
 In order to have the FAKE-BMS visible in VRM, you need to go to *Settings -> System Setup -> Battery Measurement* and set the ones you'd like to see to *Visible*:
 
@@ -542,6 +529,22 @@ Now, SolarOverheadDistributor will give away available Energy in the following p
 13) EV +250 due to priority 45.0010
 14) EV +250 due to priority 46.0011
 ....
+
+### Nough' said
+
+The SolarOverheadDistributor is a quite a lot of configuration and not something that is fully configured within 10 minutes. But once setup properly, the results are just flawless. 
+Here are some graphs of my (not yet published) Dashboard, which shows how well SolarOverheadDistributor is managing consumers of any shape - starting with the tiny waterplay
+of 200 Watts, ending at my 11kW EV-Charging station: 
+
+
+<div align="center">
+
+| Not so sunny day, but consumers taking any chance. |
+|:-----------:|
+| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/solarOverhead_Gaps.png" /> |
+</div>
+
+<div align="center">
 
 # ChargeCurrentReducer
 
