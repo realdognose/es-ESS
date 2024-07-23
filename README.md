@@ -27,7 +27,7 @@ system for at least 10ish years, there will be plenty of updates and/or bugfixes
 equinox-solutions, es-ESS or me are in no way affiliated, sponsored or associaated with Victron Energy. Use es-ESS at your own risk, the software is provided
 "as is" and may stop working correctly due to system upgrades without notice.
 
-### Table of Contents
+# Table of Contents
 - [Setup](#setup) - General setup process and requirements for es-ESS.
 - [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.
 - [MqttTemperatures](#mqtttemperatures) - Display various temperature sensors you have on mqtt in VRM.
