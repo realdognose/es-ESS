@@ -248,7 +248,7 @@ python -m pip install websocket-client
 - To use Solar-Overhead charging, Wattpilot needs to be set into `ECO` Mode __AND__ The PV-Starting Power has to be set to something that never happens, like 99 kW. This ensures, that Wattpilot is NOT messing with 
 control while es-ESS is managing the solar overhead charging.
 
-<img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilotcontrols.png" /> 
+<img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_controls.png" /> 
 
 Important: es-ESS will not change any settings done in Wattpilot and will use the limits that are configured in wattpilot.
 
