@@ -16,7 +16,7 @@ Services are marked according to their current development state:
 # About me
 
 I'm a software engineer since about 20 years, pretty new to python, tho. es-ESS is provided free of charge and created during my spare-time after work. 
-Feel free to create issues for questions or bugs, but bear with me that i cannot provide a 24/7 support or guarantee some sort of 8h response time. 
+Feel free to create [issues](https://github.com/realdognose/es-ESS/issues) for questions or bugs, but bear with me that i cannot provide a 24/7 support or guarantee some sort of 8h response time. 
 If you are a developer yourself and want to help to improve es-ESS, feel free to do so and create pull requests.
 
 I've switched to a Victron-System 2 months ago, and immediately digged into customizing it. Lot has been done, Lot is still todo. Since I will run this 
