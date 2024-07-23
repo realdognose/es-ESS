@@ -317,8 +317,8 @@ NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`:
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
 | [Services]    | NoBatToEV   | Flag, if the service should be enabled or not | Boolean | true |
-| [Default]     | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
-| [Default]     | DefaultPowerSetPoint |  Default Power SetPoint, so it can be restored after ev charge finished. | double | -10 |
+| [Common]     | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
+| [Common]     | DefaultPowerSetPoint |  Default Power SetPoint, so it can be restored after ev charge finished. | double | -10 |
 
 > :warning: NOTE: this feature manipulates the grid set point in order to achieve proper offloading of your evs energy demand. Several precautions ensure that the configured default grid set point
 > is restored when the service is receiving proper shutdown signals (aka SIGTERM) or any kind of internal error appears. - However, in case of unexpected
@@ -335,7 +335,8 @@ Sometimes you wish to manage multiple consumers based on solar overhead availabl
 lead to a continious up and down on available energy, causing consumers to turn on/off in a uncontrolled, frequent fashion. 
 
 To overcome this problem, the SolarOverheadDistributor has been created. Each consumer can register itself, send a request containing certain parameters - and
-SolarOverheadDistributor will determine the total available overhead of the system and calculate allowances for each individual consumer. 
+SolarOverheadDistributor will determine the total available overhead of the system and calculate allowances for each individual consumer based on preconfigured
+priorities. 
 
 A minimum battery reservation can be defined through a SOC-based equation to make sure your home-battery receives the power it needs to fully charge during the day.
 
@@ -346,7 +347,7 @@ Each consumer is represented as a FAKE-BMS in VRM, so you can see where your ene
 | Example View |
 |:-------------------------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/SolarOverheadConsumers%203.png"> |
-| <div align="left">The example shows the view in VRM and presents the following information: <br /><br />- There is a a Battery reservation active (only 250W), because it reached 100% SoC. (Idling at 26W)<br />- The SolarOverheadConsumer *Pool Filter* is requesting a total of 220W, and due to the current allowance, 205W currently beeing consumed, equaling 92.7% of it's request. <br />- The SolarOverheadConsumer  *Pool Heater* is requesting a total of 750W, and due to the current allowance, 650W currently beeing consumed, equaling 86.6% of it's request. <br />- The SolarOverheadConsumer  *Waterplay* is requesting a total of 120W, and due to the current allowance, 120W currently beeing consumed, equaling 100% of it's request. <br />- The SolarOverheadConsumer  *PV Heater* is requesting a total of 3300W, and due to the current allowance, 1067W currently beeing consumed, equaling 32.3% of it's request. <br /> - The SolarOverheadConsumer [WattPilot](#FroniusWattpilot) is requesting a total of 11388W, and due to the current allowance, 6073W currently beeing consumed, equaling 53.3% of it's request. <br /> - All Consumers are currently running in automatic mode (listening to distribution), this is indicated through the tiny sun icon: ☼ </div>|
+| <div align="left">The example shows the view in VRM and presents the following information: <br /><br />- There is a a Battery reservation active (only 250W), because it reached 100% SoC. (Idling at 26W)<br />- The consumer *Pool Filter* is requesting a total of 220W, and due to the current allowance, 205W currently beeing consumed, equaling 92.7% of it's request. <br />- The consumer  *Pool Heater* is requesting a total of 750W, and due to the current allowance, 650W currently beeing consumed, equaling 86.6% of it's request. <br />- The consumer  *Waterplay* is requesting a total of 120W, and due to the current allowance, 120W currently beeing consumed, equaling 100% of it's request. <br />- The consumer  *PV Heater* is requesting a total of 3300W, and due to the current allowance, 1067W currently beeing consumed, equaling 32.3% of it's request. <br /> - The consumer [WattPilot](#FroniusWattpilot) is requesting a total of 11388W, and due to the current allowance, 6073W currently beeing consumed, equaling 53.3% of it's request. <br /> - All Consumers are currently running in automatic mode (listening to distribution), this is indicated through the tiny sun icon: ☼ </div>|
 
 #### General functionality
 The SolarOverheadDistributor (re-)distributes power every minute. We have been running tests with more frequent updates, but it turned out that the delay in processing a request/allowance by some consumers is causing issues. 
