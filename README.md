@@ -631,6 +631,7 @@ es-ESS also publishes Operational-Messages as well as Errors, Warnings and Criti
 | Service Messages on MQTT |
 |:-----------:|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/ServiceMessages.png" /> |
+
 </div>
 
 
