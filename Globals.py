@@ -4,8 +4,11 @@ from enum import Enum
 import os
 from Helper import d,w,e,i,t
 #superglobals
-currentVersionString="es-ESS 24.6.4.25 b"
 esEssTag = "es-ESS"
+currentVersion = "24.7.23"
+currentVersionString="{0} {1} beta".format(esEssTag, currentVersion)
+
+#will be updated at startup
 userTimezone = "UTC"
 
 #RootService

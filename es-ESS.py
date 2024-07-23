@@ -23,7 +23,7 @@ else:
 import paho.mqtt.client as mqtt # type: ignore
 
 # victronr
-sys.path.insert(1, '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python')
+sys.path.insert(1, '/data/es-ESS/velib_python-master')
 from vedbus import VeDbusService # type: ignore
 from dbusmonitor import DbusMonitor # type: ignore
 from dbus.mainloop.glib import DBusGMainLoop # type: ignore
@@ -246,7 +246,6 @@ class esESS:
                         dbusSubStructure[sub.commonServiceName][sub.dbusPath] = dummy
         
             #Ignore our own services, we don't need them to be scanned. 
-            #ignoreServices is no longer available at the moment.
             ignoreServices=["com.victronenergy.battery.esESS", "com.victronenergy.settings.esESS", "com.victronenergy.temperature.esESS"]
         
             #Initialize dbus on a seperate thred, so our services currently initializing can
