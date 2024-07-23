@@ -47,7 +47,42 @@ Your system needs to match the following requirements in order to use es-ESS:
 - Have a mqtt server (or the use builtin one, to minimize system load an external mqtt is recommended)
 - Have shell access enabled and know how to use it. (See: https://www.victronenergy.com/live/ccgx:root_access)
 
-TODO: Setup Discription, Install Script.
+Run the following lines of code on your gx device: 
+
+```
+wget https://github.com/realdognose/es-ESS/archive/refs/heads/main.zip
+unzip main.zip "es-ESS-main/*" -d /data
+mv /data/es-ESS-main /data/es-ESS
+chmod a+x /data/es-ESS/install.sh
+/data/es-ESS/install.sh
+rm main.zip
+```
+
+`es-ESS` will automatically start - with the default configuration with all services DISABLED. You can now start to modify the file `/data/es-ESS/config.ini` as required. 
+I recommend to complete configuration of a single service, then restart and validate functionality. If you rush through the (quite huge) configuration in a single go, and it
+is not working at end, it may become hard to find the error.
+
+Handy commands to use during configuration and in generall: 
+
+Restart es-ESS (gracefully):
+```
+/data/es-ESS/restart.sh
+```
+
+Restart es-ESS (if it won't listen!)
+```
+/data/es-ESS/kill_me.sh
+```
+
+Uninstall es-ESS (to whom it may concern)
+```
+/data/es-ESS/uninstall.sh
+```
+
+Tail current log file: 
+```
+tail -f -n 20 /data/log/es-ESS/current.log
+```
 
 #### Global Configuration
 Configuration of es-ESS is performed through the file `/data/es-ESS/config.ini`. Not all of the Global / Common Values are required, it depends on the combination 

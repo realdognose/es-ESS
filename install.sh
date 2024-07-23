@@ -4,6 +4,9 @@
 chmod a+x /data/es-ESS/restart.sh
 chmod 744 /data/es-ESS/restart.sh
 
+chmod a+x /data/es-ESS/kill_me.sh
+chmod 744 /data/es-ESS/kill_me.sh
+
 chmod a+x /data/es-ESS/uninstall.sh
 chmod 744 /data/es-ESS/uninstall.sh
 
