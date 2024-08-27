@@ -106,6 +106,7 @@ class SolarOverheadDistributor(esESSService):
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/StepSize', callback=self.onMqttMessage)
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/PriorityShift', callback=self.onMqttMessage)
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Request', callback=self.onMqttMessage)
+      self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/Minimum', callback=self.onMqttMessage)
       
       #Scripted Consumer specific
       self.registerMqttSubscription('es-ESS/SolarOverheadDistributor/Requests/+/IsScriptedConsumer', callback=self.onMqttMessage)
@@ -458,7 +459,7 @@ class SolarOverheadDistributor(esESSService):
                            canConsumeReason = "Minimum greater than Overhead."
 
                      if (canConsume > 0):
-                        d("SolarOverheadDistributor", "Assigning " + str(canConsume) + "W to " + consumerKey + " (" + str(consumer.effectivePriority) + ") because: " + canConsumeReason) 
+                        d("SolarOverheadDistributor", "Assigning " + str(canConsume) + "W to " + consumerKey + " (Pr: " + str(consumer.effectivePriority) + ", Min: " + str(consumer.minimum) +") because: " + canConsumeReason) 
                         overheadDistribution[consumerKey] += canConsume
                         if (self._knownSolarOverheadConsumers[consumerKey].priorityShift > 0):
                            self._knownSolarOverheadConsumers[consumerKey].effectivePriority += self._knownSolarOverheadConsumers[consumerKey].priorityShift + 0.0001

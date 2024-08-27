@@ -358,6 +358,10 @@ your ev charge, consumption and available solar - and offloads any overhead-ev-c
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/nobattoev.png"> |
 | With 0 Solar available, basically the whole ev-charge is offloaded to the grid, while the battery only powers the remaining loads.|
 
+| Example 2 |
+|:-------------------------:|
+|<img src="https://github.com/realdognose/es-ESS/blob/main/img/nobattoev2.png"> |
+| With Solar available, critical loads and EV Charger is covered as good as possible - and the remaining difference is offloaded to the grid.|
 ### Configuration
 NoBatToEV requires your gx-local mqtt-server to be enabled, either as plain or ssl.
 NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`: 
