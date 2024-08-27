@@ -362,6 +362,10 @@ your ev charge, consumption and available solar - and offloads any overhead-ev-c
 |:-------------------------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/nobattoev2.png"> |
 | With Solar available, critical loads and EV Charger is covered as good as possible - and the remaining difference is offloaded to the grid.|
+
+Adjusting the Grid-Setpoints of the multiplus is not resulting in a 10W-Precission. Especially with Solar beeing available, the battery will 
+naturally switch between charge / discharge as solar changes, until the multiplus have catched up with their new grid set point. 
+
 ### Configuration
 NoBatToEV requires your gx-local mqtt-server to be enabled, either as plain or ssl.
 NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`: 
