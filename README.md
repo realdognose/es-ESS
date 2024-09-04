@@ -34,6 +34,8 @@ equinox-solutions, es-ESS or me are in no way affiliated, sponsored or associate
 - [MqttExporter](#mqttexporter) - Export selected values form dbus to your MQTT-Server.
 - [FroniusWattpilot](#FroniusWattpilot) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
 - [NoBatToEV](#nobattoev) - Avoid discharge of your home-battery when charging your ev with an `ac-out` connected wallbox.
+- [Shelly3EMGrid](#shelly3emgrid) - Use a shelly 3 EM as grid meter.
+- [ShellyPMInverter](#shellypminverter) - Use a shelly PM (second generation) as meter for any inverter. (Single phased, phase configurable)
 - [SolarOverheadDistributor](#solaroverheaddistributor) - Utility to manage and distribute available solar overhead between various consumers.
   - [Scripted-SolarOverheadConsumer](#scripted-solaroverheadconsumer) - Consumers managed by external scripts can to be more complex and join the solar overhead pool.
   - [NPC-SolarOverheadConsumer](#npc-solaroverheadconsumer) - Manage consumers on a simple on/off level, based on available overhead. No programming required.
@@ -382,6 +384,12 @@ NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`:
 > powerlosses of your GX-device, complete Hardware-failure, networking-issues or usage of the `reboot` command on the cerbo that may not be the case.
 > I have never expierienced issues with that, hence I can't tell what the multiplus will do, if the cerbo `dies`, while the grid set point is -5000 Watt or something.
 > I assume, Worstcase, your multiplus will keep charging your houses battery until there is no more consumer for such a (stuck) grid request.
+
+# Shelly 3EM Grid
+TODO
+
+# ShellyPMInverter
+TODO
 
 # SolarOverheadDistributor
 
