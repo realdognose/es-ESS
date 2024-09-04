@@ -385,7 +385,7 @@ NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`:
 > I have never expierienced issues with that, hence I can't tell what the multiplus will do, if the cerbo `dies`, while the grid set point is -5000 Watt or something.
 > I assume, Worstcase, your multiplus will keep charging your houses battery until there is no more consumer for such a (stuck) grid request.
 
-# Shelly 3EM Grid
+# Shelly3EMGrid
 TODO
 
 # ShellyPMInverter
