@@ -115,6 +115,8 @@ or disable certain services.
 | [Services]               | MqttExporter              | Flag, if [MqttExporter](#mqttexporter) is enabled.                                                | Boolean       | true                         |
 | [Services]               | MqttTemperature           | Flag, if [MqttTemperatures](#mqtttemperatures) is enabled.                                        | Boolean       | true                         |
 | [Services]               | NoBatToEV                 | Flag, if [NoBatToEV](#nobattoev) is enabled.                                                      | Boolean       | true                         |
+| [Services]               | Shelly3EMGrid                 | Flag, if [Shelly3EMGrid](#shelly3emgrid) is enabled.                                                      | Boolean       | true                         |
+| [Services]               | ShellyPMInverter                 | Flag, if [ShellyPMInverter](#shellypminverter) is enabled.                                                      | Boolean       | true                         |
 
 > :warning: NOTE: I recommend to enable one service after each other and finalize configuration, before enabling another one. Else configuration may become a bit clumsy and error-prone.
 
@@ -386,10 +388,51 @@ NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`:
 > I assume, Worstcase, your multiplus will keep charging your houses battery until there is no more consumer for such a (stuck) grid request.
 
 # Shelly3EMGrid
-TODO
+Utilize a Shelly 3 EM as Grid Meter. 
+
+### Configuration
+
+Shelly3EMGrid requires a few variables to be set in `/data/es-ESS/config.ini`: 
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [Services]    | Shelly3EMGrid   | Flag, if the service should be enabled or not | Boolean | true |
+| [Shelly3EMGrid]     | VRMInstanceID |  InstanceID the Meter should get in VRM | Integer | Shelly 3EM (Grid) |
+| [Shelly3EMGrid]     | CustomName |  Display Name of the device in VRM | String | -10 |
+| [Shelly3EMGrid]     | PollFrequencyMs |  Intervall in ms to query the Shellies JSON-API | int | 1000 |
+| [Shelly3EMGrid]     | Username |  Username of the Shelly | String | -User |
+| [Shelly3EMGrid]     | Password |  Password of the Shelly | String | JG372FDr |
+| [Shelly3EMGrid]     | Host |  IP / Hostname of the Shelly | String | 192.168.136.87 |
+
+When adjusting the `PollFrequencyMs`, you should check the log file regulary. The Device is polled with exactly `PollFrequencyMs`
+Timeout, so requests do not pile up. Whenever there are 3 consecutive timeouts, the dbus service will be feed with `null` values, and 
+the device is marked offline, so the overall system notes that it now has to work without grid-meter values.
 
 # ShellyPMInverter
-TODO
+Utilize a Shelly PM (any Kind, Generation 3) as a meter to detect PV-Inverter Production. 
+Phase on which the inverter is feeding in can be adjusted, mostly usefull for single phased micro inverters without any other
+communication possibility. 
+
+ShellyPMInverter requires a few variables to be set in `/data/es-ESS/config.ini`: 
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [Services]    | Shelly3EMGrid   | Flag, if the service should be enabled or not | Boolean | true |
+| [ShellyPMInverter]     | VRMInstanceID |  InstanceID the Meter should get in VRM | Integer | Shelly 3EM (Grid) |
+| [ShellyPMInverter]     | CustomName |  Display Name of the device in VRM | String | -10 |
+| [ShellyPMInverter]     | PollFrequencyMs |  Intervall in ms to query the Shellies JSON-API | int | 1000 |
+| [ShellyPMInverter]     | Username |  Username of the Shelly | String | -User |
+| [ShellyPMInverter]     | Password |  Password of the Shelly | String | JG372FDr |
+| [ShellyPMInverter]     | Host |  IP / Hostname of the Shelly | String | 192.168.136.87 |
+| [ShellyPMInverter]     | Phase |  Phase the Shelly / Inverter is connected to. (1-3) | Integer | 2 |
+| [ShellyPMInverter]     | Position |  Position, the Shelly / Inverter is connected to your multiplus. 0 = ACIN; 1=ACOUT | Integer | 1 |
+
+When adjusting the `PollFrequencyMs`, you should check the log file regulary. The Device is polled with exactly `PollFrequencyMs`
+Timeout, so requests do not pile up. Whenever there are 3 consecutive timeouts, the dbus service will be feed with `null` values, and 
+the device is marked offline, so the overall system notes that the inverter is currently considered not producing.
+
+### Configuration
+
 
 # SolarOverheadDistributor
 
