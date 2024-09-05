@@ -388,6 +388,8 @@ NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`:
 > I assume, Worstcase, your multiplus will keep charging your houses battery until there is no more consumer for such a (stuck) grid request.
 
 # Shelly3EMGrid
+> :white_check_mark: Production Ready. 
+
 Utilize a Shelly 3 EM as Grid Meter. 
 
 ### Configuration
@@ -409,6 +411,8 @@ Timeout, so requests do not pile up. Whenever there are 3 consecutive timeouts, 
 the device is marked offline, so the overall system notes that it now has to work without grid-meter values.
 
 # ShellyPMInverter
+> :white_check_mark: Production Ready. 
+
 Utilize a Shelly PM (any Kind, Generation 3) as a meter to detect PV-Inverter Production. 
 Phase on which the inverter is feeding in can be adjusted, mostly usefull for single phased micro inverters without any other
 communication possibility. 
