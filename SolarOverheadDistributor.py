@@ -89,9 +89,9 @@ class SolarOverheadDistributor(esESSService):
       self.dbusService.add_path('/Calculations/OverheadRemaining', 0)
     
    def initDbusSubscriptions(self):
-      self.gridL1Dbus      = self.registerDbusSubscription("com.victronenergy.grid", "/Ac/L1/Power")
-      self.gridL2Dbus      = self.registerDbusSubscription("com.victronenergy.grid", "/Ac/L2/Power")
-      self.gridL3Dbus      = self.registerDbusSubscription("com.victronenergy.grid", "/Ac/L3/Power")
+      self.gridL1Dbus      = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Grid/L1/Power")
+      self.gridL2Dbus      = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Grid/L2/Power")
+      self.gridL3Dbus      = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Grid/L3/Power")
       self.batteryPower    = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Power")
       self.batterySoc      = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Soc")
      
