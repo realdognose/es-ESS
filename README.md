@@ -442,6 +442,8 @@ the device is marked offline, so the overall system notes that the inverter is c
 
 > :large_orange_diamond: Release-Candiate-Version
 
+> :warning: This Feature requires a grid-connection and feedin to be enabled. (The amount beeing feed in is used to detect available overhead, when soc reached 100%)
+
 #### Overview
 Sometimes you wish to manage multiple consumers based on solar overhead available. If every consumer is deciding on it's own, it can 
 lead to a continious up and down on available energy, causing consumers to turn on/off in a uncontrolled, frequent fashion. 
