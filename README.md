@@ -399,16 +399,37 @@ Shelly3EMGrid requires a few variables to be set in `/data/es-ESS/config.ini`:
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
 | [Services]    | Shelly3EMGrid   | Flag, if the service should be enabled or not | Boolean | true |
-| [Shelly3EMGrid]     | VRMInstanceID |  InstanceID the Meter should get in VRM | Integer | Shelly 3EM (Grid) |
-| [Shelly3EMGrid]     | CustomName |  Display Name of the device in VRM | String | -10 |
+| [Shelly3EMGrid]     | VRMInstanceID |  InstanceID the Meter should get in VRM | Integer | 47 |
+| [Shelly3EMGrid]     | CustomName |  Display Name of the device in VRM | String | Shelly 3EM (Grid) |
 | [Shelly3EMGrid]     | PollFrequencyMs |  Intervall in ms to query the Shellies JSON-API | int | 1000 |
-| [Shelly3EMGrid]     | Username |  Username of the Shelly | String | -User |
+| [Shelly3EMGrid]     | Username |  Username of the Shelly | String | User |
 | [Shelly3EMGrid]     | Password |  Password of the Shelly | String | JG372FDr |
 | [Shelly3EMGrid]     | Host |  IP / Hostname of the Shelly | String | 192.168.136.87 |
+| [Shelly3EMGrid]     | Measuring | Type of Measurement. See Info bellow. `Default` or `Net` | String | Default
 
 When adjusting the `PollFrequencyMs`, you should check the log file regulary. The Device is polled with exactly `PollFrequencyMs`
 Timeout, so requests do not pile up. Whenever there are 3 consecutive timeouts, the dbus service will be feed with `null` values, and 
 the device is marked offline, so the overall system notes that it now has to work without grid-meter values.
+
+### Measuring
+By Default, the Shelly 3EM uses Gross-Metering. Feed-In and Consumption are counted for each phase individually. 
+
+In some countries however (f.e.: Germany, Switzerland, Austria, ... ) Net-Metering is used by the providers. 
+Values of each phase are saldated immediately, and then it will be either counted as Feed-In or Grid-Pull.
+
+The Shelly does not support this kind of measurement, so the script can take over this. It therefore needs to 
+manually keep track of the energy-meters for feed-in or consumption. These values are persisted on the cerbo
+every 5 minutes, so in case of a unexpected shutdown, they are not lost. 
+
+However, since this requires to count the momentary current and derive a hourly consumption from that values, it 
+may be less precise than any other meter. Also flows that happen while the shelly or es-ESS is offline cannot be 
+recovered, leading to temporary "gaps" on the consumption/feed-in records.
+
+### Example config
+
+<img src="https://github.com/realdognose/es-ESS/blob/main/img/pmInverterExample.png">
+
+<img src="https://github.com/realdognose/es-ESS/blob/main/img/pmInverterExample2.png">
 
 # ShellyPMInverter
 > :white_check_mark: Production Ready. 
