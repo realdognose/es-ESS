@@ -430,10 +430,10 @@ each config Section needs to match the pattern `[ShellyPMInverter:aUniqueKey]` a
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [ShellyPMInverter:aUniqueKey]     | VRMInstanceID |  InstanceID the Meter should get in VRM | Integer | Shelly 3EM (Grid) |
-| [ShellyPMInverter:aUniqueKey]     | CustomName |  Display Name of the device in VRM | String | -10 |
+| [ShellyPMInverter:aUniqueKey]     | VRMInstanceID |  InstanceID the Meter should get in VRM | Integer | 1008 |
+| [ShellyPMInverter:aUniqueKey]     | CustomName |  Display Name of the device in VRM | String | HMS-Garage |
 | [ShellyPMInverter:aUniqueKey]     | PollFrequencyMs |  Intervall in ms to query the Shellies JSON-API | int | 1000 |
-| [ShellyPMInverter:aUniqueKey]     | Username |  Username of the Shelly | String | -User |
+| [ShellyPMInverter:aUniqueKey]     | Username |  Username of the Shelly | String | User |
 | [ShellyPMInverter:aUniqueKey]     | Password |  Password of the Shelly | String | JG372FDr |
 | [ShellyPMInverter:aUniqueKey]     | Host |  IP / Hostname of the Shelly | String | 192.168.136.87 |
 | [ShellyPMInverter:aUniqueKey]     | Phase |  Phase the Shelly / Inverter is connected to. (1-3) | Integer | 2 |
