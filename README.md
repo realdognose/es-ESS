@@ -418,18 +418,18 @@ In some countries however (f.e.: Germany, Switzerland, Austria, ... ) Net-Meteri
 Values of each phase are saldated immediately, and then it will be either counted as Feed-In or Grid-Pull.
 
 The Shelly does not support this kind of measurement, so the script can take over this. It therefore needs to 
-manually keep track of the energy-meters for feed-in or consumption. These values are persisted on the cerbo
+manually keep track of the momentary values for each phase and manually count. These values are persisted on the cerbo
 every 5 minutes, so in case of a unexpected shutdown, they are not lost. 
 
-However, since this requires to count the momentary current and derive a hourly consumption from that values, it 
+However, since this requires to count the momentary values and derive a hourly consumption from that values, it 
 may be less precise than any other meter. Also flows that happen while the shelly or es-ESS is offline cannot be 
 recovered, leading to temporary "gaps" on the consumption/feed-in records.
 
 ### Example config
 
-<img src="https://github.com/realdognose/es-ESS/blob/main/img/pmInverterExample.png">
+<img src="https://github.com/realdognose/es-ESS/blob/main/img/shelly3emexample.png">
 
-<img src="https://github.com/realdognose/es-ESS/blob/main/img/pmInverterExample2.png">
+<img src="https://github.com/realdognose/es-ESS/blob/main/img/shelly3emexample2.png">
 
 # ShellyPMInverter
 > :white_check_mark: Production Ready. 
