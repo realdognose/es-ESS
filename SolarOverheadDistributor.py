@@ -27,16 +27,16 @@ class SolarOverheadDistributor(esESSService):
       self.vrmInstanceID = int(self.config['SolarOverheadDistributor']['VRMInstanceID'])
       self.vrmInstanceIDBMS = int(self.config['SolarOverheadDistributor']['VRMInstanceID_ReservationMonitor'])
       self.serviceType = "com.victronenergy.settings"
-      self.serviceName = self.serviceType + ".esESS.SolarOverheadDistributor_" + str(self.vrmInstanceID)
+      self.serviceName = self.serviceType + "." + Globals.esEssTagService + "_SolarOverheadDistributor"
       self.bmsServiceType = "com.victronenergy.battery"
-      self.bmsServiceName = self.bmsServiceType + ".esESS.SolarOverheadBatteryReservation_" + str(self.vrmInstanceIDBMS)
+      self.bmsServiceName = self.bmsServiceType + "." + Globals.esEssTagService + "_SolarOverheadBatteryReservation"
       self.lastUpdate = 0
       self._knownSolarOverheadConsumers: dict[str, SolarOverheadConsumer] = { }
       self._knownSolarOverheadConsumersLock = threading.Lock()
 
    def initDbusService(self):
-      self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
-      self.dbusBmsService = VeDbusService(self.bmsServiceName, bus=dbusConnection())
+      self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection(), register=False)
+      self.dbusBmsService = VeDbusService(self.bmsServiceName, bus=dbusConnection(), register=False)
 
       d(self, "Registering as {0} on dbus.".format(self.serviceName))
       d(self, "Registering as {0} on dbus.".format(self.bmsServiceName))
@@ -52,8 +52,8 @@ class SolarOverheadDistributor(esESSService):
       # Create mandatory paths
       self.dbusService.add_path('/DeviceInstance', self.vrmInstanceID)
       self.dbusService.add_path('/ProductId', 65535)
-      self.dbusService.add_path('/ProductName', "esESS SolarOverheadDistributorService") 
-      self.dbusService.add_path('/CustomName', "esESS SolarOverheadDistributorService") 
+      self.dbusService.add_path('/ProductName', "es-ESS SolarOverheadDistributorService") 
+      self.dbusService.add_path('/CustomName', "es-ESS SolarOverheadDistributorService") 
       self.dbusService.add_path('/Latency', None)    
       self.dbusService.add_path('/FirmwareVersion', Globals.currentVersionString)
       self.dbusService.add_path('/HardwareVersion', Globals.currentVersionString)
@@ -63,7 +63,7 @@ class SolarOverheadDistributor(esESSService):
       self.dbusService.add_path('/LastUpdateDateTime', 0)
       self.dbusBmsService.add_path('/DeviceInstance', self.vrmInstanceIDBMS)
       self.dbusBmsService.add_path('/ProductId', 65535)
-      self.dbusBmsService.add_path('/ProductName', "esESS SolarOverheadDistributorBMS") 
+      self.dbusBmsService.add_path('/ProductName', "es-ESS SolarOverheadDistributorBMS") 
       self.dbusBmsService.add_path('/CustomName', "Battery Charge Reservation") 
       self.dbusBmsService.add_path('/Latency', None)    
       self.dbusBmsService.add_path('/FirmwareVersion', Globals.currentVersionString)
@@ -87,6 +87,9 @@ class SolarOverheadDistributor(esESSService):
       self.dbusService.add_path('/Calculations/OverheadAvailable', 0)
       self.dbusService.add_path('/Calculations/OverheadAssigned', 0)
       self.dbusService.add_path('/Calculations/OverheadRemaining', 0)
+
+      self.dbusService.register()
+      self.dbusBmsService.register()
     
    def initDbusSubscriptions(self):
       self.gridL1Dbus      = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Grid/L1/Power")
@@ -139,7 +142,7 @@ class SolarOverheadDistributor(esESSService):
       self.registerWorkerThread(self.dumpReservationBms, 2000)
       self.registerWorkerThread(self._validateNpcConsumerStates, 15 * 60 * 1000)
       self.registerWorkerThread(self._persistEnergyStats, 5 * 60 * 1000)
-      self.registerWorkerThread(self._moveEnergyData, (86400 - time.time() % 86400) * 1000)
+      self.registerSingleThread(self._moveEnergyData, (86400 - time.time() % 86400) * 1000)
 
    def initFinalize(self):
       #Service is operable already. Need to parse Http/Mqtt consumer and throw them over to mqtt-based processing. 
@@ -211,9 +214,8 @@ class SolarOverheadDistributor(esESSService):
          c(self, "Exception while receiving message '{0}' on topic '{1}'".format(message, msg.topic), exc_info=ex)
 
    def _moveEnergyData(self):
-       #TODO: This is not yet working as expected.
        i(self, "Moving energy stats to yesterday.")
-       self.registerWorkerThread(self._moveEnergyData, 86400)
+       self.registerSingleThread(self._moveEnergyData, 86400000) #1 day
 
        with self._knownSolarOverheadConsumersLock:
          for consumerKey in self._knownSolarOverheadConsumers:
@@ -305,7 +307,10 @@ class SolarOverheadDistributor(esESSService):
          l1Power = self.gridL1Dbus.value
          l2Power = self.gridL2Dbus.value
          l3Power = self.gridL3Dbus.value
-         feedIn = min(l1Power + l2Power + l3Power, 0) * -1
+         #Special Case: When the battery charge is positive as well as Grid, the system 
+         #May be charging the battery. So, battery consumption cannot be used as indicator for available overhead. 
+         #Hence, Feedin can be negative as well, representig grid-pull which is to be deducted from available overhead. 
+         feedIn = (l1Power + l2Power + l3Power) * -1
          batPower = self.batteryPower.value
          batSoc = self.batterySoc.value
          assignedConsumption = 0
@@ -696,8 +701,8 @@ class SolarOverheadConsumer:
 
   def initialize(self, sod:SolarOverheadDistributor):
      self.serviceType = "com.victronenergy.battery"
-     self.serviceName = self.serviceType + ".esESS.SolarOverheadConsumer_" + str(self.vrmInstanceID)
-     self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
+     self.serviceName = self.serviceType + "." + Globals.esEssTagService + "_SolarOverheadConsumer_" + str(self.consumerKey)
+     self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection(), register=False)
      
      #Mgmt-Infos
      self.dbusService.add_path('/DeviceInstance', int(self.vrmInstanceID))
@@ -719,6 +724,8 @@ class SolarOverheadConsumer:
      self.dbusService.add_path('/Dc/0/Power', 0)
      self.dbusService.add_path('/Dc/0/Current', 0)
      self.dbusService.add_path('/Soc', 0)
+
+     self.dbusService.register()
      
      i(self,"Initialization of consumer {0} completed.".format(self.consumerKey))
      

@@ -32,8 +32,8 @@ class Shelly3EMGrid(esESSService):
 
     def initDbusService(self):
         self.serviceType = "com.victronenergy.grid"
-        self.serviceName = self.serviceType + ".esESS.Shelly3EMGrid_" + str(self.vrmInstanceID)
-        self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
+        self.serviceName = self.serviceType + "." + Globals.esEssTagService + "_Shelly3EMGrid"
+        self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection(), register=False)
         self.publishServiceMessage(self, "Initializing dbus-service")
         
         #Mgmt-Infos
@@ -74,6 +74,8 @@ class Shelly3EMGrid(esESSService):
         self.dbusService.add_path('/Ac/L3/Energy/Reverse', None)
         self.dbusService.add_path('/Ac/Energy/Forward', None)
         self.dbusService.add_path('/Ac/Energy/Reverse', None)
+
+        self.dbusService.register()
 
     def initDbusSubscriptions(self):
         pass

@@ -23,11 +23,14 @@ class MqttExporter(esESSService):
         #upon change, export according to the setup rules. 
         try:
             d(self, "Scanning config for export requests")
-            for (k, v) in self.config.items("MqttExporter"):
-                if (k.startswith("Export_")):
-                    parts = v.split(',')
-                    key = parts[0].strip() + parts[1].strip()
-                    self.topicExports[key] = TopicExport(parts[0].strip(), parts[1].strip(), parts[2].strip())
+
+            for k in self.config.sections():
+                if (k.startswith("MqttExporter:")):
+                    service = self.config[k]["Service"]
+                    dbuskey = self.config[k]["DbusKey"]
+                    mqttTopic = self.config[k]["MqttTopic"] 
+                    key = service + dbuskey
+                    self.topicExports[key] = TopicExport(service, dbuskey, mqttTopic)
 
             i(self, "Found {0} export requests.".format(len(self.topicExports)))
             

@@ -1,11 +1,12 @@
 import configparser
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 import os
 from Helper import d,w,e,i,t
 #superglobals
 esEssTag = "es-ESS"
-currentVersion = "24.7.23"
+esEssTagService = "esESS"
+currentVersion = "24.9.13"
 currentVersionString="{0} {1} beta".format(esEssTag, currentVersion)
 
 #will be updated at startup

@@ -27,7 +27,7 @@ class FroniusWattpilot (esESSService):
         esESSService.__init__(self)
         self.vrmInstanceID = self.config['FroniusWattpilot']['VRMInstanceID']
         self.serviceType = "com.victronenergy.evcharger"
-        self.serviceName = self.serviceType + ".es-ESS.FroniusWattpilot_" + self.vrmInstanceID
+        self.serviceName = self.serviceType + "." + Globals.esEssTagService + "_FroniusWattpilot"
         self.minimumOnOffSeconds = int(self.config["FroniusWattpilot"]["MinOnOffSeconds"])
         self.minimumPhaseSwitchSeconds = int(self.config["FroniusWattpilot"]["MinPhaseSwitchSeconds"])
         self.wattpilot = None
@@ -45,7 +45,7 @@ class FroniusWattpilot (esESSService):
         self.mqttAllowanceTopic = 'es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Allowance'
 
     def initDbusService(self):
-        self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
+        self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection(), register=False)
 
         #dump root information about our service and register paths.
         self.dbusService.add_path('/Mgmt/ProcessName', __file__)
@@ -96,6 +96,8 @@ class FroniusWattpilot (esESSService):
         self.dbusService.add_path('/ModeLiteral', VrmEvChargerControlMode(0).name)
         self.dbusService.add_path('/StatusLiteral', VrmEvChargerStatus(0).name)
         self.dbusService.add_path('/StartStopLiteral', VrmEvChargerStartStop(0).name)
+
+        self.dbusService.register()
 
     def initDbusSubscriptions(self):
         pass
@@ -306,6 +308,9 @@ class FroniusWattpilot (esESSService):
                     #EV Disconnected. Nothing to do here, but report data and a 0 watt request and none-automatic mode. 
                     self.reportVRMStatus(VrmEvChargerStatus.Disconnected) #disconnected
 
+                    #when disconnected, reset the noChargeSinceFlag, so charging will start upon next connection.
+                    self.noChargeSince = 0
+
                 elif (self.wattpilot.modelStatus == WattpilotModelStatus.ChargingBecauseForceStateOn):
                     #Wattpilot is charging, because forced on. So, we are either in manual control + on, or running in automatic mode. 
                     #in manual mode - nothing to do, but report consumption. In Auto Mode, we have to take control.
@@ -371,12 +376,11 @@ class FroniusWattpilot (esESSService):
                         #auto
                         #check allowance.
                         if (self.allowance >= self.wattpilot.voltage1 * 6):
-                            self.publishServiceMessage(self, "Starting to charge.")
                             onOffCooldownSeconds = self.getOnOffCooldownSeconds()
                             self.reportVRMStatus(VrmEvChargerStatus.StartCharging) #start charging
 
                             if (onOffCooldownSeconds <= 0):
-                                i(self, "START send!")
+                                self.publishServiceMessage(self, "Starting to charge.")
 
                                 #check, if we need to start in 1 or 3 phase mode, based on targetAmps. 
                                 targetAmps = int(round(max(self.allowance / self.wattpilot.voltage1, 6)))

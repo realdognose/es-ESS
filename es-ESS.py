@@ -40,8 +40,9 @@ DBusGMainLoop(set_as_default=True)
 
 class esESS:
     def __init__(self):
-        self.config = configparser.ConfigParser()
-        self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
+        #First thing to do is check, if the current configuration matches the desired version.
+        #if not, upgrade to most recent version, save changes and reload configuration file. 
+        self._validateConfiguration()
         
         self._sigTermInvoked=False   
         self.mainMqttClientConnected = False
@@ -58,6 +59,7 @@ class esESS:
         self._dbusMonitor: DbusMonitor = None
         self._gridSetPointRequests: Dict[str, float] = {}
         self._gridSetPointDefault = float(self.config["Common"]["DefaultPowerSetPoint"])
+        self._gridSetPointCurrent = -99999 #use a unreal number at first, so es-ESS will detect a change upon restart and guarantee to set default GSP.
         self._threadExecutionsMinute = 0
         
         i(self, "Initializing thread pool with a size of {0}".format(self.config["Common"]["NumberOfThreads"]))
@@ -120,6 +122,9 @@ class esESS:
             i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp-ssl", "localhost", 8883))
             self.localMqttClient.tls_set(cert_reqs=ssl.CERT_NONE)
             self.localMqttClient.tls_insecure_set(True)
+            #TODO: After a system reboot, es-ESS is starting faster than the local mqtt, which might lead to connection issues. 
+            #      Either loop in a try/error, or sth.
+            #      Similiar issues might occur for the dbus service, if devices are not yet registered?
             self.localMqttClient.connect(
                 host="localhost",
                 port=8883
@@ -190,6 +195,57 @@ class esESS:
        else:
           i(self, "Service {0} is not enabled. Skipping initialization.".format(clazz))   
 
+    def _validateConfiguration(self):
+        self.config = configparser.ConfigParser()
+        self.config.optionxform = str
+        #TODO: Validate config exists, else use sample?
+        self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
+        loadedVersion = int(self.config["Common"]["ConfigVersion"])
+
+        #Version upgrades to be berformed. A User may skip versions during the upgrade process, so 
+        #make sure each change is applied incrementally. 
+        version = 2
+        if (loadedVersion < version):
+            self._backupConfig()
+            i(self, "Upgrading configuration to v{0}".format(version))
+            self.config["Common"]["ConfigVersion"] = "{0}".format(version)
+
+            #Version 2 introduced Shelly3EMGrid and ShellyPMInverter
+            self.config["Services"]["Shelly3EMGrid"] = "false"
+            self.config["Services"]["ShellyPMInverter"] = "false"
+            
+        version = 3
+        if (loadedVersion < version):
+            self._backupConfig()
+            i(self, "Upgrading configuration to v{0}".format(version))
+            self.config["Common"]["ConfigVersion"] = "{0}".format(version)
+
+            #Strategy of SolarOverheadDistributor is obsolete.
+            self.config.remove_option("SolarOverheadDistributor", "Strategy")
+
+        version = 4
+        if (loadedVersion < version):
+            self._backupConfig()
+            i(self, "Upgrading configuration to v{0}".format(version))
+            self.config["Common"]["ConfigVersion"] = "{0}".format(version)
+
+            #Introducing MqttDC
+            #Create Service Control Flag, individual Entries are to be created by user.
+            self.config["Services"]["MqttDC"] = "false"
+
+        #All required configuration changes applied. Save new file, create a backup of the existing configuration. 
+        if (loadedVersion < int(self.config["Common"]["ConfigVersion"])):
+            with open("{0}/config.ini".format(os.path.dirname(os.path.realpath(__file__))), 'w') as configfile:
+                self.config.write(configfile)
+            
+        else:
+            i(self, "Running on most recent configuration file version: v{0}".format(loadedVersion))
+
+    def _backupConfig(self):
+        i(self, "Creating configuration v{0} backup file.".format(self.config["Common"]["ConfigVersion"]))
+        with open("{0}/config.ini.v{1}.backup".format(os.path.dirname(os.path.realpath(__file__)), self.config["Common"]["ConfigVersion"]), 'w') as configfile:
+            self.config.write(configfile)
+
     def initialize(self):
        self.configureMqtt()
 
@@ -216,14 +272,20 @@ class esESS:
 
             self._checkAndEnable("SolarOverheadDistributor")
             self._checkAndEnable("TimeToGoCalculator")
+            self._checkAndEnable("FroniusSmartmeterJSON")
             self._checkAndEnable("MqttExporter")
             self._checkAndEnable("FroniusWattpilot")
-            self._checkAndEnable("ChargeCurrentReducer")
             self._checkAndEnable("MqttTemperature")
             self._checkAndEnable("NoBatToEV")
             self._checkAndEnable("Shelly3EMGrid")
             self._checkAndEnable("ShellyPMInverter")
-        
+            
+            #work in progress, but onhold.
+            #self._checkAndEnable("Grid2Bat")
+            #self._checkAndEnable("MqttDC")
+            #self._checkAndEnable("ChargeCurrentReducer")
+            #self._checkAndEnable("FroniusSmartmeterRS485")
+
             #Init DbusSubscriptions
             dbusSubStructure = {}
             dummy = {'code': None, 'whenToLog': 'configChange', 'accessLevel': None}
@@ -296,7 +358,7 @@ class esESS:
                 service.initWorkerThreads()             
 
             #own worker threads.
-            self.registerWorkerThread(WorkerThread(self, self._manageGridSetPoint, 5000))
+            self.registerWorkerThread(WorkerThread(self, self._manageGridSetPoint, 5000, False))
       
             #Last round for every service to do some stuff :0)
             for (name, service) in self._services.items():
@@ -346,6 +408,9 @@ class esESS:
         else:
             w(self, "Thread {0} from {1} is scheduled to run every {2}ms - Future not done, skipping call attempt.".format(workerThread.service.__class__.__name__, workerThread.thread.__name__, workerThread.interval))
        
+        if (workerThread.onlyOnce):
+            return False
+    
         return True
     
     def _signOfLive(self):
@@ -365,10 +430,17 @@ class esESS:
                     d(self, "Grid Set Point request of {0} is {1}".format(k,v))
                     gsp += v
             
-            d(self, "Combined all GSP-Requests, new GSP is: {0}".format(gsp))
-            self.publishLocalMqtt("W/{0}/settings/0/Settings/CGwacs/AcPowerSetPoint".format(self.config["Common"]["VRMPortalID"]), "{\"value\": " + str(gsp) + "}", 1 ,False)
+            #only publish, if there is a change in current GSP.
+            if (gsp != self._gridSetPointCurrent):
+                d(self, "Combined all GSP-Requests, new GSP is: {0}".format(gsp))
+                self._gridSetPointCurrent = gsp
+                self.publishLocalMqtt("W/{0}/settings/0/Settings/CGwacs/AcPowerSetPoint".format(self.config["Common"]["VRMPortalID"]), "{\"value\": " + str(gsp) + "}", 1 ,False)
+
         except Exception as ex:
-            c(self, "Exception in grid set point control.", exc_info=ex)
+            c(self, "Exception in grid set point control. Trying to restore default GSP.", exc_info=ex)
+
+            #exception is bad, try to set default gsp. 
+            self.publishLocalMqtt("W/{0}/settings/0/Settings/CGwacs/AcPowerSetPoint".format(self.config["Common"]["VRMPortalID"]), "{\"value\": " + str(self._gridSetPointDefault) + "}", 1 ,False)
 
 
     def registerDbusSubscription(self, sub:DbusSubscription):
@@ -494,6 +566,7 @@ class esESS:
            return
 
         serviceName = service.__class__.__name__ if not isinstance(service, str) else service
+        serviceName = serviceName if not isinstance(service, esESS) else "$SYS"
 
         key = "{0}{1}".format(serviceName, type)
         if (key not in self._serviceMessageIndex):
@@ -507,12 +580,12 @@ class esESS:
         if (type == Globals.ServiceMessageType.Operational):
             i(self, "ServiceMessage: {0}".format(message))
 
-        self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=self._serviceMessageIndex[key]), "{0} | {1}".format(Globals.getUserTime(), message) , 0, True, True)
+        self.publishMainMqtt("{tag}/{service}/ServiceMessages/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=self._serviceMessageIndex[key]), "{0} | {1}".format(Globals.getUserTime(), message) , 0, True, True)
         nextOne = self._serviceMessageIndex[key] +1
         if (nextOne > int(self.config["Common"]["ServiceMessageCount"]) + 1):
             nextOne = 1
         
-        self.publishMainMqtt("{tag}/$SYS/ServiceMessages/{service}/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=nextOne), "{0} | {1}".format(Globals.getUserTime(), "-------------------------") , 0, True, True)
+        #self.publishMainMqtt("{tag}/{service}ServiceMessages/{type}/Message{id:02d}".format(tag=Globals.esEssTag, service=serviceName, type=type, id=nextOne), "{0} | {1}".format(Globals.getUserTime(), "-------------------------") , 0, True, True)
 
     def handleSigterm(self, signum, frame):
         self.publishServiceMessage(self, "SIGTERM received. Shuting down services gracefully.")

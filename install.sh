@@ -27,3 +27,10 @@ then
 fi
 
 grep -qxF '/data/es-ESS/install.sh' $filename || echo '/data/es-ESS/install.sh' >> $filename
+
+#first install? need config.sample to be copied.
+$configTarget=/data/es-ESS/config.ini
+if [ ! -f $configTarget ]
+then
+    cp /data/es-ESS/config.sample.ini /data/es-ESS/config.ini
+fi

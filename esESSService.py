@@ -39,7 +39,12 @@ class esESSService(ABC):
         pass
 
     def registerWorkerThread(self, thread, interval):
-        wt = WorkerThread(self, thread, interval)
+        wt = WorkerThread(self, thread, interval, False)
+        Globals.esESS.registerWorkerThread(wt)
+        return wt
+    
+    def registerSingleThread(self, thread, interval):
+        wt = WorkerThread(self, thread, interval, True)
         Globals.esESS.registerWorkerThread(wt)
         return wt
 
@@ -67,11 +72,12 @@ class esESSService(ABC):
         Globals.esESS.registerGridSetPointRequest(self, None)
 
 class WorkerThread:
-    def __init__(self, service, thread, interval):
+    def __init__(self, service, thread, interval, onlyOnce):
         self.thread = thread
         self.interval = interval
         self.future = None
         self.service = service
+        self.onlyOnce = onlyOnce
 
 class DbusSubscription:
     def buildValueKey(serviceName, dbusPath):

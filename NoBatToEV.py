@@ -41,6 +41,7 @@ class NoBatToEV(esESSService):
         self.pvOnOutputL3Dbus   = self.registerDbusSubscription("com.victronenergy.system", "/Ac/PvOnOutput/L3/Power")
 
         self.pvOnDcDbus         = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Pv/Power")
+        self.noPhasesDbus       = self.registerDbusSubscription("com.victronenergy.system", "/Ac/ActiveIn/NumberOfPhases")
         
     def initWorkerThreads(self):
         self.registerWorkerThread(self._update, 5000)
@@ -55,30 +56,34 @@ class NoBatToEV(esESSService):
        pass
 
     def _update(self):
-        if (Globals.esESS._services["FroniusWattpilot"] is None):
-            evPower = self.evChargerPowerDbus.value
-        else:
-            evPower = (Globals.esESS._services["FroniusWattpilot"].wattpilot.power1 + Globals.esESS._services["FroniusWattpilot"].wattpilot.power2 + Globals.esESS._services["FroniusWattpilot"].wattpilot.power3)*1000
+        if (self.noPhasesDbus.value is not None and self.noPhasesDbus.value > 0):
+            if (Globals.esESS._services["FroniusWattpilot"] is None):
+                evPower = self.evChargerPowerDbus.value
+            else:
+                evPower = (Globals.esESS._services["FroniusWattpilot"].wattpilot.power1 + Globals.esESS._services["FroniusWattpilot"].wattpilot.power2 + Globals.esESS._services["FroniusWattpilot"].wattpilot.power3)*1000
 
-        consumption = self.consumptionL1Dbus.value + self.consumptionL2Dbus.value + self.consumptionL3Dbus.value
-        pvAvailable = self.pvOnGensetL1Dbus.value + self.pvOnGensetL2Dbus.value + self.pvOnGensetL3Dbus.value
-        pvAvailable += self.pvOnGridL1Dbus.value + self.pvOnGridL2Dbus.value + self.pvOnGridL3Dbus.value
-        pvAvailable += self.pvOnOutputL1Dbus.value + self.pvOnOutputL2Dbus.value + self.pvOnOutputL3Dbus.value
-        pvAvailable += self.pvOnDcDbus.value
+            consumption = self.consumptionL1Dbus.value + self.consumptionL2Dbus.value + self.consumptionL3Dbus.value
+            pvAvailable = self.pvOnGensetL1Dbus.value + self.pvOnGensetL2Dbus.value + self.pvOnGensetL3Dbus.value
+            pvAvailable += self.pvOnGridL1Dbus.value + self.pvOnGridL2Dbus.value + self.pvOnGridL3Dbus.value
+            pvAvailable += self.pvOnOutputL1Dbus.value + self.pvOnOutputL2Dbus.value + self.pvOnOutputL3Dbus.value
+            pvAvailable += self.pvOnDcDbus.value
 
-        d(self, "EV Charge is {ev}W, Consumption is {con}W and available Pv is {pv}W.".format(ev=evPower, con=consumption, pv=pvAvailable))
+            d(self, "EV Charge is {ev}W, Consumption is {con}W and available Pv is {pv}W.".format(ev=evPower, con=consumption, pv=pvAvailable))
 
-        if (evPower > 0):
-            if (consumption >= pvAvailable):
-                #offload the share of EV charge that is NOT PV covered to the grid. 
-                rawConsumption = consumption - evPower
-                remainingPv = max(0, pvAvailable - rawConsumption)
-                delta = evPower - remainingPv
+            if (evPower > 0):
+                if (consumption >= pvAvailable):
+                    #offload the share of EV charge that is NOT PV covered to the grid. 
+                    rawConsumption = consumption - evPower
+                    remainingPv = max(0, pvAvailable - rawConsumption)
+                    delta = evPower - remainingPv
 
-                d(self, "So, raw consumption is {0}W, remainingPV is {1}W, we therefore offload {2}W to the grid.".format(rawConsumption, remainingPv, delta))
+                    d(self, "So, raw consumption is {0}W, remainingPV is {1}W, we therefore offload {2}W to the grid.".format(rawConsumption, remainingPv, delta))
 
-                self.registerGridSetPointRequest(delta)
+                    self.registerGridSetPointRequest(delta)
+                else:
+                    self.revokeGridSetPointRequest()
             else:
                 self.revokeGridSetPointRequest()
         else:
+            w(self, "Grid-Loss detected. Not doing anything.")
             self.revokeGridSetPointRequest()

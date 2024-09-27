@@ -22,20 +22,62 @@ from esESSService import esESSService
 class ShellyPMInverter(esESSService):
     def __init__(self):
         esESSService.__init__(self)
-        self.vrmInstanceID = self.config["ShellyPMInverter"]["VRMInstanceID"]
-        self.customName = self.config["ShellyPMInverter"]["CustomName"]
-        self.pollFrequencyMs = int(self.config["ShellyPMInverter"]["PollFrequencyMs"])
-        self.shellyUsername = self.config["ShellyPMInverter"]["Username"]
-        self.shellyPassword = self.config["ShellyPMInverter"]["Password"]
-        self.shellyHost = self.config["ShellyPMInverter"]["Host"]
-        self.shellyPhase = self.config["ShellyPMInverter"]["Phase"]
-        self.shellyPos = int(self.config["ShellyPMInverter"]["Position"])
-        self.connectionErrors = 0
+        self.pmInverters: Dict[str, ShellyPMInverterDevice] = {}
+
+        try:
+            d(self, "Scanning config for shelly pm inverters")
+            for k in self.config.sections():
+                if (k.startswith("ShellyPMInverter:")):
+                    parts = k.split(':')
+                    key = parts[1].strip()
+
+                    self.pmInverters[key] = ShellyPMInverterDevice(self, key, self.config[k])
+
+            i(self, "Found {0} Shelly PM Inverters.".format(len(self.pmInverters)))
+            
+        except Exception as ex:
+            c(self, "Exception", exc_info=ex)
+
+    def initDbusService(self):
+        for dev in self.pmInverters.values():
+            dev.initDbusService()
+            
+    def initDbusSubscriptions(self):
+        pass
+        
+    def initWorkerThreads(self):
+        for dev in self.pmInverters.values():
+            dev.registerWorkerThread(dev.queryShelly, dev.pollFrequencyMs)
+
+    def initMqttSubscriptions(self):
+        pass
+
+    def initFinalize(self):
+        pass
+    
+    def handleSigterm(self):
+       pass
+
+class ShellyPMInverterDevice:
+    def __init__(self, key, cfgSection):
+        self.key = key
+        self.customName = cfgSection["CustomName"]
+        self.vrmInstanceID = cfgSection["VRMInstanceID"]
+        self.customName = cfgSection["CustomName"]
+        self.pollFrequencyMs = int(cfgSection["PollFrequencyMs"])
+        self.shellyUsername = cfgSection["Username"]
+        self.shellyPassword = cfgSection["Password"]
+        self.shellyHost = cfgSection["Host"]
+        self.shellyPhase = cfgSection["Phase"]
+        self.shellyPos = int(cfgSection["Position"])
+        self.value = 0.0
+        self.humidity = 0.0
+        self.pressure = 0.0
 
     def initDbusService(self):
         self.serviceType = "com.victronenergy.pvinverter"
-        self.serviceName = self.serviceType + ".esESS.ShellyPMInverter_" + str(self.vrmInstanceID)
-        self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection())
+        self.serviceName = self.serviceType + "." + Globals.esEssTagService + "_ShellyPMInverter_" + self.key
+        self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection(), register=False)
         self.publishServiceMessage(self, "Initializing dbus-service")
         
         #Mgmt-Infos
@@ -61,6 +103,7 @@ class ShellyPMInverter(esESSService):
         #inverter props
         self.dbusService.add_path('/Ac/Power', None)
         self.dbusService.add_path('/Ac/Energy/Forward', None)
+
         for x in range(1,4):
             self.dbusService.add_path('/Ac/L' + str(x) + '/Voltage', None)
             self.dbusService.add_path('/Ac/L' + str(x) + '/Current', None)
@@ -68,20 +111,8 @@ class ShellyPMInverter(esESSService):
             self.dbusService.add_path('/Ac/L' + str(x) + '/Energy/Forward', None)
             self.dbusService.add_path('/Ac/L' + str(x) + '/Energy/Reverse', None)
 
-    def initDbusSubscriptions(self):
-        pass
-        
-    def initWorkerThreads(self):
-        self.registerWorkerThread(self.queryShelly, self.pollFrequencyMs)
-
-    def initMqttSubscriptions(self):
-        pass
-
-    def initFinalize(self):
-        pass
-    
-    def handleSigterm(self):
-       pass
+        self.dbusService.register()
+        self.connectionErrors = 0
 
     def queryShelly(self):
         try:
@@ -105,11 +136,11 @@ class ShellyPMInverter(esESSService):
                 self.dbusService['/Ac/Power'] = meter_data['apower']
                 for x in range(1,4):
                     if (x != self.shellyPhase):
-                        self.dbusService['/Ac/L' + str(x) + '/Voltage'] = 0
-                        self.dbusService['/Ac/L' + str(x) + '/Current'] = 0
-                        self.dbusService['/Ac/L' + str(x) + '/Power'] = 0
-                        self.dbusService['/Ac/L' + str(x) + '/Energy/Forward'] = 0
-                        self.dbusService['/Ac/L' + str(x) + '/Energy/Reverse'] = 0
+                        self.dbusService['/Ac/L' + str(x) + '/Voltage'] = None
+                        self.dbusService['/Ac/L' + str(x) + '/Current'] = None
+                        self.dbusService['/Ac/L' + str(x) + '/Power'] = None
+                        self.dbusService['/Ac/L' + str(x) + '/Energy/Forward'] = None
+                        self.dbusService['/Ac/L' + str(x) + '/Energy/Reverse'] = None
                 
                 self.dbusService['/Ac/L' + self.shellyPhase + '/Voltage'] = meter_data['voltage']
                 self.dbusService['/Ac/L' + self.shellyPhase + '/Current'] = meter_data['current']
@@ -124,12 +155,12 @@ class ShellyPMInverter(esESSService):
                 self.publishNone()
 
         except Exception as ex:
-            w(self, "Shelly PM did not response fast enough to sustain a poll frequency of {1} ms. Please adjust. After 3 failures, null will be published.".format(self.pollFrequencyMs))
+            w(self, "Shelly PM ({1}) did not response fast enough to sustain a poll frequency of {2} ms. Please adjust. After 3 failures, null will be published.".format(self.key, self.pollFrequencyMs))
             self.connectionErrors += 1
             #c(self, "Exception", exc_info=ex)
 
             if (self.connectionErrors > 3):
-                e(self, "More than 3 consecutive timeouts. Assuming Shelly PM disconnected.")
+                e(self, "More than 3 consecutive timeouts. Assuming Shelly {1} PM disconnected.".format(self.key))
                 self.publishNone()
     
     def publishNone(self):
