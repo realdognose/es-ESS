@@ -31,7 +31,7 @@ class ShellyPMInverter(esESSService):
                     parts = k.split(':')
                     key = parts[1].strip()
 
-                    self.pmInverters[key] = ShellyPMInverterDevice(self, key, self.config[k])
+                    self.pmInverters[key] = ShellyPMInverterDevice(key, self.config[k])
 
             i(self, "Found {0} Shelly PM Inverters.".format(len(self.pmInverters)))
             
@@ -40,6 +40,7 @@ class ShellyPMInverter(esESSService):
 
     def initDbusService(self):
         for dev in self.pmInverters.values():
+            self.publishServiceMessage(self, "Initializing dbus-service for PMInverter: " + dev.key)
             dev.initDbusService()
             
     def initDbusSubscriptions(self):
@@ -47,7 +48,7 @@ class ShellyPMInverter(esESSService):
         
     def initWorkerThreads(self):
         for dev in self.pmInverters.values():
-            dev.registerWorkerThread(dev.queryShelly, dev.pollFrequencyMs)
+            self.registerWorkerThread(dev.queryShelly, dev.pollFrequencyMs)
 
     def initMqttSubscriptions(self):
         pass
@@ -78,7 +79,6 @@ class ShellyPMInverterDevice:
         self.serviceType = "com.victronenergy.pvinverter"
         self.serviceName = self.serviceType + "." + Globals.esEssTagService + "_ShellyPMInverter_" + self.key
         self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection(), register=False)
-        self.publishServiceMessage(self, "Initializing dbus-service")
         
         #Mgmt-Infos
         self.dbusService.add_path('/DeviceInstance', int(self.vrmInstanceID))

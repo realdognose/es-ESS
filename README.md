@@ -417,25 +417,41 @@ Utilize a Shelly PM (any Kind, Generation 3) as a meter to detect PV-Inverter Pr
 Phase on which the inverter is feeding in can be adjusted, mostly usefull for single phased micro inverters without any other
 communication possibility. 
 
+### Configuration
+
 ShellyPMInverter requires a few variables to be set in `/data/es-ESS/config.ini`: 
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
 | [Services]    | Shelly3EMGrid   | Flag, if the service should be enabled or not | Boolean | true |
-| [ShellyPMInverter]     | VRMInstanceID |  InstanceID the Meter should get in VRM | Integer | Shelly 3EM (Grid) |
-| [ShellyPMInverter]     | CustomName |  Display Name of the device in VRM | String | -10 |
-| [ShellyPMInverter]     | PollFrequencyMs |  Intervall in ms to query the Shellies JSON-API | int | 1000 |
-| [ShellyPMInverter]     | Username |  Username of the Shelly | String | -User |
-| [ShellyPMInverter]     | Password |  Password of the Shelly | String | JG372FDr |
-| [ShellyPMInverter]     | Host |  IP / Hostname of the Shelly | String | 192.168.136.87 |
-| [ShellyPMInverter]     | Phase |  Phase the Shelly / Inverter is connected to. (1-3) | Integer | 2 |
-| [ShellyPMInverter]     | Position |  Position, the Shelly / Inverter is connected to your multiplus. 0 = ACIN; 1=ACOUT | Integer | 1 |
+
+After enabling the service in general, you need to create 1 additional config-section per shelly to use. 
+each config Section needs to match the pattern `[ShellyPMInverter:aUniqueKey]` and contain the following values: 
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [ShellyPMInverter:aUniqueKey]     | VRMInstanceID |  InstanceID the Meter should get in VRM | Integer | Shelly 3EM (Grid) |
+| [ShellyPMInverter:aUniqueKey]     | CustomName |  Display Name of the device in VRM | String | -10 |
+| [ShellyPMInverter:aUniqueKey]     | PollFrequencyMs |  Intervall in ms to query the Shellies JSON-API | int | 1000 |
+| [ShellyPMInverter:aUniqueKey]     | Username |  Username of the Shelly | String | -User |
+| [ShellyPMInverter:aUniqueKey]     | Password |  Password of the Shelly | String | JG372FDr |
+| [ShellyPMInverter:aUniqueKey]     | Host |  IP / Hostname of the Shelly | String | 192.168.136.87 |
+| [ShellyPMInverter:aUniqueKey]     | Phase |  Phase the Shelly / Inverter is connected to. (1-3) | Integer | 2 |
+| [ShellyPMInverter:aUniqueKey]     | Position |  Position, the Shelly / Inverter is connected to your multiplus. 0 = ACIN; 1=ACOUT | Integer | 1 |
 
 When adjusting the `PollFrequencyMs`, you should check the log file regulary. The Device is polled with exactly `PollFrequencyMs`
 Timeout, so requests do not pile up. Whenever there are 3 consecutive timeouts, the dbus service will be feed with `null` values, and 
 the device is marked offline, so the overall system notes that the inverter is currently considered not producing.
 
-### Configuration
+Example Configuration:
+
+<img src="https://github.com/realdognose/es-ESS/blob/main/img/pmInverterExample.png">
+
+<img src="https://github.com/realdognose/es-ESS/blob/main/img/pmInverterExample2.png">
+
+<img src="https://github.com/realdognose/es-ESS/blob/main/img/pmInverterExample3.png">
+
+<img src="https://github.com/realdognose/es-ESS/blob/main/img/pmInverterExample4.png">
 
 
 # SolarOverheadDistributor
