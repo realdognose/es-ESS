@@ -96,7 +96,8 @@ class FroniusSmartmeterJSON(esESSService):
         try:
             URL = "http://%s/solar_api/v1/GetMeterRealtimeData.cgi?Scope=Device&DeviceId=%s&DataCollection=MeterRealtimeData" % (self.meterHost, self.meterID)
         
-            meter_r = requests.get(url = URL, timeout=(self.pollFrequencyMs/1000))
+            #timeout should be half the poll frequency, so there is time to process.
+            meter_r = requests.get(url = URL, timeout=(self.pollFrequencyMs/2000))
             meter_data = meter_r.json()     
         
             # check for Json
@@ -137,9 +138,12 @@ class FroniusSmartmeterJSON(esESSService):
                 w(self, "Can't query meter. data object not readable.")
                 self.connError()
 
-        except Exception as ex:
-            w(self, "Fronius Inverter did not response fast enough to sustain a poll frequency of {1} ms. Please adjust.".format(self.pollFrequencyMs))
+        except requests.exceptions.Timeout as ex:
+            w(self, "Fronius Inverter did not response fast enough to sustain a poll frequency of {0} ms. Please adjust.".format(self.pollFrequencyMs))
             self.connError()
+
+        except Exception as ex:
+            c(self, "Exception", exc_info=ex)
             
     def connError(self):
         self.connectionErrors += 1

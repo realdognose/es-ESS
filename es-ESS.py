@@ -193,7 +193,9 @@ class esESS:
           class_ = getattr(imp, clazz)
           self._services[clazz] = class_()
        else:
-          i(self, "Service {0} is not enabled. Skipping initialization.".format(clazz))   
+          i(self, "Service {0} is not enabled. Skipping initialization.".format(clazz))  
+
+       self.publishMainMqtt("{0}/{1}".format(Globals.esEssTag, clazz), "Enabled" if self.config["Services"][clazz].lower()=="true" else "Disabled") 
 
     def _validateConfiguration(self):
         self.config = configparser.ConfigParser()
@@ -398,20 +400,24 @@ class esESS:
         self._dbusMonitor.set_value(sub.serviceName, sub.dbusPath, value)
     
     def _runThread(self, workerThread: WorkerThread):
-        if (self._sigTermInvoked):
-            return False
-       
-        t(self, "Running thread: {0}".format(Helper.formatCallback(workerThread.thread)))
-        if (workerThread.future is None or workerThread.future.done()):
-            self._threadExecutionsMinute+=1
-            self.threadPool.submit(workerThread.thread)
-        else:
-            w(self, "Thread {0} from {1} is scheduled to run every {2}ms - Future not done, skipping call attempt.".format(workerThread.service.__class__.__name__, workerThread.thread.__name__, workerThread.interval))
-       
-        if (workerThread.onlyOnce):
-            return False
-    
-        return True
+        try:
+            if (self._sigTermInvoked):
+                return False
+        
+            t(self, "Running thread: {0}".format(Helper.formatCallback(workerThread.thread)))
+            if (workerThread.future is None or workerThread.future.done()):
+                self._threadExecutionsMinute+=1
+                workerThread.future = self.threadPool.submit(workerThread.thread)
+            else:
+                w(self, "Thread {0} from {1} is scheduled to run every {2}ms - Future not done, skipping call attempt. Consider lowering the execution-frequency".format(workerThread.thread.__name__,workerThread.service.__class__.__name__, workerThread.interval))
+        
+            if (workerThread.onlyOnce):
+                return False
+        
+            return True
+        
+        except Exception as ex:
+            c(self, "Exception", exc_info=ex)
     
     def _signOfLive(self):
         self.publishServiceMessage(self, "Executed {0} threads in the past minute.".format(self._threadExecutionsMinute))
@@ -567,6 +573,7 @@ class esESS:
 
         serviceName = service.__class__.__name__ if not isinstance(service, str) else service
         serviceName = serviceName if not isinstance(service, esESS) else "$SYS"
+        serviceName = "$SYS" if serviceName=="esESS" else serviceName
 
         key = "{0}{1}".format(serviceName, type)
         if (key not in self._serviceMessageIndex):

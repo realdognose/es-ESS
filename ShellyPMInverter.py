@@ -31,7 +31,7 @@ class ShellyPMInverter(esESSService):
                     parts = k.split(':')
                     key = parts[1].strip()
 
-                    self.pmInverters[key] = ShellyPMInverterDevice(key, self.config[k])
+                    self.pmInverters[key] = ShellyPMInverterDevice(self, key, self.config[k])
 
             i(self, "Found {0} Shelly PM Inverters.".format(len(self.pmInverters)))
             
@@ -60,8 +60,9 @@ class ShellyPMInverter(esESSService):
        pass
 
 class ShellyPMInverterDevice:
-    def __init__(self, key, cfgSection):
+    def __init__(self, rootService, key, cfgSection):
         self.key = key
+        self.rootService = rootService
         self.customName = cfgSection["CustomName"]
         self.vrmInstanceID = cfgSection["VRMInstanceID"]
         self.customName = cfgSection["CustomName"]
@@ -118,14 +119,14 @@ class ShellyPMInverterDevice:
         try:
             URL = "http://%s:%s@%s/rpc/Switch.GetStatus?id=0" % (self.shellyUsername, self.shellyPassword, self.shellyHost)
             URL = URL.replace(":@", "")
-            #d(self, "Polling: " + URL)
 
-            meter_r = requests.get(url = URL, timeout=(self.pollFrequencyMs/1000))
+            #timeout should be half the poll frequency, so there is time to process.
+            meter_r = requests.get(url = URL, timeout=(self.pollFrequencyMs/2000))
             meter_data = meter_r.json()     
         
             # check for Json
             if not meter_data:
-                e(self, "Shelly response is not resolvable to JSON.")
+                e(self.rootService, "Shelly response is not resolvable to JSON.")
                 
             if (meter_data):
                 self.dbusService['/Connected'] = 1
@@ -154,14 +155,16 @@ class ShellyPMInverterDevice:
                 #publish null values, so it is clear, that we have issues reading the meter and OS can decide how to handle. 
                 self.publishNone()
 
-        except Exception as ex:
-            w(self, "Shelly PM ({1}) did not response fast enough to sustain a poll frequency of {2} ms. Please adjust. After 3 failures, null will be published.".format(self.key, self.pollFrequencyMs))
+        except requests.exceptions.Timeout as ex:
+            w(self.rootService, "Shelly PM ({0}) did not response fast enough to sustain a poll frequency of {1} ms. Please adjust. After 3 failures, null will be published.".format(self.key, self.pollFrequencyMs))
             self.connectionErrors += 1
-            #c(self, "Exception", exc_info=ex)
 
             if (self.connectionErrors > 3):
-                e(self, "More than 3 consecutive timeouts. Assuming Shelly {1} PM disconnected.".format(self.key))
+                e(self.rootService, "More than 3 consecutive timeouts. Assuming Shelly {0} PM disconnected.".format(self.key))
                 self.publishNone()
+        
+        except Exception as ex:
+            c(self.rootService, "Exception", exc_info=ex)
     
     def publishNone(self):
         self.dbusService["/Connected"] = 0

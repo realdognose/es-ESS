@@ -118,7 +118,8 @@ class FroniusSmartmeterRS485(esESSService):
         try:
             URL = "http://%s/solar_api/v1/GetMeterRealtimeData.cgi?Scope=Device&DeviceId=%s&DataCollection=MeterRealtimeData" % (self.meterHost, self.meterID)
         
-            meter_r = requests.get(url = URL, timeout=(self.pollFrequencyMs/1000))
+            #timeout should be half the poll frequency, so there is time to process.
+            meter_r = requests.get(url = URL, timeout=(self.pollFrequencyMs/2000))
             meter_data = meter_r.json()     
         
             # check for Json
@@ -157,14 +158,17 @@ class FroniusSmartmeterRS485(esESSService):
                 #publish null values, so it is clear, that we have issues reading the meter and OS can decide how to handle. 
                 self.publishNone()
 
-        except Exception as ex:
-            w(self, "Fronius Inverter did not response fast enough to sustain a poll frequency of {1} ms. Please adjust. After 3 failures, null will be published.".format(self.pollFrequencyMs))
+        except requests.exceptions.Timeout as ex:
+            w(self, "Fronius Inverter did not response fast enough to sustain a poll frequency of {0} ms. Please adjust. After 3 failures, null will be published.".format(self.pollFrequencyMs))
             self.connectionErrors += 1
             #c(self, "Exception", exc_info=ex)
 
             if (self.connectionErrors > 3):
                 e(self, "More than 3 consecutive timeouts. Assuming Meter disconnected.")
                 self.publishNone()
+
+        except Exception as ex:
+            c(self, "Exception", exc_info=ex)
     
     def publishNone(self):
         self.dbusService["/Connected"] = 0

@@ -53,7 +53,7 @@ class NoBatToEV(esESSService):
         pass
     
     def handleSigterm(self):
-       pass
+       self.revokeGridSetPointRequest()
 
     def _update(self):
         if (self.noPhasesDbus.value is not None and self.noPhasesDbus.value > 0):

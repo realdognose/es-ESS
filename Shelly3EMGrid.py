@@ -6,6 +6,7 @@ import dbus # type: ignore
 import dbus.service # type: ignore
 import inspect
 import pprint
+from time import time
 import requests # type: ignore
 import os
 import sys
@@ -28,7 +29,24 @@ class Shelly3EMGrid(esESSService):
         self.shellyUsername = self.config["Shelly3EMGrid"]["Username"]
         self.shellyPassword = self.config["Shelly3EMGrid"]["Password"]
         self.shellyHost = self.config["Shelly3EMGrid"]["Host"]
+        self.metering = self.config["Shelly3EMGrid"]["Metering"]
         self.connectionErrors = 0
+        self.energyForwarded = 0
+        self.energyReversed = 0
+        self.lastMeasurement = time()
+
+        if (self.metering == "Net"):
+            #load stored counters, if any. 
+
+            if os.path.isfile("{0}/runtimeData/energyForwarded3EM".format(os.path.dirname(os.path.realpath(__file__)))):
+                with open("{0}/runtimeData/energyForwarded3EM".format(os.path.dirname(os.path.realpath(__file__))), 'r') as cfile:
+                    self.energyForwarded = float(cfile.read().strip())
+                    i(self, "Read stored counter energyForwarded={0}".format(self.energyForwarded))
+                
+            if os.path.isfile("{0}/runtimeData/energyReversed3EM".format(os.path.dirname(os.path.realpath(__file__)))):    
+                with open("{0}/runtimeData/energyReversed3EM".format(os.path.dirname(os.path.realpath(__file__))), 'r') as cfile:
+                    self.energyReversed = float(cfile.read().strip())
+                    i(self, "Read stored counter energyReversed={0}".format(self.energyReversed))
 
     def initDbusService(self):
         self.serviceType = "com.victronenergy.grid"
@@ -83,6 +101,9 @@ class Shelly3EMGrid(esESSService):
     def initWorkerThreads(self):
         self.registerWorkerThread(self.queryShelly, self.pollFrequencyMs)
 
+        if (self.metering == "Net"):
+            self.registerWorkerThread(self.persistCounters, 5 * 60 * 1000);
+
     def initMqttSubscriptions(self):
         pass
 
@@ -90,15 +111,15 @@ class Shelly3EMGrid(esESSService):
         pass
     
     def handleSigterm(self):
-       pass
+       self.persistCounters()
 
     def queryShelly(self):
         try:
             URL = "http://%s:%s@%s/status" % (self.shellyUsername, self.shellyPassword, self.shellyHost)
             URL = URL.replace(":@", "")
-            #d(self, "Polling: " + URL)
-
-            meter_r = requests.get(url = URL, timeout=(self.pollFrequencyMs/1000))
+            
+            #timeout should be half the poll frequency, so there is time to process.
+            meter_r = requests.get(url = URL, timeout=(self.pollFrequencyMs/2000))
             meter_data = meter_r.json()     
         
             # check for Json
@@ -108,6 +129,10 @@ class Shelly3EMGrid(esESSService):
             if (meter_data):
                 self.dbusService['/Connected'] = 1
                 self.connectionErrors = 0
+
+                #TODO: Remove after debugging Fake feedin on Phase 2: 
+                meter_data['emeters'][1]['power'] -= 300
+                meter_data['total_power'] -= 300
 
                 #All good, evaluate and publish on dbus. 
                 self.dbusService['/Ac/Power'] = meter_data['total_power']
@@ -120,27 +145,56 @@ class Shelly3EMGrid(esESSService):
                 self.dbusService['/Ac/L1/Power'] = meter_data['emeters'][0]['power']
                 self.dbusService['/Ac/L2/Power'] = meter_data['emeters'][1]['power']
                 self.dbusService['/Ac/L3/Power'] = meter_data['emeters'][2]['power']
-                self.dbusService['/Ac/L1/Energy/Forward'] = (meter_data['emeters'][0]['total']/1000)
-                self.dbusService['/Ac/L2/Energy/Forward'] = (meter_data['emeters'][1]['total']/1000)
-                self.dbusService['/Ac/L3/Energy/Forward'] = (meter_data['emeters'][2]['total']/1000)
-                self.dbusService['/Ac/L1/Energy/Reverse'] = (meter_data['emeters'][0]['total_returned']/1000) 
-                self.dbusService['/Ac/L2/Energy/Reverse'] = (meter_data['emeters'][1]['total_returned']/1000) 
-                self.dbusService['/Ac/L3/Energy/Reverse'] = (meter_data['emeters'][2]['total_returned']/1000) 
 
-                self.dbusService['/Ac/Energy/Forward'] = (meter_data['emeters'][0]['total']/1000) + (meter_data['emeters'][1]['total']/1000) + (meter_data['emeters'][2]['total']/1000)
-                self.dbusService['/Ac/Energy/Reverse'] = (meter_data['emeters'][0]['total_returned']/1000) + (meter_data['emeters'][1]['total_returned']/1000) + (meter_data['emeters'][2]['total_returned']/1000)
+                if (self.metering == "Default"):
+                    self.dbusService['/Ac/L1/Energy/Forward'] = (meter_data['emeters'][0]['total']/1000)
+                    self.dbusService['/Ac/L2/Energy/Forward'] = (meter_data['emeters'][1]['total']/1000)
+                    self.dbusService['/Ac/L3/Energy/Forward'] = (meter_data['emeters'][2]['total']/1000)
+                    self.dbusService['/Ac/L1/Energy/Reverse'] = (meter_data['emeters'][0]['total_returned']/1000) 
+                    self.dbusService['/Ac/L2/Energy/Reverse'] = (meter_data['emeters'][1]['total_returned']/1000) 
+                    self.dbusService['/Ac/L3/Energy/Reverse'] = (meter_data['emeters'][2]['total_returned']/1000) 
+
+                    self.dbusService['/Ac/Energy/Forward'] = (meter_data['emeters'][0]['total']/1000.0) + (meter_data['emeters'][1]['total']/1000.0) + (meter_data['emeters'][2]['total']/1000.0)
+                    self.dbusService['/Ac/Energy/Reverse'] = (meter_data['emeters'][0]['total_returned']/1000.0) + (meter_data['emeters'][1]['total_returned']/1000.0) + (meter_data['emeters'][2]['total_returned']/1000.0)
+                else:
+                    #Net metering. We use our own counters and keep track of correct saldating. 
+                    now = time()
+                    duration = (now - self.lastMeasurement) * 1000.0
+                    self.lastMeasurement = now
+
+                    if (meter_data['total_power'] >=0):
+                        #Consumption
+                        self.energyForwarded += meter_data['total_power'] * (duration/(3600.0*1000.0))
+                    else:
+                        #FeedIn
+                        self.energyReversed += (meter_data['total_power'] * -1) * (duration/(3600.0*1000.0))
+
+                    self.dbusService['/Ac/L1/Energy/Forward'] = None
+                    self.dbusService['/Ac/L2/Energy/Forward'] = None
+                    self.dbusService['/Ac/L3/Energy/Forward'] = None
+                    self.dbusService['/Ac/L1/Energy/Reverse'] = None
+                    self.dbusService['/Ac/L2/Energy/Reverse'] = None
+                    self.dbusService['/Ac/L3/Energy/Reverse'] = None
+
+                    self.dbusService['/Ac/Energy/Forward'] = round(self.energyForwarded / 1000.0, 2)
+                    self.dbusService['/Ac/Energy/Reverse'] = round(self.energyReversed / 1000.0, 2)
+
+                    d(self, "Duration: {dur} -> Counters: F/R: {f}/{r}".format(f=self.energyForwarded, r=self.energyReversed, dur=duration))
             else:
                 #publish null values, so it is clear, that we have issues reading the meter and OS can decide how to handle. 
                 self.publishNone()
 
-        except Exception as ex:
-            w(self, "Shelly 3EM did not response fast enough to sustain a poll frequency of {1} ms. Please adjust. After 3 failures, null will be published.".format(self.pollFrequencyMs))
+        except requests.exceptions.Timeout as ex:
+            w(self, "Shelly 3EM did not response fast enough to sustain a poll frequency of {0} ms. Please adjust. After 3 failures, null will be published.".format(self.pollFrequencyMs))
             self.connectionErrors += 1
-            #c(self, "Exception", exc_info=ex)
+            #
 
             if (self.connectionErrors > 3):
                 e(self, "More than 3 consecutive timeouts. Assuming Meter disconnected.")
                 self.publishNone()
+        
+        except Exception as ex:
+            c(self, "Exception", exc_info=ex)
     
     def publishNone(self):
         self.dbusService["/Connected"] = 0
@@ -154,5 +208,16 @@ class Shelly3EMGrid(esESSService):
         self.dbusService['/Ac/L1/Power'] = None
         self.dbusService['/Ac/L2/Power'] = None
         self.dbusService['/Ac/L3/Power'] = None
+
+    def persistCounters(self):
+        i(self, "Saving energy counters to disk. F/R: {0}/{1}".format(self.energyForwarded, self.energyReversed))
+
+        with open("{0}/runtimeData/energyForwarded3EM".format(os.path.dirname(os.path.realpath(__file__))), 'w+') as cfile:
+            cfile.write(str(self.energyForwarded))
+            
+        with open("{0}/runtimeData/energyReversed3EM".format(os.path.dirname(os.path.realpath(__file__))), 'w+') as cfile:
+            cfile.write(str(self.energyReversed))
+
+
 
 

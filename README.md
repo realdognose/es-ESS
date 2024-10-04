@@ -405,13 +405,13 @@ Shelly3EMGrid requires a few variables to be set in `/data/es-ESS/config.ini`:
 | [Shelly3EMGrid]     | Username |  Username of the Shelly | String | User |
 | [Shelly3EMGrid]     | Password |  Password of the Shelly | String | JG372FDr |
 | [Shelly3EMGrid]     | Host |  IP / Hostname of the Shelly | String | 192.168.136.87 |
-| [Shelly3EMGrid]     | Measuring | Type of Measurement. See Info bellow. `Default` or `Net` | String | Default
+| [Shelly3EMGrid]     | Metering | Type of Measurement. See Info bellow. `Default` or `Net` | String | Default
 
 When adjusting the `PollFrequencyMs`, you should check the log file regulary. The Device is polled with exactly `PollFrequencyMs`
 Timeout, so requests do not pile up. Whenever there are 3 consecutive timeouts, the dbus service will be feed with `null` values, and 
 the device is marked offline, so the overall system notes that it now has to work without grid-meter values.
 
-### Measuring
+### Metering
 By Default, the Shelly 3EM uses Gross-Metering. Feed-In and Consumption are counted for each phase individually. 
 
 In some countries however (f.e.: Germany, Switzerland, Austria, ... ) Net-Metering is used by the providers. 
