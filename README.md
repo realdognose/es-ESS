@@ -351,6 +351,10 @@ So, whenever a sun shortage requires to stop charging, but you have 250s left on
 
 # NoBatToEV
 > :large_orange_diamond: Release-Candiate-Version: Feature is still undergoing development, but current version is already satisfying.
+> This feature adjusts the grid set point in order to achieve the desired amount of power from the grid. Until now it is "untested"
+> how this will behave, when DESS is simultaneously attempting to charge it's battery from the grid. If DESS will respect a user-set
+> grid set point, the requests sum up, all good. If DESS just overriedes with it's own set point, the power drawn from grid may no longer
+> been sufficent in a concurrent usecase.
 
 ### Overview
 
