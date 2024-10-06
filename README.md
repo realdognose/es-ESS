@@ -203,6 +203,7 @@ For every value you want to export, you have to create a additional section, spe
 Each section needs to match the pattern `[MattExporter:uniqueKey]` where uniqueKey should be an unique identifier.
 
 | Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
 | [MqttExporter:XXX]  | Service |  Service name, see details bellow | String  | com.victronenergy.system |
 | [MqttExporter:XXX]  | DbusKey |  Key of the dbus-value to export | String  | /Ac/Grid/L1/Power |
 | [MqttExporter:XXX]  | MqttTopic |  Topic on Mqtt | String  | Grid/Ac/L1/Power |
