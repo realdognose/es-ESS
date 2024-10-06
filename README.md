@@ -349,7 +349,7 @@ Wattpilot itself supports the feature to charge when energy prices are low. This
 > Sometimes VRM is displaying `Stop charging`, `Start charging` or `Switching phasemode` for a long time? 
 
 Whenever one of the preconfigured Start/Stop- or Phaseswitchtimes are exhausted, es-ESS will display the status until the cooldown is passed, or conditions change again. 
-So, whenever a sun shortage requires to stop charging, but you have 250s left on the on/off cooldown, VRM will display `Stop charging` for 250s. This is, so you are aware that - even if there is grid-pull happening - wattpilot is about to stop as soon as conditions allow for it. For more details about the current state, you can review the respective service messages topic on mqtt: `es-ESS/$SYS/ServiceMessages/FroniusWattpilot/ServiceMessageType.Operational`
+So, whenever a sun shortage requires to stop charging, but you have 250s left on the on/off cooldown, VRM will display `Stop charging` for 250s. This is, so you are aware that - even if there is grid-pull happening - wattpilot is about to stop as soon as conditions allow for it. For more details about the current state, you can review the respective service messages topic on mqtt: `es-ESS/{service}/ServiceMessages/ServiceMessageType.Operational`
 
 # NoBatToEV
 > :large_orange_diamond: Release-Candiate-Version: Feature is still undergoing development, but current version is already satisfying.
@@ -780,7 +780,7 @@ Additionally there are the following configuration options available:
 | [Common]    | ConfigVersion | Current Config Version. DO NOT TOUCH THIS, it is required to update configuration files on new releases. | int | 1 |
 
 ### Service Messages
-es-ESS also publishes Operational-Messages as well as Errors, Warnings and Critical failures under the `$SYS`-Topic of es-ESS. Check these from time to time to ensure proper functionality
+es-ESS also publishes Operational-Messages as well as Errors, Warnings and Critical failures under the `service`-Topic of the serivce. Check these from time to time to ensure proper functionality
 
 <div align="center">
 
