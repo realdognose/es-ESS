@@ -353,10 +353,6 @@ So, whenever a sun shortage requires to stop charging, but you have 250s left on
 
 # NoBatToEV
 > :large_orange_diamond: Release-Candiate-Version: Feature is still undergoing development, but current version is already satisfying.
-> This feature adjusts the grid set point in order to achieve the desired amount of power from the grid. Until now it is "untested"
-> how this will behave, when DESS is simultaneously attempting to charge it's battery from the grid. If DESS will respect a user-set
-> grid set point, the requests sum up, all good. If DESS just overriedes with it's own set point, the power drawn from grid may no longer
-> been sufficent in a concurrent usecase.
 
 ### Overview
 
@@ -394,7 +390,7 @@ NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`:
 > I assume, Worstcase, your multiplus will keep charging your houses battery until there is no more consumer for such a (stuck) grid request.
 
 # Shelly3EMGrid
-> :white_check_mark: Production Ready. 
+> :large_orange_diamond: Release-Candiate-Version: Feature is still undergoing development, but current version is already satisfying: NET-Metering is untested so far, need to get hands on a shelly 3EM, fist.
 
 Utilize a Shelly 3 EM as Grid Meter. 
 
@@ -695,12 +691,27 @@ of 200 Watts, ending at my 11kW EV-Charging station:
 
 <div align="center">
 
+| Good day :) |
+|:-----------:|
+| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/example_overhead2.png" /> |
+
+</div>
+
+<div align="center">
+
 | Not so sunny day, but consumers taking any chance. |
 |:-----------:|
 | <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/solarOverhead_Gaps.png" /> |
 
 </div>
 
+<div align="center">
+
+| yet another day |
+|:-----------:|
+| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/example_overhead3.png" /> |
+
+</div>
 
 # ChargeCurrentReducer
 
