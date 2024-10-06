@@ -19,7 +19,7 @@ I'm a software engineer since about 20 years, pretty new to python, tho. es-ESS 
 Feel free to create [issues](https://github.com/realdognose/es-ESS/issues) for questions or bugs, but bear with me that i cannot provide a 24/7 support or guarantee some sort of 8h response time. 
 If you are a developer yourself and want to help to improve es-ESS, feel free to do so and create pull requests.
 
-I've switched to a Victron-System 2 months ago, and immediately digged into customizing it. Lot has been done, Lot is still todo. Since I will run this 
+I've switched to a Victron-System some months ago, and immediately digged into customizing it. Lot has been done, Lot is still todo. Since I will run this 
 system for at least 10ish years, there will be plenty of updates and/or bugfixes in the future.
 
 # Almost there
@@ -106,7 +106,6 @@ or disable certain services.
 | [Mqtt]                   | Password             | Password to connect to your main-mqtt.                                                                 | String        | secure123!                   |
 | [Mqtt]                   | Port                 | Port to connect to your main-mqtt.                                                                     | Integer       | 1833                         |
 | [Mqtt]                   | SslEnabled           | Flag, if your main-mqtt is ssl enabled. Note: We kindly ignore Certificate-Checks as of now.           | Boolean       | true                         |
-| [Mqtt]                   | ThrottlePeriod       | Minimum Time between two publishes on one topic. See [MqttThrottling](#more-configx)                   | Integer       | 1000                         |
 | [Mqtt]                   | LocalSslEnabled      | Flag, if your local / venus-Mqtt is SSL or plain.                                                      | Boolean       | true                         |
 | [Services]               | SolarOverheadDistributor  | Flag, if [SolarOverheadDistributor](#solaroverheaddistributor) is enabled.                        | Boolean       | true                         |
 | [Services]               | TimeToGoCalculator        | Flag, if [TimeToGoCalculator](#timetogocalculator) is enabled.                                    | Boolean       | true                         |
@@ -189,7 +188,7 @@ Victrons Venus OS / Cerbo Devices have a builtin Mqtt-Server. However, there are
 
 Second issue is - according to the forums: while Keep-Alive is enabled, topics are continiously forwarded to the upstream-server, causing bandwith usage, which is bad on metered connections or at least general bandwith pollution. 
 
-So, the MqttExporter has been created. With a quite easy notation you can define which values should be tracked on dbus, and then be forwarded to your mqtt server for further processing and/or display purpose.
+So, the MqttExporter has been created. You can define which values should be tracked on dbus, and then be forwarded to your mqtt server for further processing and/or display purpose.
 
 # Configuration
 
@@ -197,24 +196,28 @@ MqttExporter requires a few variables to be set in `/data/es-ESS/config.ini`:
 
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
-| [Services]    | MqttExporter | Flag, if the service should be enabled or not | Boolean | true |
-| [MqttExporter]  | Export_{whatever}_{x} |  Export definition, see details bellow | String  | com.victronenergy.grid.http_40, /Ac/Power, CerboValues/Grid/Power |
+| [Services]    | MqttExporter | Flag, if the service should be enabled or not | Boolean | true 
+
+For every value you want to export, you have to create a additional section, specifying export-conditions. This is quite a bunch of work, but generally only done once. 
+
+Each section needs to match the pattern `[MattExporter:uniqueKey]` where uniqueKey should be an unique identifier.
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| [MqttExporter:XXX]  | Service |  Service name, see details bellow | String  | com.victronenergy.system |
+| [MqttExporter:XXX]  | DbusKey |  Key of the dbus-value to export | String  | /Ac/Grid/L1/Power |
+| [MqttExporter:XXX]  | MqttTopic |  Topic on Mqtt | String  | Grid/Ac/L1/Power |
+
+**Note that dbus-paths start with a "/" and MQTT Topics don't.**
 
 To export values from DBus to your mqtt server, you need to specify 3 variables per export
-You can create as many exports as you like, just increase the number of the keys added to the `[MqttExporter]` Section.
+You can create as many exports as you like, just increase the number of the sections added to the ini file.
+
+### Service name ###
 if you want to export from a certain service (like bms) you can use dbus-spy in ssh to figure out the service name to use. 
-- Each Key needs to be unique
-- Schema: `{serviceName}`, `{DBusPath}`, `{MqttTarget}`
-- use a * at the end of the mqtt-path to append the original DBus-Path.
 
-**Note that dbus-paths start with a "/" and MQTT paths don't.**
-
-All whitespaces will be trimmed, you can indent values to your personal favour. 
-
-# Example relation between dbus-spy, config and MQTT #
+### Example relation between dbus-spy, config and MQTT ###
 
 <div align="center">
-
 | use `dbus-spy` to find the servicename |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter1.png" />|
@@ -241,15 +244,11 @@ All whitespaces will be trimmed, you can indent values to your personal favour.
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter4.png" />|
 </div>
 
-In the example config file, you can see that I used the trailing `*` on the Grid, Multiplus and Symo topics.
+Hint: You can use a trailing `*` on the Mqtt Topic. This will cause the original dbus path to be appended, for example: 
 
-Providing the export definition `Export_Fronius_1 = com.victronenergy.pvinverter.pv_233_2102530, /Ac/L1/Current, Energy/Symo*` will create the mqtt value `Energy/Symo/Ac/L1/Current` and so on.
+<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporterStar1.png" />
 
-### Mqtt-Throttling ###
-Please see [MqttThrottling](#more-configx) as well. Dbus is firing a lot of value changes, slower mqtt-servers (or the receivers of subscriptions) may
-face issues with several hundred values per second. With Mqtt-Throttling you can limit the number of messages per topic to a value suitable for your
-eco system.
-
+<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporterStar2.png" />
 
 # FroniusWattpilot
 
