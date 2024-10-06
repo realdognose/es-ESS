@@ -709,7 +709,7 @@ of 200 Watts, ending at my 11kW EV-Charging station:
 
 | yet another day |
 |:-----------:|
-| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/example_overhead3.png" /> |
+| <img align="center" src="https://github.com/realdognose/es-ESS/blob/main/img/example_overhead1.png" /> |
 
 </div>
 
