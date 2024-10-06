@@ -220,6 +220,7 @@ if you want to export from a certain service (like bms) you can use dbus-spy in 
 
 
 <div align="center">
+  
 | use `dbus-spy` to find the servicename |
 |:-------:|
 |<img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporter1.png" />|
