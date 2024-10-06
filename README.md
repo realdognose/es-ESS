@@ -66,7 +66,7 @@ is not working at the end, it may become hard to find the error without starting
 
 Handy commands to use during configuration and in generall: 
 
-Restart es-ESS (gracefully):
+Restart es-ESS (gracefully - config changes require restart!):
 ```
 /data/es-ESS/restart.sh
 ```
