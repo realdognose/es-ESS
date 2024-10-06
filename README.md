@@ -778,7 +778,6 @@ Additionally there are the following configuration options available:
 | [Common]    | NumberOfThreads |  Number of threads, es-ESS should use. | int | 5 |
 | [Common]    | ServiceMessageCount | Number of service messages published on mqtt | int | 50 |
 | [Common]    | ConfigVersion | Current Config Version. DO NOT TOUCH THIS, it is required to update configuration files on new releases. | int | 1 |
-| [Mqtt]       | ThrottlePeriod | Minimum time in ms between two messages on the same topic. Useful to reduce overall network traffic. Intelligent backlog tracking ensures that "the last message" emitted is always published after {ThrottlePeriod} milliseconds. | int | 2000 |
 
 ### Service Messages
 es-ESS also publishes Operational-Messages as well as Errors, Warnings and Critical failures under the `$SYS`-Topic of es-ESS. Check these from time to time to ensure proper functionality
