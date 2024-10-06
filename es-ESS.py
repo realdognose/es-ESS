@@ -47,7 +47,10 @@ class esESS:
         self._sigTermInvoked=False   
         self.mainMqttClientConnected = False
         self.localMqttClientConnected = False
-        self.mqttThrottlePeriod = int(self.config["Mqtt"]["ThrottlePeriod"]) or 0
+        self.mqttThrottlePeriod = 0
+
+        if ("ThrottlePeriod" in self.config["Mqtt"]):
+            self.mqttThrottlePeriod = int(self.config["Mqtt"]["ThrottlePeriod"])
         
         i(self, "Initializing " + Globals.esEssTag + " (" + Globals.currentVersionString + ")")
 
