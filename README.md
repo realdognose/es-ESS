@@ -218,6 +218,7 @@ if you want to export from a certain service (like bms) you can use dbus-spy in 
 
 ### Example relation between dbus-spy, config and MQTT ###
 
+
 <div align="center">
 | use `dbus-spy` to find the servicename |
 |:-------:|
