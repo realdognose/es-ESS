@@ -278,6 +278,14 @@ class Wattpilot(object):
         return self._amp
     
     @property
+    def awattarMaxPrice(self):
+        return self._awattarMaxPrice
+    
+    @property
+    def awattarCurrentPrice(self):
+        return self._awattarCurrentPrice
+    
+    @property
     def ampLimit(self):
         return self._ampLimit
     
@@ -509,7 +517,10 @@ class Wattpilot(object):
 
         elif name=="ust":
             self._cableLock = Wattpilot.ustValues[value]
-
+        elif name=="awcp":
+            self._awattarCurrentPrice = getattr(value, "marketprice")
+        elif name=="awp":
+            self._awattarMaxPrice = value
         elif name=="eto":
             self._energyCounterTotal = value
         elif name=="fte":
@@ -740,6 +751,8 @@ class Wattpilot(object):
         self._cae=None
         self._cak=None
         self._event_handler = {}
+        self._awattarMaxPrice = 0.0
+        self._awattarCurrentPrice = 0.0
 
         self._wst=threading.Thread()
 

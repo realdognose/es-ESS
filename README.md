@@ -330,6 +330,21 @@ FroniusWattpilot requires a few variables to be set in `/data/es-ESS/config.ini`
 | [FroniusWattpilot]  | Username | Username of Wattpilot | String  | User |
 | [FroniusWattpilot]  | Password | Password of Wattpilot | String  | Secret123! |
 | [FroniusWattpilot]  | HibernateMode | When the car is disconnected, es-ESS will switch into idle mode, stop doing heavy lifting. Connection to wattpilot remains established and VRM control enabled. <br /><br />With hibernate enabled, wattpilot will also be disconnected, and connected every 5 minutes for a car-state-check. This greatly reduces the number of incoming socket messages from wattpilot by about 95% per day, but causes an delay of upto 5 minutes when the car is connected.<br /><br />You can force a wakeup by switching to *Scheduled charging* in VRM at any time. | Boolean  | true |
+| [FroniusWattpilot]  | LowPriceCharging | Flag, if es-ESS should control low price charging | Boolean  | true |
+| [FroniusWattpilot]  | LowPriceAmps | Amps to use, when low price charging | int  | 48 |
+
+### Low Price Charging. 
+Wattpilot supports the function to charge due to cheap grid prices. This works, as long as you are still running a Fronius inverter along with a Fronius Smartmeter. 
+If you no longer run a Fronius Smartmeter, Wattpilot basically is not able to use "Eco-Mode" - which also disables the builtin charge functionality when grid prices are low. 
+
+If you still run a Fronius smartmeter, you can use the builtin feature as you are used to. Leave `LowPriceCharging` in the config.ini set to `false`. es-ESS will then detect,
+whenever Wattpilot is charging due to cheap prices and NOT take over any control. 
+
+If you are NOT running a Fronius smartmeter anylonger, es-ESS can take over that part as well: Set `LowPriceCharging` in the config.ini set to `true` and adjust the value `LowPriceAmps`
+accordingly. es-ESS will query wattpilot for it's current configured price limit and the current price - and invoke charging, if the limit is met.
+
+The Fronius Wattpilot-Service is able to deal with nested occurences of PV-Overhead-Charging and Low Price Charging, it can start with "10A Solar" (based on allowance) and then switch to the desired 
+48A due to cheap grid prices or the other way round.
 
 ### Credits
 Wattpilot control functionality has been taken from https://github.com/joscha82/wattpilot and modified to extract all variables required for full integration.
@@ -341,10 +356,6 @@ since 2 years, lot of pull-requests are not accepted.)
 > The wattpilot app is reporting a different charge time than displayed in VRM?
 
 The wattpilot app is reporting the time since the car has been plugged in. Especially with solar overhead charging, that includes a lot of idle time. es-ESS is tracking only the time the car is actually charging and displaying this time in VRM.
-
-> Can I use low energy price charging with es-ESS?
-
-Wattpilot itself supports the feature to charge when energy prices are low. This works perfectly, doesn't make sence to reproduce. Hence, you can use the builtin feature as you are used to. es-ESS will detect when wattpilot is charging due to low energy costs and not take over control.
 
 > Sometimes VRM is displaying `Stop charging`, `Start charging` or `Switching phasemode` for a long time? 
 

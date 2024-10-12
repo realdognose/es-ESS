@@ -238,6 +238,16 @@ class esESS:
             #Create Service Control Flag, individual Entries are to be created by user.
             self.config["Services"]["MqttDC"] = "false"
 
+        version = 5
+        if (loadedVersion < version):
+            self._backupConfig()
+            i(self, "Upgrading configuration to v{0}".format(version))
+            self.config["Common"]["ConfigVersion"] = "{0}".format(version)
+
+            #Introducing Awattar Charging for Wattpilot. 
+            self.config["FroniusWattpilot"]["LowPriceCharging"] = "false"
+            self.config["FroniusWattpilot"]["LowPriceAmps"] = "48"
+
         #All required configuration changes applied. Save new file, create a backup of the existing configuration. 
         if (loadedVersion < int(self.config["Common"]["ConfigVersion"])):
             with open("{0}/config.ini".format(os.path.dirname(os.path.realpath(__file__))), 'w') as configfile:
