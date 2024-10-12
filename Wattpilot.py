@@ -228,6 +228,10 @@ class Wattpilot(object):
     @property
     def amps1(self):
         return self._amps1
+    
+    @property
+    def startState(self):
+        return self._startState
 
     @property
     def amps2(self):
@@ -527,6 +531,8 @@ class Wattpilot(object):
             self._startingPower = value
         elif name=="ama":
             self._ampLimit = value
+        elif name=="frc":
+            self._startState = WattpilotStartStop(value)
         elif name=="cae":
             self._cae = value
         elif name=="cak":
@@ -753,6 +759,7 @@ class Wattpilot(object):
         self._event_handler = {}
         self._awattarMaxPrice = 0.0
         self._awattarCurrentPrice = 0.0
+        self._startState = None
 
         self._wst=threading.Thread()
 

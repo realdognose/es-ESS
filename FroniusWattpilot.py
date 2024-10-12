@@ -43,9 +43,6 @@ class FroniusWattpilot (esESSService):
         self.isIdleMode = False
         self.isHibernateEnabled = self.config["FroniusWattpilot"]["HibernateMode"].lower() == "true"
         self.mqttAllowanceTopic = 'es-ESS/SolarOverheadDistributor/Requests/Wattpilot/Allowance'
-        self.lowPriceCharging = self.config["FroniusWattpilot"]["LowPriceCharging"].lower() == "true"
-        self.lowPriceAmps = int(self.config["FroniusWattpilot"]["LowPriceAmps"])
-        self.isLowPriceCharing = False
 
     def initDbusService(self):
         self.dbusService = VeDbusService(self.serviceName, bus=dbusConnection(), register=False)
@@ -333,18 +330,11 @@ class FroniusWattpilot (esESSService):
                         self.chargingTime += 5
                         if (self.wattpilot.mode == WattpilotControlMode.ECO):
                             #Mode auto + charging reported. => We are in duty of contorl!
-                            #Second case may be that we are charging due to low prices. 
-                            #validate low price charging, may happen that it ends or kicks in while charging pv! 
-                            self.isLowPriceCharing=self.wattpilot.awattarCurrentPrice <= self.wattpilot.awattarMaxPrice and self.lowPriceCharging
-                            
-                            if (self.allowance >= self.wattpilot.voltage1 * 6 or self.isLowPriceCharing):
-                                targetAmps = int(round(max(self.allowance / self.wattpilot.voltage1, 6))) if not self.isLowPriceCharing else self.lowPriceAmps
+                            if self.allowance >= self.wattpilot.voltage1 * 6:
+                                targetAmps = int(round(max(self.allowance / self.wattpilot.voltage1, 6))) 
                                 targetAmps = min(self.wattpilot.ampLimit * 3, targetAmps) #obey limits.
 
-                                if (self.isLowPriceCharing):
-                                    self.publishServiceMessage(self, "Charging due to low price: {0}<{1} with {2}A".format(self.wattpilot.awattarCurrentPrice, self.wattpilot.awattarMaxPrice, self.lowPriceAmps))
-                                else:
-                                    self.publishServiceMessage(self, "Current allowance is {0}W, that's {1}A".format(self.allowance, targetAmps))
+                                self.publishServiceMessage(self, "Current allowance is {0}W, that's {1}A".format(self.allowance, targetAmps))
 
                                 #Adjust charging rate. Method over there will handle phase-switching if required and return the proper state
                                 self.reportVRMStatus(self.adjustChargeCurrent(targetAmps))
@@ -382,18 +372,9 @@ class FroniusWattpilot (esESSService):
                     #NotChargingBecauseWhatever - this is most likely our operational state in automatic mode. 
                     if (self.wattpilot.mode == WattpilotControlMode.ECO):
                         #auto
-                        #check allowance or low price.
-                        d(self, "Allowance: {0}; LowPriceCheck: {1} < {2} ? (Enabled: {3})".format(self.allowance, self.wattpilot.awattarCurrentPrice, self.wattpilot.awattarMaxPrice, self.lowPriceCharging))
-
-                        if (self.allowance >= self.wattpilot.voltage1 * 6 or (self.wattpilot.awattarCurrentPrice <= self.wattpilot.awattarMaxPrice and self.lowPriceCharging)):
+                        #check allowance
+                        if (self.allowance >= self.wattpilot.voltage1 * 6):
                             onOffCooldownSeconds = self.getOnOffCooldownSeconds()
-
-                            #flag, based on what we gonna start the charge.
-                            #It may be possible that we start on PV, but swith to low-price charging with more amps later on. 
-                            #tis has to be frequently validated in the ongoing-charge handling. Also fallback from low price charging
-                            #to PV overhead should be possible. 
-                            
-                            self.isLowPriceCharing=self.wattpilot.awattarCurrentPrice <= self.wattpilot.awattarMaxPrice and self.lowPriceCharging
 
                             self.reportVRMStatus(VrmEvChargerStatus.StartCharging) #start charging
 
@@ -401,7 +382,7 @@ class FroniusWattpilot (esESSService):
                                 self.publishServiceMessage(self, "Starting to charge.")
 
                                 #check, if we need to start in 1 or 3 phase mode, based on targetAmps. 
-                                targetAmps = int(round(max(self.allowance / self.wattpilot.voltage1, 6))) if not self.isLowPriceCharing else self.lowPriceAmps
+                                targetAmps = int(round(max(self.allowance / self.wattpilot.voltage1, 6))) 
                                 targetAmps = min(self.wattpilot.ampLimit * 3, targetAmps) #obey limits.
 
                                 if (targetAmps > self.wattpilot.ampLimit):
@@ -422,15 +403,31 @@ class FroniusWattpilot (esESSService):
                         else:
                             d(self, "Waiting for Sun in auto mode")
                             self.reportVRMStatus(VrmEvChargerStatus.WaitingForSun) #waiting for sun.
+
+                            #ensure, we are in neutral state, so cheap price charging can kick in. 
+                            if self.wattpilot.startState != WattpilotStartStop.Neutral:
+                                d(self, "Returning charge control to neutral state.")
+                                self.wattpilot.set_start_stop(WattpilotStartStop.Neutral)
                                 
                     else:
                         #not charging, but not in auto mode - so, connected is all that's left to say. 
                         self.reportVRMStatus(VrmEvChargerStatus.Connected) #connected 
 
-                elif (self.wattpilot.modelStatus in[WattpilotModelStatus.ChargingBecauseAwattarPriceLow, WattpilotModelStatus.NotChargingBecauseFallbackAwattar, WattpilotModelStatus.ChargingBecauseFallbackDefault ]) :
-                    self.chargingTime += 5
-                    self.reportVRMStatus(VrmEvChargerStatus.Charging) 
-                    self.reportConsumption()
+                elif (self.wattpilot.modelStatus in[WattpilotModelStatus.ChargingBecauseAwattarPriceLow]) :
+                    if (self.wattpilot.power <= 0):
+                        self.noChargeSince += 5
+                    else:
+                        self.noChargeSince = 0
+
+                    if (self.noChargeSince >= 120):
+                        #we are officially charging, but no charge happened since 2 minutes. 
+                        #so, we assume, car is fully charged. 
+                        d(self, "No charge since 2 minutes... Assuming car is fully charged.")
+                        self.reportVRMStatus(VrmEvChargerStatus.Charged)
+                    else:
+                        self.chargingTime += 5
+                        self.reportVRMStatus(VrmEvChargerStatus.Charging) 
+                        self.reportConsumption()
                     
                 elif (self.wattpilot.modelStatus == WattpilotModelStatus.NotChargingBecausePhaseSwitch):
                     self.chargingTime += 5

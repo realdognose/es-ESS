@@ -245,8 +245,7 @@ class esESS:
             self.config["Common"]["ConfigVersion"] = "{0}".format(version)
 
             #Introducing Awattar Charging for Wattpilot. 
-            self.config["FroniusWattpilot"]["LowPriceCharging"] = "false"
-            self.config["FroniusWattpilot"]["LowPriceAmps"] = "48"
+            # gone, not required. 
 
         #All required configuration changes applied. Save new file, create a backup of the existing configuration. 
         if (loadedVersion < int(self.config["Common"]["ConfigVersion"])):
