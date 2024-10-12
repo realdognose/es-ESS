@@ -315,6 +315,8 @@ VRM Controls have no option to explicit select 1 or 3 phase charging, therefore 
 
 > :warning: **FAKE-BMS injection**:<br /> This feature is creating FAKE-BMS information on dbus. Make sure to manually select your *actual* BMS unter *Settings > System setup > Battery Monitor* else your ESS may not behave correctly anymore. Don't leave this setting to *Automatic*
 
+> :warning: **Dependency**:<br /> If you want to enable Solar-Overhead Charging, you need to enable the [SolarOverheadDistributor](#solaroverheaddistributor) as well. (It will be responsible for giving a clearence to Wattpilots charge request)
+
 FroniusWattpilot requires a few variables to be set in `/data/es-ESS/config.ini`: 
 
 | Section    | Value name |  Descripion | Type | Example Value|
@@ -340,8 +342,8 @@ If you no longer run a Fronius Smartmeter, Wattpilot basically is not able to us
 If you still run a Fronius smartmeter, you can use the builtin feature as you are used to. Leave `LowPriceCharging` in the config.ini set to `false`. es-ESS will then detect,
 whenever Wattpilot is charging due to cheap prices and NOT take over any control. 
 
-If you are NOT running a Fronius smartmeter anylonger, es-ESS can take over that part as well: Set `LowPriceCharging` in the config.ini set to `true` and adjust the value `LowPriceAmps`
-accordingly. es-ESS will query wattpilot for it's current configured price limit and the current price - and invoke charging, if the limit is met.
+If you are NOT running a Fronius smartmeter anylonger, es-ESS can take over that part as well: Set `LowPriceCharging` in the config.ini to `true` and adjust the value `LowPriceAmps`
+accordingly. es-ESS will query wattpilot for it's current configured price limit and the current price - and invoke charging, if the limit is undershot.
 
 The Fronius Wattpilot-Service is able to deal with nested occurences of PV-Overhead-Charging and Low Price Charging, it can start with "10A Solar" (based on allowance) and then switch to the desired 
 48A due to cheap grid prices or the other way round.
