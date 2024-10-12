@@ -297,7 +297,7 @@ Install *websocket-client*:
 python -m pip install websocket-client
 ```
 
-> :warning: **Venus-Update**:<br /> Updating Venus-OS will remove these modules as well, so you need to execute the commands again.
+> :warning: **Venus-Update**:<br /> Updating Venus-OS will remove these modules again, so you need to execute the commands again.
 
 
 ### Configuration
@@ -350,6 +350,9 @@ accordingly. es-ESS will query wattpilot for it's current configured price limit
 
 The Fronius Wattpilot-Service is able to deal with nested occurences of PV-Overhead-Charging and Low Price Charging, it can start with "10A Solar" (based on allowance) and then switch to the desired 
 48A due to cheap grid prices or the other way round.
+
+> :warning: **Dependency**:<br /> Using Low Price-Charging would cause your home battery to kick in. Using this feature therefore only makes sence, if you enable the [NoBatToEV](#nobattoev) Service as well, which will offload any power drawn by the EV to the grid,
+as long as it is NOT covered by local solar production.
 
 ### Credits
 Wattpilot control functionality has been taken from https://github.com/joscha82/wattpilot and modified to extract all variables required for full integration.
