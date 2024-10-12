@@ -297,6 +297,9 @@ Install *websocket-client*:
 python -m pip install websocket-client
 ```
 
+> :warning: **Venus-Update**:<br /> Updating Venus-OS will remove these modules as well, so you need to execute the commands again.
+
+
 ### Configuration
 
 <img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/wattpilot_controls.png" /> 
