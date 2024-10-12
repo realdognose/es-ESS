@@ -286,7 +286,7 @@ Despite the installation of es-ESS, an additional python module *websocket-clien
 The installation is a *one-liner* through *pythons pip* - which in turn might need to be installed first. 
 If you have already installed *python pip* on your system, can skip this.
 
-Install *pythong pip*: 
+Install *python pip*: 
 ```
 opkg update
 opkg install python3-pip
