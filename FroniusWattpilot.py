@@ -96,6 +96,7 @@ class FroniusWattpilot (esESSService):
         self.dbusService.add_path('/ModeLiteral', VrmEvChargerControlMode(0).name)
         self.dbusService.add_path('/StatusLiteral', VrmEvChargerStatus(0).name)
         self.dbusService.add_path('/StartStopLiteral', VrmEvChargerStartStop(0).name)
+        self.dbusService.add_path('/LastChargeModeLiteral', None)
 
         self.dbusService.register()
 
@@ -328,6 +329,7 @@ class FroniusWattpilot (esESSService):
                         self.reportVRMStatus(VrmEvChargerStatus.Charged)
                     else:
                         self.chargingTime += 5
+                        self.publishRetained("/LastChargeModeLiteral", "SolarOverhead")
                         if (self.wattpilot.mode == WattpilotControlMode.ECO):
                             #Mode auto + charging reported. => We are in duty of contorl!
                             if self.allowance >= self.wattpilot.voltage1 * 6:
@@ -428,6 +430,7 @@ class FroniusWattpilot (esESSService):
                         self.chargingTime += 5
                         self.reportVRMStatus(VrmEvChargerStatus.Charging) 
                         self.reportConsumption()
+                        self.publishRetained("/LastChargeModeLiteral", "LowPrice")
                     
                 elif (self.wattpilot.modelStatus == WattpilotModelStatus.NotChargingBecausePhaseSwitch):
                     self.chargingTime += 5
@@ -612,6 +615,10 @@ class FroniusWattpilot (esESSService):
     def publish(self, path, value):
         self.dbusService[path] = value
         self.publishMainMqtt("es-ESS/FroniusWattpilot{0}".format(path), value, 0)
+
+    def publishRetained(self, path, value):
+        self.dbusService[path] = value
+        self.publishMainMqtt("es-ESS/FroniusWattpilot{0}".format(path), value, 0, True)
 
     def handleSigterm(self):
        self.publishServiceMessage(self, "SIGTERM received, sending STOP-command to wattpilot, if in auto mode.")

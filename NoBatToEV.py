@@ -21,7 +21,7 @@ class NoBatToEV(esESSService):
         pass
 
     def initDbusSubscriptions(self):
-        if (Globals.esESS._services["FroniusWattpilot"] is None):
+        if ("FroniusWattpilot" in Globals.esESS._services):
             self.evChargerPowerDbus = self.registerDbusSubscription("com.victronenergy.evcharger", "/Ac/Power")
         
         self.consumptionL1Dbus  = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Consumption/L1/Power")
@@ -57,7 +57,7 @@ class NoBatToEV(esESSService):
 
     def _update(self):
         if (self.noPhasesDbus.value is not None and self.noPhasesDbus.value > 0):
-            if (Globals.esESS._services["FroniusWattpilot"] is None):
+            if ("FroniusWattpilot" in Globals.esESS._services):
                 evPower = self.evChargerPowerDbus.value
             else:
                 evPower = (Globals.esESS._services["FroniusWattpilot"].wattpilot.power1 + Globals.esESS._services["FroniusWattpilot"].wattpilot.power2 + Globals.esESS._services["FroniusWattpilot"].wattpilot.power3)*1000

@@ -6,7 +6,7 @@ from Helper import d,w,e,i,t
 #superglobals
 esEssTag = "es-ESS"
 esEssTagService = "esESS"
-currentVersion = "24.10.6"
+currentVersion = "24.11.1"
 currentVersionString="{0} {1} beta".format(esEssTag, currentVersion)
 
 #will be updated at startup
