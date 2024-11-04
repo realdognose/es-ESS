@@ -72,6 +72,7 @@ class ShellyPMInverterDevice:
         self.shellyHost = cfgSection["Host"]
         self.shellyPhase = cfgSection["Phase"]
         self.shellyPos = int(cfgSection["Position"])
+        self.shellyRelay = int(cfgSection["Relay"])
         self.value = 0.0
         self.humidity = 0.0
         self.pressure = 0.0
@@ -117,7 +118,7 @@ class ShellyPMInverterDevice:
 
     def queryShelly(self):
         try:
-            URL = "http://%s:%s@%s/rpc/Switch.GetStatus?id=0" % (self.shellyUsername, self.shellyPassword, self.shellyHost)
+            URL = "http://%s:%s@%s/rpc/Switch.GetStatus?id=%s" % (self.shellyUsername, self.shellyPassword, self.shellyHost, self.shellyRelay)
             URL = URL.replace(":@", "")
 
             #timeout should be half the poll frequency, so there is time to process.
@@ -136,7 +137,7 @@ class ShellyPMInverterDevice:
                 #All good, evaluate and publish on dbus. 
                 self.dbusService['/Ac/Power'] = meter_data['apower']
                 for x in range(1,4):
-                    if (x != self.shellyPhase):
+                    if (x != int(self.shellyPhase)):
                         self.dbusService['/Ac/L' + str(x) + '/Voltage'] = None
                         self.dbusService['/Ac/L' + str(x) + '/Current'] = None
                         self.dbusService['/Ac/L' + str(x) + '/Power'] = None

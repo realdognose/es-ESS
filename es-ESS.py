@@ -327,7 +327,8 @@ class esESS:
             ignoreServices=["com.victronenergy.battery.esESS", 
                             "com.victronenergy.settings.esESS", 
                             "com.victronenergy.temperature.esESS",
-                            "com.victronenergy.grid.esESS"]
+                            "com.victronenergy.grid.esESS",
+                            "com.victronenergy.pvinverter.esESS"]
         
             #Initialize dbus on a seperate thred, so our services currently initializing can
             #respond to service calls during monitoring.

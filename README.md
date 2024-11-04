@@ -469,6 +469,7 @@ each config Section needs to match the pattern `[ShellyPMInverter:aUniqueKey]` a
 | [ShellyPMInverter:aUniqueKey]     | Host |  IP / Hostname of the Shelly | String | 192.168.136.87 |
 | [ShellyPMInverter:aUniqueKey]     | Phase |  Phase the Shelly / Inverter is connected to. (1-3) | Integer | 2 |
 | [ShellyPMInverter:aUniqueKey]     | Position |  Position, the Shelly / Inverter is connected to your multiplus. 0 = ACIN; 1=ACOUT | Integer | 1 |
+| [ShellyPMInverter:aUniqueKey]     | Relay |  id of the relay, if multiple. | Integer | 0 |
 
 When adjusting the `PollFrequencyMs`, you should check the log file regulary. The Device is polled with exactly `PollFrequencyMs`
 Timeout, so requests do not pile up. Whenever there are 3 consecutive timeouts, the dbus service will be feed with `null` values, and 
