@@ -312,7 +312,7 @@ class FroniusWattpilot (esESSService):
                     #when disconnected, reset the noChargeSinceFlag, so charging will start upon next connection.
                     self.noChargeSince = 0
 
-                elif (self.wattpilot.modelStatus == WattpilotModelStatus.ChargingBecauseForceStateOn):
+                elif (self.wattpilot.modelStatus == WattpilotModelStatus.ChargingBecauseForceStateOn or self.wattpilot.modelStatus == WattpilotModelStatus.ChargingBecauseFallbackDefault):
                     #Wattpilot is charging, because forced on. So, we are either in manual control + on, or running in automatic mode. 
                     #in manual mode - nothing to do, but report consumption. In Auto Mode, we have to take control.
                     #Wattpilot eco means "auto control."
