@@ -203,7 +203,6 @@ class esESS:
     def _validateConfiguration(self):
         self.config = configparser.ConfigParser()
         self.config.optionxform = str
-        #TODO: Validate config exists, else use sample?
         self.config.read("%s/config.ini" % (os.path.dirname(os.path.realpath(__file__))))
         loadedVersion = int(self.config["Common"]["ConfigVersion"])
 
@@ -246,6 +245,15 @@ class esESS:
 
             #Introducing Awattar Charging for Wattpilot. 
             # gone, not required. 
+        
+        version = 6
+        if (loadedVersion < version):
+            self._backupConfig()
+            i(self, "Upgrading configuration to v{0}".format(version))
+            self.config["Common"]["ConfigVersion"] = "{0}".format(version)
+
+            #Introducing MqttPVInverter
+            self.config["Services"]["MqttPVInverter"] = "false"            
 
         #All required configuration changes applied. Save new file, create a backup of the existing configuration. 
         if (loadedVersion < int(self.config["Common"]["ConfigVersion"])):
@@ -293,6 +301,7 @@ class esESS:
             self._checkAndEnable("NoBatToEV")
             self._checkAndEnable("Shelly3EMGrid")
             self._checkAndEnable("ShellyPMInverter")
+            self._checkAndEnable("MqttPVInverter")
             
             #work in progress, but onhold.
             #self._checkAndEnable("Grid2Bat")

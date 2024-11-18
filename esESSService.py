@@ -30,9 +30,12 @@ class esESSService(ABC):
         pass
 
     def registerMqttSubscription(self, topic, qos=0, type=MqttSubscriptionType.Main, callback=None):
-        sub = MqttSubscription(self, topic, qos, type, callback)
-        Globals.esESS.registerMqttSubscription(sub)
-        return sub
+        if (topic is not None and topic != ""):
+            sub = MqttSubscription(self, topic, qos, type, callback)
+            Globals.esESS.registerMqttSubscription(sub)
+            return sub
+        
+        return None
     
     @abstractmethod
     def initWorkerThreads(self):
