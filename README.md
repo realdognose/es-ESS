@@ -22,11 +22,6 @@ If you are a developer yourself and want to help to improve es-ESS, feel free to
 I've switched to a Victron-System some months ago, and immediately digged into customizing it. Lot has been done, Lot is still todo. Since I will run this 
 system for at least 10ish years, there will be plenty of updates and/or bugfixes in the future.
 
-# Almost there
-
-equinox-solutions, es-ESS or me are in no way affiliated, sponsored or associated with Victron Energy. Use es-ESS at your own risk, the software is provided
-"as is" and may stop working correctly due to system upgrades without notice.
-
 # Table of Contents
 - [Setup](#setup) - General setup process and requirements for es-ESS.
 - [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.
