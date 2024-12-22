@@ -118,6 +118,8 @@ or disable certain services.
 
 > :white_check_mark: Production Ready
 
+> :warning: This is currently broken since 3.50.
+
 <img align="right" src="https://github.com/realdognose/es-ESS/blob/main/img/TimeToGo.png" /> 
 
 #### Overview
