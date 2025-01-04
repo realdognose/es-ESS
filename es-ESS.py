@@ -66,6 +66,10 @@ class esESS:
         self._threadExecutionsMinute = 0
         
         i(self, "Initializing thread pool with a size of {0}".format(self.config["Common"]["NumberOfThreads"]))
+
+        #wait 20 seconds after startup
+        Helper.waitTimeout(lambda: False, 20) 
+
         self.threadPool = ThreadPoolExecutor(int(self.config["Common"]["NumberOfThreads"]), "TPt")
 
         if (self.mqttThrottlePeriod > 0):
@@ -635,7 +639,7 @@ class esESS:
                 elif (sub.type == MqttSubscriptionType.Local):
                     self.localMqttClient.unsubscribe(sub.topic)
         
-        #dbusmonitor has no disconnect method, so we just stop forwarding the messages in the global handler. 
+        #dbusmonitor has no disconnect method, so we just stop forwarding the messages in the global handler.
 
         #tell each service to clean up as well.
         for service in self._services.values():
@@ -653,7 +657,15 @@ class esESS:
         self.localMqttClient.disconnect()   
 
         i(self, "Cleaned up. Bye.")
-        sys.exit(0)       
+
+        #some things may throw exceptions on exit. so, keep trying until we can exit.
+        while True:
+            try:
+                sys.exit(0)       
+            except Exception:
+                w(self, "Failed to exit. Retrying in 50ms")
+                time.sleep(0.05)
+                pass
 
 def configureLogging(config):
 

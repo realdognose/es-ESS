@@ -97,6 +97,8 @@ class SolarOverheadDistributor(esESSService):
       self.gridL3Dbus      = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Grid/L3/Power")
       self.batteryPower    = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Power")
       self.batterySoc      = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Soc")
+      
+      #TODO Readout CCL and ChargeVoltage to be able to override battery reservation, in case the battery can observe less than requested. 
      
    def initMqttSubscriptions(self):
       #basic props

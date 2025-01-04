@@ -154,20 +154,24 @@ class MqttPVInverterInstance:
 
         #EnergyForwardeds
         elif (msg.topic == self.l1EnergyForwardedTopic):
-            self.dbusService['/Ac/L1/Energy/Forward'] = float(messagePlain)
+            if messagePlain != "" and round(float(messagePlain)) != 0:
+                self.dbusService['/Ac/L1/Energy/Forward'] = float(messagePlain)
         
         elif (msg.topic == self.l2EnergyForwardedTopic):
-            self.dbusService['/Ac/L2/Energy/Forward'] = float(messagePlain)
+            if messagePlain != "" and round(float(messagePlain)) != 0:
+                self.dbusService['/Ac/L2/Energy/Forward'] = float(messagePlain)
 
         elif (msg.topic == self.l3EnergyForwardedTopic):
-            self.dbusService['/Ac/L3/Energy/Forward'] = float(messagePlain)
+            if messagePlain != "" and round(float(messagePlain)) != 0:
+                self.dbusService['/Ac/L3/Energy/Forward'] = float(messagePlain)
 
         #Totals
         if (msg.topic == self.totalPowerTopic):
             self.dbusService['/Ac/Power'] = float(messagePlain)
 
         if (msg.topic == self.totalEnergyForwardedTopic):
-            self.dbusService['/Ac/Energy/Forward'] = float(messagePlain)
+            if messagePlain != "" and round(float(messagePlain)) != 0:
+                self.dbusService['/Ac/Energy/Forward'] = float(messagePlain)
 
       except Exception as ex:
             c(self, "Exception", exc_info=ex)
@@ -199,15 +203,15 @@ class MqttPVInverterInstance:
         self.dbusService.add_path('/CustomName', self.customName)
 
         #inverter props
-        self.dbusService.add_path('/Ac/Power', 0)
-        self.dbusService.add_path('/Ac/Energy/Forward', 0)
+        self.dbusService.add_path('/Ac/Power', None)
+        self.dbusService.add_path('/Ac/Energy/Forward', None)
 
         for x in range(1,4):
-            self.dbusService.add_path('/Ac/L' + str(x) + '/Voltage', 0)
-            self.dbusService.add_path('/Ac/L' + str(x) + '/Current', 0)
-            self.dbusService.add_path('/Ac/L' + str(x) + '/Power', 0)
-            self.dbusService.add_path('/Ac/L' + str(x) + '/Energy/Forward', 0)
-            self.dbusService.add_path('/Ac/L' + str(x) + '/Energy/Reverse', 0)
+            self.dbusService.add_path('/Ac/L' + str(x) + '/Voltage', None)
+            self.dbusService.add_path('/Ac/L' + str(x) + '/Current', None)
+            self.dbusService.add_path('/Ac/L' + str(x) + '/Power', None)
+            self.dbusService.add_path('/Ac/L' + str(x) + '/Energy/Forward', None)
+            self.dbusService.add_path('/Ac/L' + str(x) + '/Energy/Reverse', None)
 
         self.dbusService.register()
     
