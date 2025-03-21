@@ -86,8 +86,8 @@ class esESS:
             i(self, "Mqtt-Throttling is enabled to {0}ms".format(self.mqttThrottlePeriod))   
 
     def configureMqtt(self):
-        self.mainMqttClient = mqtt.Client("es-ESS-MQTT-Client")
-        self.localMqttClient = mqtt.Client("es-ESS-Local-MQTT-Client")
+        self.mainMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-MQTT-Client")
+        self.localMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-Local-MQTT-Client")
 
         i(Globals.esEssTag, "MQTT: Connecting to broker: {0}".format(config["Mqtt"]["Host"]))
         self.mainMqttClient.on_disconnect = self.onMainMqttDisconnect
