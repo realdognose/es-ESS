@@ -195,12 +195,12 @@ class esESS:
     
     def _checkAndEnable(self, clazz):
        if (self.config["Services"][clazz].lower()=="true"):
-          i(self, "Service {0} is enabled.".format(clazz))
+          i(self, "=========== Service {0} is enabled. ===========".format(clazz))
           imp = __import__(clazz)
           class_ = getattr(imp, clazz)
           self._services[clazz] = class_()
        else:
-          i(self, "Service {0} is not enabled. Skipping initialization.".format(clazz))  
+          i(self, "=========== Service {0} is not enabled. Skipping initialization. ===========".format(clazz))  
 
        self.publishMainMqtt("{0}/{1}".format(Globals.esEssTag, clazz), "Enabled" if self.config["Services"][clazz].lower()=="true" else "Disabled") 
 
@@ -257,7 +257,17 @@ class esESS:
             self.config["Common"]["ConfigVersion"] = "{0}".format(version)
 
             #Introducing MqttPVInverter
-            self.config["Services"]["MqttPVInverter"] = "false"            
+            self.config["Services"]["MqttPVInverter"] = "false"    
+
+        version = 7
+        if (loadedVersion < version):
+            self._backupConfig()
+            i(self, "Upgrading configuration to v{0}".format(version))
+            self.config["Common"]["ConfigVersion"] = "{0}".format(version)
+
+            #Relay as toggle for NoBatToEv
+            self.config.add_section("NoBatToEV")
+            self.config["NoBatToEV"]["UseRelay"] = "-1"        
 
         #All required configuration changes applied. Save new file, create a backup of the existing configuration. 
         if (loadedVersion < int(self.config["Common"]["ConfigVersion"])):

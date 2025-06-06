@@ -42,9 +42,15 @@ class NoBatToEV(esESSService):
 
         self.pvOnDcDbus         = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Pv/Power")
         self.noPhasesDbus       = self.registerDbusSubscription("com.victronenergy.system", "/Ac/ActiveIn/NumberOfPhases")
+
+        self.relayState = None
+        self.relayStateUsage = int(self.config["NoBatToEV"]["UseRelay"])
+        i(self, "Relay state usage is set to: {}".format(self.relayStateUsage))
+        if (self.relayStateUsage > -1):
+            self.relayState = self.registerDbusSubscription("com.victronenergy.system", "/Relay/{}/State".format(self.relayStateUsage))
         
     def initWorkerThreads(self):
-        self.registerWorkerThread(self._update, 5000)
+        self.registerWorkerThread(self._update, 2000)
 
     def initMqttSubscriptions(self):
         pass
@@ -55,35 +61,48 @@ class NoBatToEV(esESSService):
     def handleSigterm(self):
        self.revokeGridSetPointRequest()
 
+    def enabled(self):
+        if self.relayStateUsage > -1:
+            if self.relayState is not None:
+                return self.relayState.value
+            else:
+                return False
+        else:
+            return True
+
     def _update(self):
         if (self.noPhasesDbus.value is not None and self.noPhasesDbus.value > 0):
-            if (not "FroniusWattpilot" in Globals.esESS._services):
-                evPower = self.evChargerPowerDbus.value
-            else:
-                evPower = (Globals.esESS._services["FroniusWattpilot"].wattpilot.power1 + Globals.esESS._services["FroniusWattpilot"].wattpilot.power2 + Globals.esESS._services["FroniusWattpilot"].wattpilot.power3)*1000
+            if self.enabled():
+                if (not "FroniusWattpilot" in Globals.esESS._services):
+                    evPower = self.evChargerPowerDbus.value
+                else:
+                    evPower = (Globals.esESS._services["FroniusWattpilot"].wattpilot.power1 + Globals.esESS._services["FroniusWattpilot"].wattpilot.power2 + Globals.esESS._services["FroniusWattpilot"].wattpilot.power3)*1000
 
-            consumption = self.consumptionL1Dbus.value + self.consumptionL2Dbus.value + self.consumptionL3Dbus.value
-            pvAvailable = self.pvOnGensetL1Dbus.value + self.pvOnGensetL2Dbus.value + self.pvOnGensetL3Dbus.value
-            pvAvailable += self.pvOnGridL1Dbus.value + self.pvOnGridL2Dbus.value + self.pvOnGridL3Dbus.value
-            pvAvailable += self.pvOnOutputL1Dbus.value + self.pvOnOutputL2Dbus.value + self.pvOnOutputL3Dbus.value
-            pvAvailable += self.pvOnDcDbus.value
+                consumption = self.consumptionL1Dbus.value + self.consumptionL2Dbus.value + self.consumptionL3Dbus.value
+                pvAvailable = self.pvOnGensetL1Dbus.value + self.pvOnGensetL2Dbus.value + self.pvOnGensetL3Dbus.value
+                pvAvailable += self.pvOnGridL1Dbus.value + self.pvOnGridL2Dbus.value + self.pvOnGridL3Dbus.value
+                pvAvailable += self.pvOnOutputL1Dbus.value + self.pvOnOutputL2Dbus.value + self.pvOnOutputL3Dbus.value
+                pvAvailable += self.pvOnDcDbus.value
 
-            d(self, "EV Charge is {ev}W, Consumption is {con}W and available Pv is {pv}W.".format(ev=evPower, con=consumption, pv=pvAvailable))
+                d(self, "EV Charge is {ev}W, Consumption is {con}W and available Pv is {pv}W.".format(ev=evPower, con=consumption, pv=pvAvailable))
 
-            if (evPower > 0):
-                if (consumption >= pvAvailable):
-                    #offload the share of EV charge that is NOT PV covered to the grid. 
-                    rawConsumption = consumption - evPower
-                    remainingPv = max(0, pvAvailable - rawConsumption)
-                    delta = evPower - remainingPv
+                if (evPower > 0):
+                    if (consumption >= pvAvailable):
+                        #offload the share of EV charge that is NOT PV covered to the grid. 
+                        rawConsumption = consumption - evPower
+                        remainingPv = max(0, pvAvailable - rawConsumption)
+                        delta = evPower - remainingPv
 
-                    d(self, "So, raw consumption is {0}W, remainingPV is {1}W, we therefore offload {2}W to the grid.".format(rawConsumption, remainingPv, delta))
+                        d(self, "So, raw consumption is {0}W, remainingPV is {1}W, we therefore offload {2}W to the grid.".format(rawConsumption, remainingPv, delta))
 
-                    self.registerGridSetPointRequest(delta)
+                        self.registerGridSetPointRequest(delta)
+                    else:
+                        self.revokeGridSetPointRequest()
                 else:
                     self.revokeGridSetPointRequest()
             else:
                 self.revokeGridSetPointRequest()
+                d(self, "NoBatToEV is disabled due to relay state.")
         else:
             w(self, "Grid-Loss detected. Not doing anything.")
             self.revokeGridSetPointRequest()
