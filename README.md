@@ -387,6 +387,7 @@ NoBatToEV requires a few variables to be set in `/data/es-ESS/config.ini`:
 | [Services]    | NoBatToEV   | Flag, if the service should be enabled or not | Boolean | true |
 | [Common]     | VRMPortalID |  Your portal ID to access values on mqtt / dbus |String | VRM0815 |
 | [Common]     | DefaultPowerSetPoint |  Default Power SetPoint, so it can be restored after ev charge finished. | double | -10 |
+| [NoBatToEV]  | UseRelay | can be -1 (disabled) or 0 or 1. Then NoBatToEV will only be "active", when the Relay 0 or 1 is turned on. (Relay Toggles are available in VRM)|
 
 > :warning: NOTE: this feature manipulates the grid set point in order to achieve proper offloading of your evs energy demand. Several precautions ensure that the configured default grid set point
 > is restored when the service is receiving proper shutdown signals (aka SIGTERM) or any kind of internal error appears. - However, in case of unexpected
