@@ -72,7 +72,7 @@ class esESS:
             i(self, "Initializing thread pool with a size of {0}".format(self.config["Common"]["NumberOfThreads"]))
 
             #wait 20 seconds after startup
-            Helper.waitTimeout(lambda: False, 1) 
+            Helper.waitTimeout(lambda: False, 20) 
 
             self.threadPool = ThreadPoolExecutor(int(self.config["Common"]["NumberOfThreads"]), "TPt")
 
