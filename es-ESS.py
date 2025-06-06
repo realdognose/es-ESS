@@ -12,6 +12,7 @@ import threading
 import time
 from builtins import Exception, int, str
 from concurrent.futures import ThreadPoolExecutor
+from importlib.metadata import version
 from typing import Dict
 import ssl
 
@@ -40,111 +41,125 @@ DBusGMainLoop(set_as_default=True)
 
 class esESS:
     def __init__(self):
-        #First thing to do is check, if the current configuration matches the desired version.
-        #if not, upgrade to most recent version, save changes and reload configuration file. 
-        self._validateConfiguration()
-        
-        self._sigTermInvoked=False   
-        self.mainMqttClientConnected = False
-        self.localMqttClientConnected = False
-        self.mqttThrottlePeriod = 0
+        try:
+            #First thing to do is check, if the current configuration matches the desired version.
+            #if not, upgrade to most recent version, save changes and reload configuration file. 
+            self._validateConfiguration()
+            
+            self._sigTermInvoked=False   
+            self.mainMqttClient = None
+            self.localMqttClient = None
+            self.mainMqttClientConnected = False
+            self.localMqttClientConnected = False
+            self.mqttThrottlePeriod = 0
 
-        if ("ThrottlePeriod" in self.config["Mqtt"]):
-            self.mqttThrottlePeriod = int(self.config["Mqtt"]["ThrottlePeriod"])
-        
-        i(self, "Initializing " + Globals.esEssTag + " (" + Globals.currentVersionString + ")")
+            if ("ThrottlePeriod" in self.config["Mqtt"]):
+                self.mqttThrottlePeriod = int(self.config["Mqtt"]["ThrottlePeriod"])
+            
+            i(self, "Initializing " + Globals.esEssTag + " (" + Globals.currentVersionString + ")")
 
-        #init core values
-        self._services: Dict[str, esESSService] = {}
-        self._dbusSubscriptions: Dict[str, list[DbusSubscription]] = {}
-        self._mqttSubscriptions: Dict[str, list[MqttSubscription]] = {}
-        self._serviceMessageIndex: Dict[str, int] = {}
-        self._dbusMonitor: DbusMonitor = None
-        self._gridSetPointRequests: Dict[str, float] = {}
-        self._gridSetPointDefault = float(self.config["Common"]["DefaultPowerSetPoint"])
-        self._gridSetPointCurrent = -99999 #use a unreal number at first, so es-ESS will detect a change upon restart and guarantee to set default GSP.
-        self._threadExecutionsMinute = 0
-        
-        i(self, "Initializing thread pool with a size of {0}".format(self.config["Common"]["NumberOfThreads"]))
+            #init core values
+            self._services: Dict[str, esESSService] = {}
+            self._dbusSubscriptions: Dict[str, list[DbusSubscription]] = {}
+            self._mqttSubscriptions: Dict[str, list[MqttSubscription]] = {}
+            self._serviceMessageIndex: Dict[str, int] = {}
+            self._dbusMonitor: DbusMonitor = None
+            self._gridSetPointRequests: Dict[str, float] = {}
+            self._gridSetPointDefault = float(self.config["Common"]["DefaultPowerSetPoint"])
+            self._gridSetPointCurrent = -99999 #use a unreal number at first, so es-ESS will detect a change upon restart and guarantee to set default GSP.
+            self._threadExecutionsMinute = 0
+            
+            i(self, "Initializing thread pool with a size of {0}".format(self.config["Common"]["NumberOfThreads"]))
 
-        #wait 20 seconds after startup
-        Helper.waitTimeout(lambda: False, 20) 
+            #wait 20 seconds after startup
+            Helper.waitTimeout(lambda: False, 1) 
 
-        self.threadPool = ThreadPoolExecutor(int(self.config["Common"]["NumberOfThreads"]), "TPt")
+            self.threadPool = ThreadPoolExecutor(int(self.config["Common"]["NumberOfThreads"]), "TPt")
 
-        if (self.mqttThrottlePeriod > 0):
-            self._mainMqttThrottleDictLock = threading.Lock()
-            self._mainMqttThrottleDict = { }
-            self._localMqttThrottleDictLock = threading.Lock()
-            self._localMqttThrottleDict = { }
-            self._lastThrottleLog = 0
-            self._messageCount = 0
-            self._sendCount = 0
-            self._lastLocalThrottleLog = 0
-            self._localMessageCount = 0
-            self._localSendCount = 0
-            i(self, "Mqtt-Throttling is enabled to {0}ms".format(self.mqttThrottlePeriod))   
+            if (self.mqttThrottlePeriod > 0):
+                self._mainMqttThrottleDictLock = threading.Lock()
+                self._mainMqttThrottleDict = { }
+                self._localMqttThrottleDictLock = threading.Lock()
+                self._localMqttThrottleDict = { }
+                self._lastThrottleLog = 0
+                self._messageCount = 0
+                self._sendCount = 0
+                self._lastLocalThrottleLog = 0
+                self._localMessageCount = 0
+                self._localSendCount = 0
+                i(self, "Mqtt-Throttling is enabled to {0}ms".format(self.mqttThrottlePeriod))   
+        except Exception as ex:
+            c(self, "Exception during __init__:", exc_info=ex)
 
     def configureMqtt(self):
-        self.mainMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-MQTT-Client")
-        self.localMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-Local-MQTT-Client")
+        try:
+            if (version("paho.mqtt").startswith("2")):
+                d(self,"Using phao >= 2.0 compliant initialization...")
+                self.mainMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-MQTT-Client")
+                self.localMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-Local-MQTT-Client")
+            else:
+                d(self,"Using phao < 2.0 compliant initialization...")
+                self.mainMqttClient = mqtt.Client("es-ESS-MQTT-Client")
+                self.localMqttClient = mqtt.Client("es-ESS-Local-MQTT-Client")
+                
+            i(Globals.esEssTag, "MQTT: Connecting to broker: {0}".format(config["Mqtt"]["Host"]))
+            self.mainMqttClient.on_disconnect = self.onMainMqttDisconnect
+            self.mainMqttClient.on_connect = self.onMainMqttConnect
 
-        i(Globals.esEssTag, "MQTT: Connecting to broker: {0}".format(config["Mqtt"]["Host"]))
-        self.mainMqttClient.on_disconnect = self.onMainMqttDisconnect
-        self.mainMqttClient.on_connect = self.onMainMqttConnect
+            if 'User' in config['Mqtt'] and 'Password' in config['Mqtt'] and config['Mqtt']['User'] != '' and config['Mqtt']['Password'] != '':
+                self.mainMqttClient.username_pw_set(username=config['Mqtt']['User'], password=config['Mqtt']['Password'])
 
-        if 'User' in config['Mqtt'] and 'Password' in config['Mqtt'] and config['Mqtt']['User'] != '' and config['Mqtt']['Password'] != '':
-            self.mainMqttClient.username_pw_set(username=config['Mqtt']['User'], password=config['Mqtt']['Password'])
+            self.mainMqttClient.will_set("es-ESS/$SYS/Status", "Offline", 2, True)
 
-        self.mainMqttClient.will_set("es-ESS/$SYS/Status", "Offline", 2, True)
+            if (self.config["Mqtt"]["SslEnabled"].lower() == "true"):
+                i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp-ssl", config["Mqtt"]["Host"], config["Mqtt"]["Port"]))
+                self.mainMqttClient.tls_set(cert_reqs=ssl.CERT_NONE)
+                self.mainMqttClient.tls_insecure_set(True)
+                self.mainMqttClient.connect(
+                    host=config["Mqtt"]["Host"],
+                    port=int(config["Mqtt"]["Port"])
+                )
+                
+            else:
+                i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp", config["Mqtt"]["Host"], config["Mqtt"]["Port"]))
+                self.mainMqttClient.connect(
+                    host=config["Mqtt"]["Host"],
+                    port=int(config["Mqtt"]["Port"])
+                )
 
-        if (self.config["Mqtt"]["SslEnabled"].lower() == "true"):
-            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp-ssl", config["Mqtt"]["Host"], config["Mqtt"]["Port"]))
-            self.mainMqttClient.tls_set(cert_reqs=ssl.CERT_NONE)
-            self.mainMqttClient.tls_insecure_set(True)
-            self.mainMqttClient.connect(
-                host=config["Mqtt"]["Host"],
-                port=int(config["Mqtt"]["Port"])
-            )
-            
-        else:
-            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp", config["Mqtt"]["Host"], config["Mqtt"]["Port"]))
-            self.mainMqttClient.connect(
-                host=config["Mqtt"]["Host"],
-                port=int(config["Mqtt"]["Port"])
-            )
+            self.mainMqttClient.loop_start()
+            self.mainMqttClient.publish("es-ESS/$SYS/Status", "Online", 2, True)
+            self.mainMqttClient.publish("es-ESS/$SYS/Version", Globals.currentVersionString, 2, True)
+            self.mainMqttClient.publish("es-ESS/$SYS/ConnectionTime", time.time(), 2, True)
+            self.mainMqttClient.publish("es-ESS/$SYS/ConnectionDateTime", str(datetime.datetime.now()), 2, True)
+            self.mainMqttClient.publish("es-ESS/$SYS/Github", "https://github.com/realdognose/es-ESS", 2, True)
 
-        self.mainMqttClient.loop_start()
-        self.mainMqttClient.publish("es-ESS/$SYS/Status", "Online", 2, True)
-        self.mainMqttClient.publish("es-ESS/$SYS/Version", Globals.currentVersionString, 2, True)
-        self.mainMqttClient.publish("es-ESS/$SYS/ConnectionTime", time.time(), 2, True)
-        self.mainMqttClient.publish("es-ESS/$SYS/ConnectionDateTime", str(datetime.datetime.now()), 2, True)
-        self.mainMqttClient.publish("es-ESS/$SYS/Github", "https://github.com/realdognose/es-ESS", 2, True)
+            #local mqtt
+            self.localMqttClient.on_disconnect = self.onLocalMqttDisconnect
+            self.localMqttClient.on_connect = self.onLocalMqttConnect
 
-        #local mqtt
-        self.localMqttClient.on_disconnect = self.onLocalMqttDisconnect
-        self.localMqttClient.on_connect = self.onLocalMqttConnect
+            if (self.config["Mqtt"]["LocalSslEnabled"].lower() == "true"):
+                i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp-ssl", "localhost", 8883))
+                self.localMqttClient.tls_set(cert_reqs=ssl.CERT_NONE)
+                self.localMqttClient.tls_insecure_set(True)
+                #TODO: After a system reboot, es-ESS is starting faster than the local mqtt, which might lead to connection issues. 
+                #      Either loop in a try/error, or sth.
+                #      Similiar issues might occur for the dbus service, if devices are not yet registered?
+                self.localMqttClient.connect(
+                    host="localhost",
+                    port=8883
+                )
+                
+            else:
+                i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp", "localhost", 1883))
+                self.localMqttClient.connect(
+                    host="localhost",
+                    port=1883
+                )
 
-        if (self.config["Mqtt"]["LocalSslEnabled"].lower() == "true"):
-            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp-ssl", "localhost", 8883))
-            self.localMqttClient.tls_set(cert_reqs=ssl.CERT_NONE)
-            self.localMqttClient.tls_insecure_set(True)
-            #TODO: After a system reboot, es-ESS is starting faster than the local mqtt, which might lead to connection issues. 
-            #      Either loop in a try/error, or sth.
-            #      Similiar issues might occur for the dbus service, if devices are not yet registered?
-            self.localMqttClient.connect(
-                host="localhost",
-                port=8883
-            )
-            
-        else:
-            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp", "localhost", 1883))
-            self.localMqttClient.connect(
-                host="localhost",
-                port=1883
-            )
-
-        self.localMqttClient.loop_start()
+            self.localMqttClient.loop_start()
+        except Exception as ex:
+            c(self, "Eception during mqtt init", exc_info=ex)
 
     def onMainMqttConnect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -288,7 +303,7 @@ class esESS:
        Helper.waitTimeout(lambda: self.mainMqttClientConnected, 30) or e(self, "Unable to connect to main mqtt wthin 30 seconds...  offline or credentials wrong?")
        Helper.waitTimeout(lambda: self.localMqttClientConnected, 30) or e(self, "Unable to connect to wattpilot wthin 30 seconds...offline or credentials wrong?")
 
-       self.publishServiceMessage(self,  "es-ESS is starting up...")
+       self.publishServiceMessage(self, "es-ESS is starting up...")
 
        gobject.timeout_add(60000, self._signOfLive)
        
@@ -603,8 +618,8 @@ class esESS:
         #if (type == Globals.ServiceMessageType.Operational):
         #   i(service, "Service Message: {0}".format(message))
 
-        if (not self.mainMqttClient.is_connected):
-           w(self, "Mqtt not connected, ignoring sending attempt.")
+        if (self.mainMqttClient is None or not self.mainMqttClient.is_connected):
+           #cant send service messages by now. 
            return
 
         serviceName = service.__class__.__name__ if not isinstance(service, str) else service
@@ -736,7 +751,7 @@ def main(config):
         signal.signal(sig, Globals.esESS.handleSigterm)
 
       Globals.esESS.initialize()
-      
+
       mainloop = gobject.MainLoop()
       mainloop.run()            
   except Exception as e:

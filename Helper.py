@@ -67,15 +67,16 @@ def e(module, msg, **kwargs):
    logging.error("[" + lineIdentifier + "] " + msg, **kwargs)
 
 def c(module, msg, **kwargs):
-   if (not isinstance(module, str)):
-       module = module.__class__.__name__
+    if (not isinstance(module, str)):
+        module = module.__class__.__name__
 
-   func = inspect.currentframe().f_back.f_code
-   lineIdentifier = "{0}|{1}.{2}".format(threading.currentThread().getName(), module, func.co_name)
+    func = inspect.currentframe().f_back.f_code
+    lineIdentifier = "{0}|{1}.{2}".format(threading.currentThread().getName(), module, func.co_name)
 
-   Globals.esESS.publishServiceMessage(module,  "[" + lineIdentifier + "] " + msg, Globals.ServiceMessageType.Critical)
+    if Globals.esESS is not None:
+        Globals.esESS.publishServiceMessage(module,  "[" + lineIdentifier + "] " + msg, Globals.ServiceMessageType.Critical)
 
-   logging.critical("[" + lineIdentifier + "] " + msg, **kwargs)
+    logging.critical("[" + lineIdentifier + "] " + msg, **kwargs)
 
 #Helper defs for DBus
 class SystemBus(dbus.bus.BusConnection):

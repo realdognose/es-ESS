@@ -55,7 +55,12 @@ class MqttExporter(esESSService):
 
     def _dbusValueChanged(self, sub):
         key = "{0}{1}".format(sub.serviceName, sub.dbusPath)
-        self.publishMainMqtt(self.topicExports[key].target, sub.value, 0, True)
+        if key in self.topicExports:
+            self.publishMainMqtt(self.topicExports[key].target, sub.value, 0, True)
+        else:
+            key = "{0}{1}".format(sub.commonServiceName, sub.dbusPath)
+            self.publishMainMqtt(self.topicExports[key].target, sub.value, 0, True)
+
         self.forwardedTopicsPastMinute += 1
 
     def _signOfLife(self):
