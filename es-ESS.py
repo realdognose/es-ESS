@@ -12,7 +12,6 @@ import threading
 import time
 from builtins import Exception, int, str
 from concurrent.futures import ThreadPoolExecutor
-from importlib.metadata import version
 from typing import Dict
 import ssl
 
@@ -93,14 +92,13 @@ class esESS:
 
     def configureMqtt(self):
         try:
-            if (version("paho.mqtt").startswith("2")):
-                d(self,"Using phao >= 2.0 compliant initialization...")
-                self.mainMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-MQTT-Client")
-                self.localMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-Local-MQTT-Client")
-            else:
-                d(self,"Using phao < 2.0 compliant initialization...")
-                self.mainMqttClient = mqtt.Client("es-ESS-MQTT-Client")
-                self.localMqttClient = mqtt.Client("es-ESS-Local-MQTT-Client")
+            d(self,"Using phao >= 2.0 compliant initialization...")
+            self.mainMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-MQTT-Client")
+            self.localMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-Local-MQTT-Client")
+        except:
+            d(self,"Nope... Trying phao < 2.0 compliant initialization...")
+            self.mainMqttClient = mqtt.Client("es-ESS-MQTT-Client")
+            self.localMqttClient = mqtt.Client("es-ESS-Local-MQTT-Client")
                 
             i(Globals.esEssTag, "MQTT: Connecting to broker: {0}".format(config["Mqtt"]["Host"]))
             self.mainMqttClient.on_disconnect = self.onMainMqttDisconnect
