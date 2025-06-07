@@ -100,64 +100,62 @@ class esESS:
             self.mainMqttClient = mqtt.Client("es-ESS-MQTT-Client")
             self.localMqttClient = mqtt.Client("es-ESS-Local-MQTT-Client")
                 
-            i(Globals.esEssTag, "MQTT: Connecting to broker: {0}".format(config["Mqtt"]["Host"]))
-            self.mainMqttClient.on_disconnect = self.onMainMqttDisconnect
-            self.mainMqttClient.on_connect = self.onMainMqttConnect
+        i(Globals.esEssTag, "MQTT: Connecting to broker: {0}".format(config["Mqtt"]["Host"]))
+        self.mainMqttClient.on_disconnect = self.onMainMqttDisconnect
+        self.mainMqttClient.on_connect = self.onMainMqttConnect
 
-            if 'User' in config['Mqtt'] and 'Password' in config['Mqtt'] and config['Mqtt']['User'] != '' and config['Mqtt']['Password'] != '':
-                self.mainMqttClient.username_pw_set(username=config['Mqtt']['User'], password=config['Mqtt']['Password'])
+        if 'User' in config['Mqtt'] and 'Password' in config['Mqtt'] and config['Mqtt']['User'] != '' and config['Mqtt']['Password'] != '':
+            self.mainMqttClient.username_pw_set(username=config['Mqtt']['User'], password=config['Mqtt']['Password'])
 
-            self.mainMqttClient.will_set("es-ESS/$SYS/Status", "Offline", 2, True)
+        self.mainMqttClient.will_set("es-ESS/$SYS/Status", "Offline", 2, True)
 
-            if (self.config["Mqtt"]["SslEnabled"].lower() == "true"):
-                i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp-ssl", config["Mqtt"]["Host"], config["Mqtt"]["Port"]))
-                self.mainMqttClient.tls_set(cert_reqs=ssl.CERT_NONE)
-                self.mainMqttClient.tls_insecure_set(True)
-                self.mainMqttClient.connect(
-                    host=config["Mqtt"]["Host"],
-                    port=int(config["Mqtt"]["Port"])
-                )
-                
-            else:
-                i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp", config["Mqtt"]["Host"], config["Mqtt"]["Port"]))
-                self.mainMqttClient.connect(
-                    host=config["Mqtt"]["Host"],
-                    port=int(config["Mqtt"]["Port"])
-                )
+        if (self.config["Mqtt"]["SslEnabled"].lower() == "true"):
+            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp-ssl", config["Mqtt"]["Host"], config["Mqtt"]["Port"]))
+            self.mainMqttClient.tls_set(cert_reqs=ssl.CERT_NONE)
+            self.mainMqttClient.tls_insecure_set(True)
+            self.mainMqttClient.connect(
+                host=config["Mqtt"]["Host"],
+                port=int(config["Mqtt"]["Port"])
+            )
+            
+        else:
+            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp", config["Mqtt"]["Host"], config["Mqtt"]["Port"]))
+            self.mainMqttClient.connect(
+                host=config["Mqtt"]["Host"],
+                port=int(config["Mqtt"]["Port"])
+            )
 
-            self.mainMqttClient.loop_start()
-            self.mainMqttClient.publish("es-ESS/$SYS/Status", "Online", 2, True)
-            self.mainMqttClient.publish("es-ESS/$SYS/Version", Globals.currentVersionString, 2, True)
-            self.mainMqttClient.publish("es-ESS/$SYS/ConnectionTime", time.time(), 2, True)
-            self.mainMqttClient.publish("es-ESS/$SYS/ConnectionDateTime", str(datetime.datetime.now()), 2, True)
-            self.mainMqttClient.publish("es-ESS/$SYS/Github", "https://github.com/realdognose/es-ESS", 2, True)
+        self.mainMqttClient.loop_start()
+        self.mainMqttClient.publish("es-ESS/$SYS/Status", "Online", 2, True)
+        self.mainMqttClient.publish("es-ESS/$SYS/Version", Globals.currentVersionString, 2, True)
+        self.mainMqttClient.publish("es-ESS/$SYS/ConnectionTime", time.time(), 2, True)
+        self.mainMqttClient.publish("es-ESS/$SYS/ConnectionDateTime", str(datetime.datetime.now()), 2, True)
+        self.mainMqttClient.publish("es-ESS/$SYS/Github", "https://github.com/realdognose/es-ESS", 2, True)
 
-            #local mqtt
-            self.localMqttClient.on_disconnect = self.onLocalMqttDisconnect
-            self.localMqttClient.on_connect = self.onLocalMqttConnect
+        #local mqtt
+        self.localMqttClient.on_disconnect = self.onLocalMqttDisconnect
+        self.localMqttClient.on_connect = self.onLocalMqttConnect
 
-            if (self.config["Mqtt"]["LocalSslEnabled"].lower() == "true"):
-                i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp-ssl", "localhost", 8883))
-                self.localMqttClient.tls_set(cert_reqs=ssl.CERT_NONE)
-                self.localMqttClient.tls_insecure_set(True)
-                #TODO: After a system reboot, es-ESS is starting faster than the local mqtt, which might lead to connection issues. 
-                #      Either loop in a try/error, or sth.
-                #      Similiar issues might occur for the dbus service, if devices are not yet registered?
-                self.localMqttClient.connect(
-                    host="localhost",
-                    port=8883
-                )
-                
-            else:
-                i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp", "localhost", 1883))
-                self.localMqttClient.connect(
-                    host="localhost",
-                    port=1883
-                )
+        if (self.config["Mqtt"]["LocalSslEnabled"].lower() == "true"):
+            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp-ssl", "localhost", 8883))
+            self.localMqttClient.tls_set(cert_reqs=ssl.CERT_NONE)
+            self.localMqttClient.tls_insecure_set(True)
+            #TODO: After a system reboot, es-ESS is starting faster than the local mqtt, which might lead to connection issues. 
+            #      Either loop in a try/error, or sth.
+            #      Similiar issues might occur for the dbus service, if devices are not yet registered?
+            self.localMqttClient.connect(
+                host="localhost",
+                port=8883
+            )
+            
+        else:
+            i(self, "Connecting to broker: {0}://{1}:{2}".format("tcp", "localhost", 1883))
+            self.localMqttClient.connect(
+                host="localhost",
+                port=1883
+            )
 
-            self.localMqttClient.loop_start()
-        except Exception as ex:
-            c(self, "Eception during mqtt init", exc_info=ex)
+        self.localMqttClient.loop_start()
 
     def onMainMqttConnect(self, client, userdata, flags, rc):
         if rc == 0:
