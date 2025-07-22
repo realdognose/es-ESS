@@ -46,8 +46,8 @@ class esESS:
             self._validateConfiguration()
             
             self._sigTermInvoked=False   
-            self.mainMqttClient = None
-            self.localMqttClient = None
+            self.mainMqttClient:mqtt.Client = None
+            self.localMqttClient:mqtt.Client = None
             self.mainMqttClientConnected = False
             self.localMqttClientConnected = False
             self.mqttThrottlePeriod = 0
@@ -93,12 +93,12 @@ class esESS:
     def configureMqtt(self):
         try:
             d(self,"Using phao >= 2.0 compliant initialization...")
-            self.mainMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-MQTT-Client")
-            self.localMqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-Local-MQTT-Client")
+            self.mainMqttClient:mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-MQTT-Client")
+            self.localMqttClient:mqtt.Client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "es-ESS-Local-MQTT-Client")
         except:
             d(self,"Nope... Trying phao < 2.0 compliant initialization...")
-            self.mainMqttClient = mqtt.Client("es-ESS-MQTT-Client")
-            self.localMqttClient = mqtt.Client("es-ESS-Local-MQTT-Client")
+            self.mainMqttClient:mqtt.Client = mqtt.Client("es-ESS-MQTT-Client")
+            self.localMqttClient:mqtt.Client = mqtt.Client("es-ESS-Local-MQTT-Client")
                 
         i(Globals.esEssTag, "MQTT: Connecting to broker: {0}".format(config["Mqtt"]["Host"]))
         self.mainMqttClient.on_disconnect = self.onMainMqttDisconnect
@@ -310,7 +310,7 @@ class esESS:
            self.publishMainMqtt("{0}/$SYS/MqttThrottle/Status".format(Globals.esEssTag), "Enabled")
            self.publishServiceMessage(self, "Enabling Mqtt-Throttling.")
        else:
-           self.publishMainMqtt("{0}/$SYS/MqttThrottle/Status", "Disabled")
+           self.publishMainMqtt("{0}/$SYS/MqttThrottle/Status".format(Globals.esEssTag), "Disabled")
 
     def _initializeServices(self):
         try:
@@ -468,6 +468,12 @@ class esESS:
     
     def _signOfLive(self):
         self.publishServiceMessage(self, "Executed {0} threads in the past minute.".format(self._threadExecutionsMinute))
+        load1, load5, load15 = os.getloadavg()
+
+        self.publishMainMqtt("{0}/$SYS/Load/1".format(Globals.esEssTag), load1, 0, False, True)
+        self.publishMainMqtt("{0}/$SYS/Load/5".format(Globals.esEssTag), load5, 0, False, True)
+        self.publishMainMqtt("{0}/$SYS/Load/15".format(Globals.esEssTag), load15, 0, False, True)
+
         self._threadExecutionsMinute = 0
         return True
     
