@@ -261,9 +261,7 @@ VenusOS can be tricky.
 
 therefore, the MqttPvInverter Service allows you to extract values from Mqtt and mimic a PV Inverter on VenusOS: 
 
-<img width="959" height="291" alt="image" src="https://github.com/user-attachments/assets/5af0c076-a4b1-4220-95e1-ca57ca23dabe" />
 
-<img width="954" height="333" alt="image" src="https://github.com/user-attachments/assets/28413827-3db4-418f-b839-4133fa2e922d" />
 
 
 # Configuration
@@ -306,6 +304,18 @@ Each section needs to match the pattern `[MqttPvInverter:uniqueKey]` where uniqu
 Example: You don't need to provide all values, if it's a single phased inverter: 
 <img width="647" height="374" alt="image" src="https://github.com/user-attachments/assets/33bc3d45-37d1-4f3f-a220-1b828e705fc7" />
 
+Seamless Integration through all layers: 
+
+<img width="959" height="291" alt="image" src="https://github.com/user-attachments/assets/5af0c076-a4b1-4220-95e1-ca57ca23dabe" />
+
+
+<img width="954" height="333" alt="image" src="https://github.com/user-attachments/assets/28413827-3db4-418f-b839-4133fa2e922d" />
+
+
+<img width="302" height="196" alt="image" src="https://github.com/user-attachments/assets/203d2406-9364-4cc3-bc06-b79cd7a92144" />
+
+
+<img width="753" height="255" alt="image" src="https://github.com/user-attachments/assets/205cd23c-a9e1-4a03-8a05-79200d16f9e5" />
 
 # FroniusWattpilot
 
