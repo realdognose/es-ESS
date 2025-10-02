@@ -27,6 +27,7 @@ system for at least 10ish years, there will be plenty of updates and/or bugfixes
 - [TimeToGoCalculator](#timetogocalculator) - Tiny helper filling out the `Time to Go` field in VRM, when BMS do not report this value.
 - [MqttTemperatures](#mqtttemperatures) - Display various temperature sensors you have on mqtt in VRM.
 - [MqttExporter](#mqttexporter) - Export selected values form dbus to your MQTT-Server.
+- [MqttPvInverter](#mqttpvinverter) - Use values available on mqtt to mimic a PVInverter in VenusOS
 - [FroniusWattpilot](#FroniusWattpilot) - Full integration of Fronius Wattpilot in VRM / cerbo, including bidirectional remote control and improved eco mode.
 - [NoBatToEV](#nobattoev) - Avoid discharge of your home-battery when charging your ev with an `ac-out` connected wallbox.
 - [Shelly3EMGrid](#shelly3emgrid) - Use a shelly 3 EM as grid meter.
@@ -249,6 +250,57 @@ Hint: You can use a trailing `*` on the Mqtt Topic. This will cause the original
 <img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporterStar1.png" />
 
 <img src="https://github.com/realdognose/es-ESS/blob/main/img/mqttExporterStar2.png" />
+
+# MqttPvInverter
+
+> :white_check_mark: Production Ready
+
+### Overview
+For proper overview it is sometimes required to pair any additional inverter with VenusOS / VRM. While there is a very broad support to read out inverters and export their values on your mqtt, getting these Values back into 
+VenusOS can be tricky. 
+
+therefore, the MqttPvInverter Service allows you to extract values from Mqtt and mimic a PV Inverter on VenusOS: 
+
+<img width="959" height="291" alt="image" src="https://github.com/user-attachments/assets/5af0c076-a4b1-4220-95e1-ca57ca23dabe" />
+
+<img width="954" height="333" alt="image" src="https://github.com/user-attachments/assets/28413827-3db4-418f-b839-4133fa2e922d" />
+
+
+# Configuration
+
+MqttPvInverter requires a few variables to be set in `/data/es-ESS/config.ini`: 
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [Services]    | MqttPvInverter | Flag, if the service should be enabled or not | Boolean | true 
+
+For every inverter you want to create you have to create a additional section, specifying paths on mqtt. This is quite a bunch of work, but generally only done once. 
+
+Each section needs to match the pattern `[MqttPvInverter:uniqueKey]` where uniqueKey should be an unique identifier.
+
+| Section    | Value name |  Descripion | Type | Example Value|
+| ---------- | ---------|---- | ------------- |--|
+| [MqttPvInverter:XXX]  | CustomName |  Service name, see details bellow | String  | com.victronenergy.system |
+| [MqttPvInverter:XXX]  | VRMInstanceID |  Key of the dbus-value to export | String  | /Ac/Grid/L1/Power |
+| [MqttPvInverter:XXX]  | L1VoltageTopic |  Voltage reported for L1 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | L2VoltageTopic |  Voltage reported for L2 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | L3VoltageTopic |  Voltage reported for L3 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | L1PowerTopic |  Power reported for L1 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | L2PowerTopic |  Power reported for L2 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | L3PowerTopic |  Power reported for L3 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | L1CurrentTopic |  Current reported for L1 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | L2CurrentTopic |  Current reported for L2 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | L3CurrentTopic |  Current reported for L3 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | L1EnergyForwardedTopic |  Counter for the amount of Energy produced on L1 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | L2EnergyForwardedTopic |  Counter for the amount of Energy produced on L2 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | L3EnergyForwardedTopic |  Counter for the amount of Energy produced on L3 | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | TotalEnergyForwardedTopic |  Counter for the amount of Energy produced| String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | TotalPowerTopic |  Total output power | String  | my/mqtt/topic |
+| [MqttPvInverter:XXX]  | DtuControlTopic |  Experimental | String  | my/mqtt/topic|
+
+Example: You don't need to provide all values, if it's a single phased inverter: 
+<img width="647" height="374" alt="image" src="https://github.com/user-attachments/assets/33bc3d45-37d1-4f3f-a220-1b828e705fc7" />
+
 
 # FroniusWattpilot
 
