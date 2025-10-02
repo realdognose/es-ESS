@@ -273,6 +273,11 @@ MqttPvInverter requires a few variables to be set in `/data/es-ESS/config.ini`:
 | Section    | Value name |  Descripion | Type | Example Value|
 | ---------- | ---------|---- | ------------- |--|
 | [Services]    | MqttPvInverter | Flag, if the service should be enabled or not | Boolean | true 
+| [MqttPvInverter]    | EnableZeroFeedin | Experimental, leave to false! | Boolean | false 
+| [MqttPvInverter]    | EnablePvShutdown | Flag, if the Inverters should be shutdown through OpenDTU, when the GX is shutting down PV. | Boolean | true 
+| [MqttPvInverter]    | ZeroFeedinScaleStep | Experimental, just ignore| Double | 0.0
+| [MqttPvInverter]    | ZeroFeedinDistance | Experimental, just ignore| Double | 0.0
+| [MqttPvInverter]    | ZeroFeedinStartSoc | Experimental, just ignore| Double | 0.0
 
 For every inverter you want to create you have to create a additional section, specifying paths on mqtt. This is quite a bunch of work, but generally only done once. 
 
