@@ -279,6 +279,20 @@ class esESS:
             #Relay as toggle for NoBatToEv
             self.config.add_section("NoBatToEV")
             self.config["NoBatToEV"]["UseRelay"] = "-1"        
+        
+        version = 8
+        if (loadedVersion < version):
+            self._backupConfig()
+            i(self, "Upgrading configuration to v{0}".format(version))
+            self.config["Common"]["ConfigVersion"] = "{0}".format(version)
+
+            #MqttPVInverter DTU Settings
+            self.config.add_section("MqttPvInverter")
+            self.config["MqttPvInverter"]["EnableZeroFeedin"] = "false"
+            self.config["MqttPvInverter"]["EnablePvShutdown"] = "false"
+            self.config["MqttPvInverter"]["ZeroFeedinScaleStep"] = "0.05"
+            self.config["MqttPvInverter"]["ZeroFeedinDistance"] = "50"
+            self.config["MqttPvInverter"]["ZeroFeedinStartSoc"] = "100"
 
         #All required configuration changes applied. Save new file, create a backup of the existing configuration. 
         if (loadedVersion < int(self.config["Common"]["ConfigVersion"])):

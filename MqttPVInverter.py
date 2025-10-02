@@ -23,8 +23,7 @@ class MqttPVInverter(esESSService):
     def __init__(self):
         esESSService.__init__(self)
         self.mqttPVInverters: Dict[str, MqttPVInverterInstance] = {}
-        self.forwardedTopicsPastMinute = 0
-        
+
         #Load all topics we should export from DBus to Mqtt and start listening for changes.
         #upon change, export according to the setup rules. 
         try:
@@ -37,6 +36,17 @@ class MqttPVInverter(esESSService):
                     self.mqttPVInverters[key] = MqttPVInverterInstance(self, key, self.config[k])
 
             i(self, "Found {0} MqttPVInverters.".format(len(self.mqttPVInverters)))
+
+            self.enableZeroFeedin = self.config["MqttPvInverter"]["EnableZeroFeedin"].lower() == "true"
+            self.enablePvShutdown = self.config["MqttPvInverter"]["EnablePvShutdown"].lower() == "true"
+            self.zeroFeedinScaleStep = float(self.config["MqttPvInverter"]["ZeroFeedinScaleStep"])
+            self.zeroFeedinDistance = float(self.config["MqttPvInverter"]["ZeroFeedinDistance"])
+            self.zeroFeedinStartSoc = float(self.config["MqttPvInverter"]["ZeroFeedinStartSoc"])
+
+            if self.enableZeroFeedin:
+                i(self, "Enabling ZeroFeedin through DTU")
+                for key, inv in self.mqttPVInverters.items():
+                    inv.throttle = 1.0 / len(self.mqttPVInverters)
             
         except Exception as ex:
             c(self, "Exception", exc_info=ex)
@@ -46,11 +56,23 @@ class MqttPVInverter(esESSService):
             inverter.initDbusService()
 
     def initDbusSubscriptions(self):
-        pass
+        #Need consumption to scale on for ZeroFeedin, when battery is fully charged.
+        self.consumptionL1Dbus  = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Consumption/L1/Power")
+        self.consumptionL2Dbus  = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Consumption/L2/Power")
+        self.consumptionL3Dbus  = self.registerDbusSubscription("com.victronenergy.system", "/Ac/Consumption/L3/Power")
+
+        #TODO: Need Grid Connected Value to determine if we are actually grid connected. 
+        self.noPhasesDbus       = self.registerDbusSubscription("com.victronenergy.system", "/Ac/ActiveIn/NumberOfPhases")
+        self.socDbus            = self.registerDbusSubscription("com.victronenergy.system", "/Dc/Battery/Soc")
+
+        #Need PV Disabled Value to eventually shutdown inverters completly. 
+        self.pvDisabled         = self.registerDbusSubscription("com.victronenergy.system", "/Pv/Disabled")
         
     def initWorkerThreads(self):
         self.registerWorkerThread(self._checkStale, 5000)
-        pass
+
+        if self.enableZeroFeedin:
+            self.registerWorkerThread(self._dtuZeroFeedin, 10000)
 
     def initMqttSubscriptions(self):
         for inverter in self.mqttPVInverters.values():
@@ -80,9 +102,42 @@ class MqttPVInverter(esESSService):
             if (time.time() - inverter.lastMessageReceived > 5):
                 w(self, "PVInverter detected stale: {0}".format(inverter.customName))
                 inverter.setStale()
+    
+    def _dtuZeroFeedin(self):
+        try:
+            #Check on-grid, else Frequency shifting will control the inverters.
+            if self.noPhasesDbus.value is not None and self.socDbus.value is not None and self.socDbus.value >= self.zeroFeedinStartSoc:
+                consumption = self.consumptionL1Dbus.value + self.consumptionL2Dbus.value + self.consumptionL3Dbus.value
+                target = max(consumption - self.zeroFeedinDistance, 0)
+
+                actual = {key: inv.total_power for key, inv in self.mqttPVInverters.items()}
+                total = sum(actual.values())
+                error = target - total
+
+                i(self, "Consumption is {}W, with a distance of {}W, we are targeting for {}W inverter power.".format(consumption, self.zeroFeedinDistance, target))
+
+                #Adjust proportionally
+                for key, inv in self.mqttPVInverters.items():
+                    #Only adjust if this inverter is producing
+                    if actual[key] > 0 and inv.dtuControlTopic is not None:
+                        share = actual[key] / total if total > 0 else 1.0/len(self.mqttPVInverters)
+                        t = inv.throttle
+                        c = share * (error / target)
+                        if c >= 0:
+                            t += min(self.zeroFeedinScaleStep, c)
+                        else:
+                            t -= min(self.zeroFeedinScaleStep, c * -1)
+
+                        t = min(max(t, 0.0), 1.0)  # Clamp to 0..1
+                        inv.throttle = t
+            else:
+                for key, inv in self.mqttPVInverters.items():
+                    inv.throttle = 1.0
+        except Exception as ex:
+            c(self, "Exception during zero feedin calculation", exc_info=ex)
 
 class MqttPVInverterInstance:
-    def __init__(self, rootService, key, configValues):
+    def __init__(self, rootService:MqttPVInverter, key, configValues):
         self.key = key
         self.customName = configValues["CustomName"]
         self.dbusService = None
@@ -102,9 +157,14 @@ class MqttPVInverterInstance:
         self.l2EnergyForwardedTopic = configValues["L2EnergyForwardedTopic"]
         self.l3EnergyForwardedTopic = configValues["L3EnergyForwardedTopic"]
         self.totalEnergyForwardedTopic = configValues["TotalEnergyForwardedTopic"]
+        self.dtuControlTopic = configValues["DtuControlTopic"] if "DtuControlTopic" in configValues else None
         self.lastMessageReceived = 0
         self.isStale=False
-        self.rootService = rootService
+        self.rootService:MqttPVInverter = rootService
+        self.l1power = 0 
+        self.l2power = 0
+        self.l3power = 0
+        self._throttle:float = 1
     
     def onMqttMessage(self, client, userdata, msg):
       try:
@@ -144,12 +204,15 @@ class MqttPVInverterInstance:
 
         #Powers
         elif (msg.topic == self.l1PowerTopic):
+            self.l1power = float(messagePlain)
             self.dbusService['/Ac/L1/Power'] = float(messagePlain)
         
         elif (msg.topic == self.l2PowerTopic):
+            self.l2power = float(messagePlain)
             self.dbusService['/Ac/L2/Power'] = float(messagePlain)
 
         elif (msg.topic == self.l3PowerTopic):
+            self.l3power = float(messagePlain)
             self.dbusService['/Ac/L3/Power'] = float(messagePlain)
 
         #EnergyForwardeds
@@ -230,3 +293,18 @@ class MqttPVInverterInstance:
         self.dbusService['/Ac/L2/Power'] = None
         self.dbusService['/Ac/L3/Power'] = None
 
+    @property
+    def total_power(self) -> float:
+        return self.l1power + self.l2power + self.l3power
+
+    @property
+    def throttle(self) -> float:
+        return self._throttle
+    
+    @throttle.setter
+    def throttle(self, v):
+        self._throttle = v
+
+        if self.dtuControlTopic is not None:
+            i(self, "Setting limit for {} to {}%".format(self.customName, v*100))
+            self.rootService.publishMainMqtt(self.dtuControlTopic + "/cmd/limit_nonpersistent_relative", v * 100)
